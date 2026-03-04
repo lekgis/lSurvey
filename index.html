@@ -160,16 +160,17 @@
         }
         #pwa-install-container > button {
           pointer-events: auto;  /* ✅ เปิดการคลิกที่ปุ่ม */
+          max-width: 95vw;  /* ✅ จำกัดความกว้างปุ่มแทน container */
         }
 
         /* ✅ สำหรับมือถือ */
-        /* ✅ เพิ่มใน <style> */
         @media (max-width: 768px) {
           #pwa-install-container {
-            width: 95% !important;  /* ✅ บังคับความกว้างบนมือถือ */
+            /* ❌ ลบบรรทัดนี้ออก: width: 95% !important; */
+            bottom: 80px !important;  /* ✅ ปรับระยะล่างอย่างเดียว */
           }
           #pwa-install-btn {
-            width: 100% !important;  /* ✅ ปุ่มเต็ม container */
+            max-width: 90vw !important;  /* ✅ ใช้ max-width แทน width */
             padding-left: 1rem !important;
             padding-right: 1rem !important;
           }
