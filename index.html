@@ -147,19 +147,21 @@
         .animate-fade-in { animation: fade-in 0.3s ease-out; }
         .animate-fade-out { animation: fade-out 0.3s ease-in; }
 
-        /* ✅ สไตล์พิเศษสำหรับปุ่มติดตั้งบนมือถือ */
-        @media (max-width: 768px) {
-          #pwa-install-container {
-            bottom: 80px !important;
-            /* ลบบรรทัดนี้ออก: width: 90% !important; */
-            width: auto !important;  /* หรือใช้ auto แทน */
-            max-width: 95%;          /* จำกัดความกว้างสูงสุดแทน */
-          }
-          #pwa-install-btn {
-            width: 100% !important;
-            font-size: 0.9rem !important;
-            padding: 12px 20px !important;
-          }
+        /* ✅ เพิ่มใน <style> */
+        #pwa-install-container {
+          display: none;
+          position: fixed;
+          bottom: 100px;
+          left: 0;
+          right: 0;
+          justify-content: center;  /* ✅ จัดกึ่งกลาง */
+          z-index: 9999;
+          pointer-events: none;  /* ✅ ไม่บล็อกการคลิกแผนที่ */
+        }
+
+        #pwa-install-container > button {
+          pointer-events: auto;  /* ✅ เปิดการคลิกที่ปุ่ม */
+          max-width: 90%;  /* ✅ ไม่ให้กว้างเกินบนมือถือ */
         }
 
         /* สไตล์พิเศษสำหรับสีพื้นหลังช่องกรอกตามเงื่อนไข */
@@ -1218,10 +1220,13 @@
     </div>
     <!-- ✅ ✅ ✅ วาง PWA UI + Script ที่นี่ (ก่อน </body>) ✅ ✅ ✅ -->
     <!-- UI สำหรับปุ่มติดตั้งแอป -->
-    <div id="pwa-install-container" style="display:none; position:fixed; bottom:100px; left:0; right:0; transform: translate(-50%, 0); z-index:9999;">
+    <div id="pwa-install-container" style="display:none; position:fixed; bottom:100px; left:0; right:0; justify-content:center; z-index:9999;">
       <button id="pwa-install-btn" class="bg-blue-600 text-white px-8 py-4 rounded-full shadow-2xl font-bold flex items-center gap-2 animate-pulse">
         <span class="text-2xl">📲</span> 
-        <span>ติดตั้งแอปสำรวจแผนที่ภาษี "โนนไทย" อ.เล็ก</span>
+        <div class="text-center leading-tight">
+          <span class="block">ติดตั้งแอปสำรวจ</span>
+          <span class="block">แผนที่ภาษี "โนนไทย" อ.เล็ก</span>
+        </div>
       </button>
     </div>
 
