@@ -211,6 +211,13 @@
           max-width: 95vw;  /* ✅ จำกัดความกว้างปุ่มแทน container */
         }
 
+        /* ✅ ซ่อนปุ่มนำเข้าบนมือถือ */
+        @media (max-width: 768px) {
+            #import-tab {
+                display: none !important;
+            }
+        }
+
         /* ✅ สำหรับมือถือ */
         @media (max-width: 768px) {
           #pwa-install-container {
@@ -2462,7 +2469,7 @@
             data.land_use = computedLandUse;
             
             // ✅ ✅ ✅ เพิ่มฟิลด์วันที่ (แก้ไขข้อ 2) ✅ ✅ ✅
-            const now = new Date().toISOString();
+            const now = new Date(new Date().getTime() + (7 * 60 * 60 * 1000)).toISOString().replace('Z', '+07:00');
             if (editingMarker && editingMarker._popupData) {
                 // ✅ กรณีอัปเดต: ใช้ date_added เดิม + update ใหม่
                 data.date_added = editingMarker._popupData.date_added || now;
