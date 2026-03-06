@@ -8188,7 +8188,7 @@
         }
 
         // ✅ ฟังก์ชันรีเซ็ตโหมดคำนวณพื้นที่
-        // ✅ ฟังก์ชันรีเซ็ตโหมด (เปิด parcel/boundary กลับมา)
+        // ✅ ฟังก์ชันรีเซ็ตโหมด (เปิด parcel/boundary กลับมา) - แก้ไขสำหรับมือถือ
         function disableAreaCalculatorMode() {
             isAreaCalculatorMode = false;
             const mapContainer = document.getElementById('map');
@@ -8197,19 +8197,43 @@
             mapContainer.style.cursor = 'default';
             mapContainer.classList.remove('cursor-crosshair-add');
             
-            // ✅ เปิดการโต้ตอบกับ parcel และ boundary กลับมา
-            if (window.parcelLayer) {
-                window.parcelLayer.setStyle({ interactive: true });
-                if (window.parcelLayer._path) {
-                    window.parcelLayer._path.style.pointerEvents = 'auto';
+            // ✅ ฟังก์ชันเปิด interaction ให้ทุกฟีเจอร์ในเลเยอร์ (รองรับมือถือ)
+            const enableLayerInteraction = function(layer) {
+                if (!layer) return;
+                
+                // วิธีที่ 1: setStyle สำหรับ GeoJSON Layer
+                if (typeof layer.setStyle === 'function') {
+                    layer.setStyle({ interactive: true });
                 }
-            }
-            if (window.boundaryLayer) {
-                window.boundaryLayer.setStyle({ interactive: true });
-                if (window.boundaryLayer._path) {
-                    window.boundaryLayer._path.style.pointerEvents = 'auto';
+                
+                // วิธีที่ 2: eachLayer สำหรับแต่ละฟีเจอร์ (สำคัญสำหรับมือถือ!)
+                if (typeof layer.eachLayer === 'function') {
+                    layer.eachLayer(function(subLayer) {
+                        if (subLayer.options) {
+                            subLayer.options.interactive = true;
+                        }
+                        if (subLayer._path) {
+                            // ✅ ตั้งค่า pointerEvents ที่ DOM element โดยตรง
+                            subLayer._path.style.pointerEvents = 'auto';
+                            
+                            // ✅ สำหรับมือถือ: บังคับรีเฟรช touch events
+                            if (navigator.maxTouchPoints > 0 || window.innerWidth < 768) {
+                                // ✅ สร้าง event ปลอมเพื่อให้เบราว์เซอร์รู้ว่ามี interaction
+                                subLayer._path.dispatchEvent(new Event('touchend', { bubbles: true }));
+                            }
+                        }
+                    });
                 }
-            }
+                
+                // วิธีที่ 3: ตั้งค่าที่ _path โดยตรง (เผื่อกรณีทั่วไป)
+                if (layer._path) {
+                    layer._path.style.pointerEvents = 'auto';
+                }
+            };
+            
+            // ✅ เปิด interaction ให้ทั้ง parcel และ boundary
+            enableLayerInteraction(window.parcelLayer);
+            enableLayerInteraction(window.boundaryLayer);
             
             // ✅ ลบเหตุการณ์คลิก
             if (window.areaCalculatorClickHandler) {
@@ -8217,7 +8241,23 @@
                 window.areaCalculatorClickHandler = null;
             }
             
-            console.log('✅ ปิดโหมดคำนวณพื้นที่');
+            // ✅ ✅ ✅ สำหรับมือถือ: บังคับให้แผนที่อัปเดตการเรนเดอร์ใหม่ ✅ ✅ ✅
+            if (navigator.maxTouchPoints > 0 || window.innerWidth < 768) {
+                setTimeout(() => {
+                    if (map) {
+                        // ✅ บังคับให้ Leaflet คำนวณขนาดและเรนเดอร์ใหม่
+                        map.invalidateSize();
+                        
+                        // ✅ บังคับให้เลเยอร์รีเรนเดอร์ (ถ้ามีฟังก์ชัน redraw)
+                        if (window.parcelLayer?.redraw) window.parcelLayer.redraw();
+                        if (window.boundaryLayer?.redraw) window.boundaryLayer.redraw();
+                        
+                        console.log('📱 มือถือ: บังคับรีเรนเดอร์แผนที่เสร็จสิ้น');
+                    }
+                }, 100); // ✅ รอ 100ms ให้ DOM อัปเดตก่อน
+            }
+            
+            console.log('✅ เปิดการคลิก parcel/boundary กลับมาเรียบร้อยแล้ว');
         }
 
         // ✅ ฟังก์ชันเช็คจุดอยู่ใน Polygon (รองรับ GeoJSON coordinates)
@@ -8453,7 +8493,7 @@
             closeAreaCalculatorA();
         }
 
-        // ปิดหน้าต่างคำนวณพื้นที่ A
+        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A
         function closeAreaCalculatorA() {
             if (areaCalculatorModalA) {
                 areaCalculatorModalA.classList.add('animate-scale-out');
@@ -8483,14 +8523,19 @@
                         addTrigger.classList.remove('visible');
                     }
                     
-                    // ✅ คืนค่าปุ่มยืนยันเดิม
+                    // ✅ คืนค่าปุ่มยืนยันเดิม (ถ้ามี)
                     const confirmBtn = document.getElementById('btn-confirm-action');
-                    const confirmText = document.getElementById('confirm-text');
-                    if (confirmBtn && confirmText && confirmBtn.dataset.originalText) {
-                        confirmText.innerText = confirmBtn.dataset.originalText;
-                        confirmBtn.style.backgroundColor = confirmBtn.dataset.originalColor || '#f97316';
+                    if (confirmBtn) {
+                        confirmBtn.style.display = '';
+                        confirmBtn.onclick = null;
                     }
+                    
+                    console.log('✅ ปิดหน้าต่างคำนวณพื้นที่ A เรียบร้อย');
                 }, 200);
+            } else {
+                // ✅ กรณี modal ไม่มีอยู่แล้ว แต่ยังต้องการรีเซ็ตโหมด
+                isAreaCalculatorMode = false;
+                disableAreaCalculatorMode();
             }
         }
 
