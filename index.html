@@ -7246,34 +7246,38 @@
         // เริ่มต้นแอป (รวมโค้ดทั้ง 2 ส่วน)
         // ============================================
         window.addEventListener('load', async () => {
-
-            // 1. เริ่มต้นแผนที่และไอคอน (จำเป็นสำหรับภาพดาวเทียม)
+            
+            // ✅ 1. เริ่มต้นแผนที่และไอคอนก่อน (ต้องสร้าง map ก่อน!)
             initMap();
             lucide.createIcons();
             
-            // ✅ ต้องเรียกฟังก์ชันนี้เพื่อเปิดใช้งานโหมดเมาส์
+            // ✅ ✅ ✅ 2. โหลดแผนที่จากแคชทีหลัง (เมื่อ map พร้อมแล้ว) ✅ ✅ ✅
+            if (typeof map !== 'undefined' && map) {
+                await checkAndLoadMap();
+            } else {
+                console.warn('⚠️ map ไม่พร้อม - ข้ามการโหลดแคช');
+            }
+            
+            // ✅ 3. เปิดใช้งานโหมดเมาส์
             initMouseAddMode();
             console.log('✅ initMouseAddMode called on load');
 
-            // ✅ ✅ ✅ 1. โหลดแผนที่จากแคชก่อน (สำคัญที่สุด!) ✅ ✅ ✅
-            await checkAndLoadMap();
-
-            // 2. โหลดข้อมูล (จำเป็นสำหรับภาพดาวเทียม)
+            // ✅ 4. โหลดข้อมูล (จำเป็นสำหรับภาพดาวเทียม)
             loadExistingData();
             
-            // 3. เริ่มระบบอัปเดตอัตโนมัติ (จำเป็นสำหรับระบบอัปเดต)
-            await loadExistingData(); // ← โหลดอีกครั้งเพื่อให้แน่ใจ
+            // ✅ 5. เริ่มระบบอัปเดตอัตโนมัติ
+            await loadExistingData();
             startRealtimeAutoUpdate();
             
-            // 4. ตรวจสอบและซิงค์ข้อมูลที่ค้างอยู่
+            // ✅ 6. ตรวจสอบและซิงค์ข้อมูลที่ค้างอยู่
             await checkAndSyncOnStartup();
             
-            // 5. อัปเดตจุดแจ้งเตือนจำนวนข้อมูลที่รอซิงค์
+            // ✅ 7. อัปเดตจุดแจ้งเตือนจำนวนข้อมูลที่รอซิงค์
             setInterval(() => {
                 updateSyncBadge();
             }, 1000);            
            
-            // 7. ลงทะเบียน Service Worker
+            // ✅ 8. ลงทะเบียน Service Worker
             if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
                 navigator.serviceWorker.register('/sw.js')
                     .then(() => console.log('Service Worker registered'))
