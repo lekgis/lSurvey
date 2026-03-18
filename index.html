@@ -9604,50 +9604,7 @@
         map.on('moveend', loadVisibleMarkers);
         map.on('zoomend', loadVisibleMarkers);
 
-        // ✅ ในฟังก์ชัน handleMapFileSelect() (หาบรรทัดนี้ในไฟล์คุณ)
-        async function handleMapFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            try {
-                const text = await file.text();
-                const geoJson = JSON.parse(text);
-                
-                if (!geoJson.type || geoJson.type !== 'FeatureCollection') {
-                    throw new Error('รูปแบบไฟล์ไม่ถูกต้อง (ต้องเป็น FeatureCollection)');
-                }
-                
-                // ✅ ระบุประเภทแผนที่จากชื่อไฟล์
-                let layerType = '';
-                if (file.name.toLowerCase().includes('parcel')) layerType = 'parcel';
-                else if (file.name.toLowerCase().includes('boundary')) layerType = 'boundary';
-                else if (file.name.toLowerCase().includes('building_area')) layerType = 'building_area';
-                else {
-                    showNotificationLeft('⚠️ ไม่สามารถระบุประเภทแผนที่ได้', 'warning');
-                    return;
-                }
-                
-                // ✅ ✅ ✅ บันทึกใน IndexedDB (สำคัญ!) ✅ ✅ ✅
-                await cacheMapData(JSON.stringify(geoJson), new Date().toISOString(), layerType);
-                
-                // ✅ โหลดแผนที่
-                await loadMapFromCache(geoJson, layerType);
-                
-                const layerNames = {
-                    parcel: 'แผนที่แปลง',
-                    boundary: 'แผนที่ขอบเขต',
-                    building_area: 'แผนที่สิ่งปลูกสร้าง'
-                };
-                showNotificationLeft(`✅ โหลด${layerNames[layerType]}สำเร็จ!`, 'success');
-                
-            } catch (err) {
-                console.error('❌ ข้อผิดพลาดในการโหลดแผนที่:', err);
-                showNotificationLeft('❌ โหลดแผนที่ล้มเหลว: ' + err.message, 'error');
-            }
-            
-            // ✅ รีเซ็ต input
-            event.target.value = '';
-        }
+
 
         // ============================================
         // เลือกไฟล์แผนที่จากเครื่อง
