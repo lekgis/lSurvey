@@ -24,7 +24,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <!-- Leaflet GeoJSON Layer (สำหรับแสดงข้อมูลจาก GeoPackage) -->
+    <!-- ✅ ต้องมีบรรทัดเหล่านี้ (ตรวจสอบให้ครบ) -->
+    <!-- สำหรับ MBTiles -->
+    <script src="https://unpkg.com/sql.js@1.8.0/dist/sql-wasm.js"></script>
+    <script src="https://unpkg.com/Leaflet.TileLayer.MBTiles@1.0.0/Leaflet.TileLayer.MBTiles.js"></script>
 
+    <!-- สำหรับ GeoTIFF -->
+    <script src="https://unpkg.com/georaster@1.6.0/georaster.min.js"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet@1.5.1/georaster-layer-for-leaflet.min.js"></script>
     <style>
         body, html { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; z-index: 0; }
@@ -1212,16 +1219,26 @@
                     <div class="text-[10px] opacity-90">นำเข้าไฟล์ .geojson</div>
                 </div>
             </button>
-            <!-- ✅ ปุ่ม 9: เคลียร์แผนที่ -->
-            <button onclick="clearMapData()" class="map-btn p-3 w-48 bg-gradient-to-r from-red-400 to-red-600 text-white hover:scale-105 transition-all shadow-lg flex items-center justify-start gap-2 text-left">
-            <i data-lucide="trash-2" class="w-5 h-5"></i>
-            <div>
-            <div class="font-semibold text-xs">เคลียร์แผนที่</div>
-            <div class="text-[10px] opacity-90">ลบข้อมูลแผนที่ทั้งหมด</div>
-            </div>
+            <!-- ✅ ปุ่มเปิดภาพถ่ายโดรน (ลำดับที่ 9 ในเมนูฟันเฟือง) -->
+            <button onclick="openDroneFolder()" class="map-btn p-3 w-48 bg-gradient-to-r from-indigo-400 to-indigo-600 text-white hover:scale-105 transition-all shadow-lg flex items-center justify-start gap-2 text-left">
+                <i data-lucide="layers" class="w-5 h-5"></i>
+                <div>
+                    <div class="font-semibold text-xs">เปิดภาพถ่ายโดรน</div>
+                    <div class="text-[10px] opacity-90">เลือกโฟลเดอร์ Tiles (XYZ)</div>
+                </div>
             </button>
-            <!-- ✅ Input ซ่อนสำหรับเลือกไฟล์ -->
-            <input type="file" id="map-file-input" accept=".geojson,.json" class="hidden" onchange="handleMapFileSelect(event)">
+
+            <!-- ✅ ปุ่ม 10: เคลียร์แผนที่ (เดิม) -->
+            <button onclick="clearMapData()" class="map-btn p-3 w-48 bg-gradient-to-r from-red-400 to-red-600 text-white hover:scale-105 transition-all shadow-lg flex items-center justify-start gap-2 text-left">
+                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                <div>
+                    <div class="font-semibold text-xs">เคลียร์แผนที่</div>
+                    <div class="text-[10px] opacity-90">ลบข้อมูลแผนที่ทั้งหมด</div>
+                </div>
+            </button>
+
+            <!-- ✅ Input ซ่อนสำหรับเลือกไฟล์โดรน -->
+            <input type="file" id="droneFolderInput" webkitdirectory directory multiple class="hidden" onchange="handleDroneFolderSelect(event)">
           </div>
         </div>
 
@@ -1458,6 +1475,11 @@
         let isUploadingImage = false; // [cite: 71]
 
         let canvasRenderer; // ✅ ประกาศตัวแปรระดับโกลบอล
+
+        // ✅ ตัวแปรเก็บเลเยอร์ดรนและ tile mapping
+        let droneLayer = null;
+        let droneTileMap = new Map(); // เก็บไฟล์ทั้งหมดในโฟลเดอร์
+        let droneBlobUrls = new Map(); // เก็บ Blob URLs ที่สร้างแล้ว
 
         // ✅ ประกาศตัวแปรเก็บข้อมูล cache (วางนอกฟังก์ชัน)
         let cachedSheetData = null;
@@ -5811,6 +5833,146 @@
         }
 
 
+        // ✅ ฟังก์ชันเปิดโฟลเดอร์โดรน (เรียกจากปุ่ม)
+        function openDroneFolder() {
+            closeSettingsMenu();
+            const droneInput = document.getElementById('droneFolderInput');
+            if (droneInput) {
+                droneInput.click();
+            }
+        }
+
+        async function handleDroneFolderSelect(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) {
+                showNotificationLeft('❌ ไม่พบไฟล์ในโฟลเดอร์', 'error');
+                return;
+            }
+            
+            showNotificationLeft(`📡 กำลังวิเคราะห์ขอบเขตภาพโดรน...`, 'info');
+            
+            try {
+                if (droneLayer) {
+                    map.removeLayer(droneLayer);
+                    droneLayer = null;
+                }
+                
+                droneBlobUrls.forEach(url => URL.revokeObjectURL(url));
+                droneBlobUrls.clear();
+                droneTileMap.clear();
+                
+                let tileCount = 0;
+                let minZ = Infinity, maxZ = -Infinity;
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
+                
+                // เก็บรายการ coords เพื่อหาขอบเขตที่แม่นยำที่สุด
+                const coordsList = [];
+
+                for (const file of files) {
+                    const path = file.webkitRelativePath || file.name;
+                    if (/\.(png|jpg|jpeg|webp)$/i.test(path)) {
+                        const match = path.match(/\/(\d+)\/(\d+)\/(\d+)\./i);
+                        if (match) {
+                            const z = parseInt(match[1]);
+                            const x = parseInt(match[2]);
+                            const y = parseInt(match[3]);
+
+                            droneTileMap.set(`${z}/${x}/${y}`, file);
+                            tileCount++;
+
+                            minZ = Math.min(minZ, z);
+                            maxZ = Math.max(maxZ, z);
+                            
+                            // เก็บเฉพาะ x, y ของระดับซูมที่ลึกที่สุด (หรือระดับเดียวกัน) เพื่อคำนวณ Bounds ไม่ให้เพี้ยน
+                            coordsList.push({z, x, y});
+                        }
+                    }
+                }
+                
+                if (tileCount === 0) throw new Error('ไม่พบโครงสร้างไฟล์แบบ Tile (z/x/y)');
+
+                // ✅ คำนวณขอบเขตจากระดับซูมสูงสุดที่มี (maxZ) เพื่อความแม่นยำในการซูมเข้า
+                const topLevelTiles = coordsList.filter(c => c.z === maxZ);
+                topLevelTiles.forEach(c => {
+                    minX = Math.min(minX, c.x);
+                    maxX = Math.max(maxX, c.x);
+                    minY = Math.min(minY, c.y);
+                    maxY = Math.max(maxY, c.y);
+                });
+
+                function tileToLatLng(z, x, y) {
+                    const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
+                    const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+                    const lng = (x / Math.pow(2, z)) * 360 - 180;
+                    return [lat, lng];
+                }
+                
+                // หาพิกัดมุมซ้ายบน และ ขวาล่าง
+                const nw = tileToLatLng(maxZ, minX, minY);
+                const se = tileToLatLng(maxZ, maxX + 1, maxY + 1);
+                const droneBounds = L.latLngBounds([se[0], nw[1]], [nw[0], se[1]]);
+
+                const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+                const droneSource = L.TileLayer.extend({
+                    getTileUrl: function(coords) {
+                        const key = `${coords.z}/${coords.x}/${coords.y}`;
+                        const file = droneTileMap.get(key);
+                        if (file) {
+                            if (!droneBlobUrls.has(key)) {
+                                droneBlobUrls.set(key, URL.createObjectURL(file));
+                            }
+                            return droneBlobUrls.get(key);
+                        }
+                        return transparentPixel;
+                    }
+                });
+                
+                droneLayer = new droneSource(null, {
+                    maxZoom: 24,
+                    maxNativeZoom: maxZ,
+                    minZoom: minZ,
+                    opacity: 1.0,
+                    zIndex: 1000,
+                    noWrap: true,
+                    bounds: droneBounds
+                });
+                
+                droneLayer.addTo(map);
+                
+                // ✅ แก้จุดนี้: สั่งให้ซูมเข้าหาขอบเขตของโดรนทันที และไม่ให้กว้างเกินไป
+                if (droneBounds.isValid()) {
+                    map.invalidateSize(); // รีเฟรชขนาดแผนที่ก่อน
+                    map.fitBounds(droneBounds, {
+                        padding: [50, 50],
+                        maxZoom: maxZ // ซูมเข้าไปที่ระดับชัดที่สุดของภาพโดรน
+                    });
+                }
+                
+                showNotificationLeft(`✅ พบ ${tileCount} ไฟล์ ซูมไปยังตำแหน่งภาพเรียบร้อย`, 'success');
+                
+            } catch (err) {
+                console.error('❌ Error:', err);
+                showNotificationLeft(`❌ โหลดไม่สำเร็จ: ${err.message}`, 'error');
+            }
+            e.target.value = '';
+        }
+
+        // ✅ ฟังก์ชันลบเลเยอร์ดรน (เรียกเมื่อเคลียร์แผนที่)
+        function removeDroneLayer() {
+            if (droneLayer) {
+                map.removeLayer(droneLayer);
+                droneLayer = null;
+            }
+            
+            // ✅ ล้าง Blob URLs ทั้งหมด (ป้องกัน memory leak)
+            droneBlobUrls.forEach(url => URL.revokeObjectURL(url));
+            droneBlobUrls.clear();
+            droneTileMap.clear();
+            
+            console.log('🗑️ ลบเลเยอร์ดรนและล้าง memory แล้ว');
+        }
 
         // ============================================
         // สถานะการเรียงลำดับ (เริ่มต้นเรียงตามรหัส)
@@ -6236,6 +6398,11 @@
                 }
             }
         }
+
+
+
+
+
 
         // ============================================
         // ดาวน์โหลดแผนที่จากกูเกิ้ลไดร์ฟ (ใช้สตรีมมิ่ง)
@@ -9741,6 +9908,9 @@
         // เคลียร์ข้อมูลแผนที่ทั้งหมด
         // ============================================
         async function clearMapData() {
+            // ✅ ลบเลเยอร์ดรนก่อน
+            removeDroneLayer();
+
             // ✅ แสดงการยืนยัน
             const confirmed = confirm(
                 '⚠️ ยืนยันการเคลียร์แผนที่\n\n' +
