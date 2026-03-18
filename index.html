@@ -10393,7 +10393,22 @@
                                     style: { color: "#10b981", weight: 1, fillOpacity: 0.4 },
                                     onEachFeature: function(feature, layer) {
                                         layer.options.layerType = 'building_area';
-                                        // ... click event เดิมของคุณ ...
+                                        
+                                        // ✅ ✅ ✅ เอาโค้ดเดิมของคุณมาใส่ตรงนี้: ✅ ✅ ✅
+                                        layer.on('click', function(e) {
+                                            L.DomEvent.stopPropagation(e);
+                                            
+                                            // ✅ คำนวณพื้นที่ (ใช้ฟังก์ชันเดิมของคุณ)
+                                            const area = calculatePolygonArea(layer.getLatLngs());
+                                            
+                                            // ✅ กรอกค่าในฟอร์ม (ถ้ามี)
+                                            const bAreaInput = document.getElementById('b_area');
+                                            if (bAreaInput) {
+                                                bAreaInput.value = area.toFixed(2);
+                                            }
+                                            
+                                            showNotificationLeft(`คำนวณพื้นที่: ${area.toFixed(2)} ตร.ม.`, 'success');
+                                        });
                                     }
                                 }).addTo(map);
                             }
