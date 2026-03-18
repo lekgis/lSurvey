@@ -1148,6 +1148,15 @@
         .crosshair-line-area.line-h.h-right {
             right: -25px;
         }
+        /* ✅ ปุ่มบวกใหม่สำหรับเป้าเล็ง (เขียวโปร่งใส) */
+        #btn-add-area-crosshair {
+            background-color: rgba(34, 197, 94, 0.9) !important;  /* ✅ เขียวโปร่งใส */
+            color: white !important;
+            border: 2px solid white !important;
+        }
+        #btn-add-area-crosshair:hover {
+            background-color: rgba(22, 163, 74, 0.95) !important;  /* ✅ เขียวเข้มขึ้นเมื่อโฮเวอร์ */
+        }
     </style>
 </head>
 <!-- Custom Modal Dialogs -->
@@ -8249,20 +8258,20 @@
             if (hasMouse) {
                 enablePlusCursorForCalculator();
             // ✅ ใน openAreaCalculatorA() - ส่วน else (โหมดสัมผัส)
+            // ✅ ใน openAreaCalculatorA() - ส่วน else (โหมดสัมผัส)
+            // ✅ ใน openAreaCalculatorA() - ส่วน else (โหมดสัมผัส)
             } else {
-                // ✅ โหมดสัมผัส: ซ่อน cursor + แสดงเป้าเล็งใหม่
+                // ✅ โหมดสัมผัส: ซ่อน cursor + แสดงเป้าเล็งใหม่ (ส้ม)
                 const mapContainer = document.getElementById('map');
                 mapContainer.style.cursor = 'default';
                 mapContainer.classList.remove('cursor-crosshair-add');
                 
-                // ✅ แสดงเป้าเล็งใหม่ (ส้ม) + ซ่อนเป้าเดิม (ขาว)
+                // ✅ ✅ ✅ แสดงเป้าส้มอย่างเดียว (ไม่ต้องซ่อนเป้าขาว เพราะมันไม่เกี่ยวข้อง) ✅ ✅ ✅
                 const areaCrosshair = document.getElementById('crosshair-area-calc');
                 if (areaCrosshair) {
                     areaCrosshair.classList.remove('hidden');
                     areaCrosshair.classList.add('visible');
                 }
-                const oldCrosshair = document.getElementById('crosshair');
-                if (oldCrosshair) oldCrosshair.classList.add('hidden');
                 
                 const addTrigger = document.getElementById('add-trigger-container');
                 if (addTrigger) {
@@ -8270,25 +8279,22 @@
                     addTrigger.classList.add('visible');
                 }
                 
-                // ✅ ✅ ✅ มือถือ: ช่องกรอกเป็น readonly เลย (ไม่ต้องโฟกัส) ✅ ✅ ✅
+                // ✅ มือถือ: อย่าโฟกัสช่องกรอก (ป้องกันคีย์บอร์ดบังเป้า)
                 const input = document.getElementById('calc-input-a');
                 if (input) {
-                    // ✅ ทำให้เป็น readonly ทันที (คีย์บอร์ดไม่ขึ้นแน่นอน)
                     input.setAttribute('readonly', 'readonly');
                     input.blur();
-                    
-                    // ✅ ป้องกัน scroll เปลี่ยนค่า
                     input.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
                     input.addEventListener('keydown', (e) => {
                         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
                     });
                 }
                 
-                // ✅ แสดงปุ่มใหม่ (ส้ม 🎯 +) + ซ่อนปุ่มเดิม (ม่วง)
-                const manualAddBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
+                // ✅ ✅ ✅ แสดงปุ่มเขียวอย่างเดียว (ไม่ต้องซ่อนปุ่มม่วง เพราะมันไม่เกี่ยวข้อง) ✅ ✅ ✅
                 const crosshairAddBtn = document.getElementById('btn-add-area-crosshair');
-                if (manualAddBtn) manualAddBtn.classList.add('hidden');
-                if (crosshairAddBtn) crosshairAddBtn.classList.remove('hidden');
+                if (crosshairAddBtn) {
+                    crosshairAddBtn.classList.remove('hidden');
+                }
             }
 
             // ✅ ป้องกันการหมุนเมาส์เปลี่ยนค่า
@@ -8932,7 +8938,7 @@
             closeAreaCalculatorA();
         }
 
-        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A
+        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไข: ไม่ต้องแสดงเป้า/ปุ่มเดิมกลับ)
         function closeAreaCalculatorA() {
             if (areaCalculatorModalA) {
                 areaCalculatorModalA.classList.add('animate-scale-out');
@@ -8944,10 +8950,10 @@
                     areaAccumulatorA = 0;
                     areaHistoryA = [];
                     
-                    // ✅ ✅ ✅ เพิ่มส่วนนี้ก่อนปิดฟังก์ชัน: ย้ายกลับที่เดิม ✅ ✅ ✅
+                    // ✅ ✅ ✅ ย้าย building_area กลับลงล่าง ✅ ✅ ✅
                     if (window.buildingAreaLayer) {
                         window.buildingAreaLayer.eachLayer(function(layer) {
-                            layer.bringToBack(); // ✅ ย้ายกลับลงไปล่าง
+                            layer.bringToBack();
                         });
                         console.log('🔽 ย้าย building_area กลับลงล่างแล้ว');
                     }
@@ -8955,44 +8961,36 @@
                     // ✅ รีเซ็ตโหมดคำนวณพื้นที่
                     isAreaCalculatorMode = false;
                     
-                    // ✅ ข้อ 1: เรียก disableAreaCalculatorMode() เพื่อเปิด parcel/boundary กลับมา
+                    // ✅ เรียก disableAreaCalculatorMode() เพื่อเปิด parcel/boundary กลับมา
                     disableAreaCalculatorMode();
                     
-                    // ✅ ซ่อนเป้าเล็ง
-                    const crosshair = document.getElementById('crosshair');
-                    const addTrigger = document.getElementById('add-trigger-container');
-                    if (crosshair) {
-                        crosshair.classList.add('hidden');
-                        crosshair.classList.remove('visible');
-                    }
-                    if (addTrigger) {
-                        addTrigger.classList.add('hidden');
-                        addTrigger.classList.remove('visible');
+                    // ✅ ✅ ✅ ซ่อนเป้าส้ม + ปุ่มเขียว (ไม่ต้องแสดงเป้าขาว/ปุ่มม่วงกลับ) ✅ ✅ ✅
+                    const areaCrosshair = document.getElementById('crosshair-area-calc');
+                    if (areaCrosshair) {
+                        areaCrosshair.classList.add('hidden');
+                        areaCrosshair.classList.remove('visible');
                     }
                     
-                    // ✅ คืนค่า input ให้ปกติ (ลบ readonly)
+                    const crosshairAddBtn = document.getElementById('btn-add-area-crosshair');
+                    if (crosshairAddBtn) {
+                        crosshairAddBtn.classList.add('hidden');
+                    }
+                    
+                    // ✅ ซ่อนปุ่มยืนยัน (ถ้ามี)
+                    const confirmBtn = document.getElementById('btn-confirm-action');
+                    if (confirmBtn) {
+                        confirmBtn.style.display = 'none';
+                    }
+                    
+                    // ✅ คืนค่า input ให้ปกติ
                     const input = document.getElementById('calc-input-a');
                     if (input) {
                         input.removeAttribute('readonly');
                     }
                     
-                    // ✅ คืนค่าปุ่ม: ซ่อนปุ่มใหม่ + แสดงปุ่มเดิมกลับ
-                    const manualAddBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
-                    const crosshairAddBtn = document.getElementById('btn-add-area-crosshair');
-                    if (manualAddBtn) manualAddBtn.classList.remove('hidden');
-                    if (crosshairAddBtn) crosshairAddBtn.classList.add('hidden');
-
-                    // ✅ คืนค่าปุ่มยืนยันเดิม (ถ้ามี)
-                    const confirmBtn = document.getElementById('btn-confirm-action');
-                    if (confirmBtn) {
-                        confirmBtn.style.display = '';
-                        confirmBtn.onclick = null;
-                    }
-                    
                     console.log('✅ ปิดหน้าต่างคำนวณพื้นที่ A เรียบร้อย');
                 }, 200);
             } else {
-                // ✅ กรณี modal ไม่มีอยู่แล้ว แต่ยังต้องการรีเซ็ตโหมด
                 isAreaCalculatorMode = false;
                 disableAreaCalculatorMode();
             }
