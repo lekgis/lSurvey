@@ -1678,7 +1678,7 @@
                 googleDriveFileId: '1SMsX1sXaugcy3HMyep85o684S82s6lAm',
                 fileName: 'parcel.geojson',
                 layers: ['parcel'],
-                localCacheKey: 'parcel_geojson_cache',
+                localCacheKey: 'parcel_geojson_cache',  // ✅ เพิ่มบรรทัดนี้
                 lastModifiedKey: 'parcel_geojson_last_modified',
                 lastCheckKey: 'parcel_geojson_last_check',
             },
@@ -1687,7 +1687,7 @@
                 googleDriveFileId: '1V9sGcXeM91QyBA9dPjlBph7u--qJ_ERx',
                 fileName: 'boundary.geojson',
                 layers: ['boundary'],
-                localCacheKey: 'boundary_geojson_cache',
+                localCacheKey: 'boundary_geojson_cache',  // ✅ เพิ่ม
                 lastModifiedKey: 'boundary_geojson_last_modified',
                 lastCheckKey: 'boundary_geojson_last_check',
             },
@@ -1696,7 +1696,7 @@
                 googleDriveFileId: '1TliaF3dkFQBsdaWjdmv_-nHuCs85tW_3',
                 fileName: 'building_area.geojson',
                 layers: ['building_area'],
-                localCacheKey: 'building_area_geojson_cache',
+                localCacheKey: 'building_area_geojson_cache',  // ✅ เพิ่ม
                 lastModifiedKey: 'building_area_geojson_last_modified',
                 lastCheckKey: 'building_area_geojson_last_check',
             }
@@ -6525,28 +6525,21 @@
         // บันทึกข้อมูลแผนที่ในแคช (IndexedDB)
         // ============================================
         async function cacheMapData(data, lastModified, layerType = 'all') {
-            try {
-                const db = await openMapDatabase();
-                const transaction = db.transaction(['maps'], 'readwrite');
-                const store = transaction.objectStore('maps');
-                
-                const cacheKey = layerType === 'all' ? 'parcel_geojson' : `${layerType}_geojson`;
-                
-                await store.put({
-                    id: cacheKey,
-                    data: data,
-                    lastModified: lastModified,
-                    layerType: layerType
-                });
-                
-                localStorage.setItem(`${cacheKey}_last_modified`, lastModified);
-                db.close();
-                
-                console.log(`✅ บันทึก${layerType === 'all' ? '' : ' ' + layerType}แผนที่ในแคชเรียบร้อย`);
-            } catch (err) {
-                console.error('❌ ข้อผิดพลาดในการบันทึกแคช:', err);
-                throw err;
-            }
+            const config = MAP_CONFIG[layerType];
+            if (!config) return;
+            
+            const db = await openMapDatabase();
+            const tx = db.transaction(['maps'], 'readwrite');
+            const store = tx.objectStore('maps');
+            
+            // ✅ ใช้ localCacheKey จาก config (สำคัญ!)
+            await store.put({
+                key: config.localCacheKey,  // ← ต้องเป็น 'parcel_geojson_cache' ไม่ใช่ 'parcel_geojson'
+                data: data,
+                lastModified: lastModified,
+                timestamp: Date.now()
+            });
+            db.close();
         }
 
         // ============================================
@@ -6638,28 +6631,26 @@
         // ดึงข้อมูลแผนที่จากแคช
         // ============================================
         async function getCachedMapData(layerType = 'all') {
-            try {
-                const db = await openMapDatabase();
-                const transaction = db.transaction(['maps'], 'readonly');
-                const store = transaction.objectStore('maps');
-                
-                const cacheKey = layerType === 'all' ? 'parcel_geojson' : `${layerType}_geojson`;
-                const request = store.get(cacheKey);
-                
-                return new Promise((resolve, reject) => {
-                    request.onsuccess = (event) => {
-                        db.close();
-                        resolve(event.target.result ? event.target.result.data : null);
-                    };
-                    request.onerror = (event) => {
-                        db.close();
-                        reject(event.target.error);
-                    };
-                });
-            } catch (err) {
-                console.error('❌ ข้อผิดพลาดในการดึงข้อมูลจากแคช:', err);
-                return null;
-            }
+            const config = MAP_CONFIG[layerType];
+            if (!config) return null;
+            
+            const db = await openMapDatabase();
+            const tx = db.transaction(['maps'], 'readonly');
+            const store = tx.objectStore('maps');
+            
+            // ✅ ใช้ localCacheKey เดียวกันกับตอนบันทึก
+            const request = store.get(config.localCacheKey);
+            
+            return new Promise((resolve) => {
+                request.onsuccess = () => {
+                    db.close();
+                    resolve(request.result?.data || null);
+                };
+                request.onerror = () => {
+                    db.close();
+                    resolve(null);
+                };
+            });
         }
 
         // ============================================
