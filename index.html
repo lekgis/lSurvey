@@ -8153,6 +8153,17 @@
             document.getElementById('calc-width')?.focus();
         }
 
+        // ✅ ฟังก์ชันสำหรับปุ่ม "+ 🎯" ใหม่ (คำนวณจากเป้าเล็ง)
+        function addAreaFromCrosshairClick() {
+            console.log('🎯 ปุ่ม + 🎯 ถูกคลิก - เริ่มคำนวณจากเป้าเล็ง');
+            
+            // ✅ เรียกฟังก์ชันคำนวณพื้นที่จากเป้า
+            calculateAreaFromAreaCrosshair();
+            
+            // ✅ ไม่ต้องปิดอะไร → ให้ผู้ใช้คำนวณต่อได้เรื่อยๆ
+            showNotificationLeft('🎯 เลื่อนเป้าแล้วคลิกยืนยันเพื่อคำนวณพื้นที่', 'info');
+        }
+
         // ============================================
         // ✅ คำนวณพื้นที่ A (สำหรับ b_area) - เวอร์ชันลากได้
         // ============================================
@@ -8187,14 +8198,23 @@
                     </button>
                 </div>
                 <div class="p-3 space-y-3">
-                    <!-- ✅ แถวที่ 1: ช่องกรอกค่า + ปุ่มบวกเพิ่ม (แนวนอน) -->
+                    <!-- ✅ เพิ่มใน areaCalculatorModalA.innerHTML - แถวที่ 1 -->
                     <div class="flex gap-2 items-center">
                         <input type="number" id="calc-input-a" class="form-input flex-1 text-center"
                                placeholder="ค่าพื้นที่ (ตร.ม.)" step="0.01"
                                style="-webkit-appearance: textfield;">
+                        
+                        <!-- ✅ ปุ่มบวกเดิม (สำหรับกรอกมือ) -->
                         <button type="button" onclick="addAreaToAccumulatorA()"
                                 class="px-3 py-2 bg-purple-600 text-white rounded font-bold text-sm hover:bg-purple-700 transition whitespace-nowrap">
                             + บวก
+                        </button>
+                        
+                        <!-- ✅ ✅ ✅ ปุ่มบวกใหม่ (สำหรับเป้าเล็งมือถือ) ✅ ✅ ✅ -->
+                        <button type="button" id="btn-add-area-crosshair"
+                                onclick="addAreaFromCrosshairClick()"
+                                class="px-3 py-2 bg-orange-500 text-white rounded font-bold text-sm hover:bg-orange-600 transition whitespace-nowrap hidden">
+                            🎯 +
                         </button>
                     </div>
                     
@@ -8241,6 +8261,12 @@
             if (hasMouse) {
                 enablePlusCursorForCalculator();
             } else {
+                // ✅ โหมดสัมผัส: แสดงปุ่มใหม่ + ซ่อนปุ่มเดิมถ้าต้องการ
+                const manualAddBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
+                const crosshairAddBtn = document.getElementById('btn-add-area-crosshair');
+                
+                if (manualAddBtn) manualAddBtn.classList.add('hidden');      // ✅ ซ่อนปุ่มเดิม (เลือกได้)
+                if (crosshairAddBtn) crosshairAddBtn.classList.remove('hidden'); // ✅ แสดงปุ่มใหม่
                 // ✅ โหมดสัมผัส: ซ่อน cursor + แสดงเป้าเล็งใหม่ (ไม่ใช่เป้าเดิม!)
                 const mapContainer = document.getElementById('map');
                 mapContainer.style.cursor = 'default';
@@ -8836,31 +8862,35 @@
             }
         }
 
-        // ✅ ฟังก์ชันบวกค่าเข้าสะสม
+        // ✅ แก้ฟังก์ชันบวกพื้นที่ (อย่าปิดอะไรหลังบวก)
         function addAreaToAccumulatorA() {
             const input = document.getElementById('calc-input-a');
             const resultDisplay = document.getElementById('calc-result-a');
             const historyDisplay = document.getElementById('area-history-a');
-            const val = parseFloat(input.value) || 0;
             
-            if (val === 0) {
+            if (!input) return;
+            
+            const val = parseFloat(input.value);
+            if (isNaN(val) || val <= 0) {
                 showNotificationLeft('กรุณากรอกค่าพื้นที่', 'warning');
                 return;
             }
             
+            // ✅ บวกค่าเข้าตัวสะสม
             areaAccumulatorA += val;
-            areaHistoryA.push(val);
+            areaHistoryA.push(val.toFixed(2));
             
-            resultDisplay.value = areaAccumulatorA.toFixed(2);
+            // ✅ อัปเดตแสดงผล
+            if (resultDisplay) resultDisplay.value = areaAccumulatorA.toFixed(2);
+            if (historyDisplay) historyDisplay.textContent = areaHistoryA.join(' + ');
             
-            if (historyDisplay) {
-                historyDisplay.textContent = areaHistoryA.join(' + ');
-            }
-            
+            // ✅ ✅ ✅ ล้างค่าในช่องกรอก แต่ "อย่าโฟกัส" บนมือถือ ✅ ✅ ✅
             input.value = '';
-            input.focus();
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (!isMobile) input.focus();
             
-            showNotificationLeft(`บวก ${val.toFixed(2)} ตร.ม. (รวม: ${areaAccumulatorA.toFixed(2)} ตร.ม.)`, 'success');
+            // ✅ ✅ ✅ อย่าปิดโมดอล! ให้ผู้ใช้บวกต่อได้ ✅ ✅ ✅
+            showNotificationLeft(`+ ${val.toFixed(2)} ตร.ม. (รวม: ${areaAccumulatorA.toFixed(2)} ตร.ม.)`, 'success');
         }
 
         // ✅ ฟังก์ชันล้างค่า
@@ -8905,6 +8935,12 @@
                 areaCalculatorModalA.classList.add('animate-scale-out');
                 // ✅ ใน closeAreaCalculatorA() - ใน setTimeout
                 setTimeout(() => {
+                    const manualAddBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
+                    const crosshairAddBtn = document.getElementById('btn-add-area-crosshair');
+                    
+                    if (manualAddBtn) manualAddBtn.classList.remove('hidden');   // ✅ แสดงปุ่มเดิมกลับ
+                    if (crosshairAddBtn) crosshairAddBtn.classList.add('hidden'); // ✅ ซ่อนปุ่มใหม่
+
                     if (areaCalculatorModalA && areaCalculatorModalA.parentNode) {
                         areaCalculatorModalA.remove();
                     }
@@ -8949,53 +8985,53 @@
             }
         }
 
-        // ✅ ฟังก์ชันคำนวณพื้นที่จากเป้าเล็งใหม่ (สำหรับมือถือ)
+        // ✅ ฟังก์ชันคำนวณพื้นที่จากเป้าเล็งใหม่ (แก้ไข)
         function calculateAreaFromAreaCrosshair() {
             console.log('🎯 เริ่มคำนวณพื้นที่จากเป้าเล็ง A...');
             
-            const center = map.getCenter();
-            console.log('📍 เป้าเล็ง A ที่พิกัด:', center.lat, center.lng);
+            // ✅ 1. เช็คแผนที่และเลเยอร์
+            if (!map || !window.buildingAreaLayer) {
+                console.error('❌ buildingAreaLayer ไม่พร้อม');
+                showNotificationLeft('⚠️ โหลดข้อมูลสิ่งปลูกสร้างก่อน', 'warning');
+                return;
+            }
             
+            const center = map.getCenter();
             const point = turf.point([center.lng, center.lat]);
             let calculatedArea = 0;
             let foundBuilding = false;
             
-            // ✅ ตรวจสอบว่า buildingAreaLayer มีอยู่จริง
-            if (!window.buildingAreaLayer) {
-                console.error('❌ window.buildingAreaLayer เป็น null');
-                showNotificationLeft('⚠️ ยังไม่โหลดข้อมูลสิ่งปลูกสร้าง', 'warning');
-                return;
-            }
-            
-            // ✅ ค้นหา building_area.geojson ที่อยู่ใต้เป้าเล็ง
-            let layerCount = 0;
+            // ✅ 2. ค้นหา building_area.geojson ที่ใต้เป้า
             window.buildingAreaLayer.eachLayer(function(layer) {
-                layerCount++;
                 if (foundBuilding) return;
-                
-                if (!layer.feature || !layer.feature.geometry) {
-                    return;
-                }
+                if (!layer.feature?.geometry) return;
                 
                 try {
-                    const polygon = turf.polygon(layer.feature.geometry.coordinates);
+                    // ✅ สร้าง polygon จาก coordinates
+                    const coords = layer.feature.geometry.coordinates;
+                    const polygon = turf.polygon(coords);
+                    
                     if (turf.booleanPointInPolygon(point, polygon)) {
                         console.log('✅ พบ building ใต้เป้าเล็ง A!');
-                        calculatedArea = turf.area(polygon);
+                        calculatedArea = turf.area(polygon); // ✅ ได้พื้นที่เป็น ตร.ม.
                         foundBuilding = true;
                         
                         // ✅ ไฮไลท์สิ่งที่คำนวณ
+                        const originalStyle = {
+                            color: layer.options.color || '#3b82f6',
+                            weight: layer.options.weight || 2,
+                            fillOpacity: layer.options.fillOpacity || 0.3
+                        };
+                        
                         layer.setStyle({
                             color: '#fbbf24',
                             weight: 4,
                             fillOpacity: 0.6
                         });
+                        
+                        // ✅ คืนสไตล์เดิมหลัง 2 วินาที
                         setTimeout(() => {
-                            layer.setStyle({
-                                color: layer.feature.properties.color || '#3b82f6',
-                                weight: 2,
-                                fillOpacity: 0.3
-                            });
+                            layer.setStyle(originalStyle);
                         }, 2000);
                     }
                 } catch (err) {
@@ -9003,28 +9039,26 @@
                 }
             });
             
-            console.log(`📊 ตรวจสอบ layer ทั้งหมด: ${layerCount} ชั้น`);
-            
-            // ✅ กรอกค่าและบวกเข้าตัวสะสม
+            // ✅ 3. กรอกค่า + กดปุ่ม "+ บวก" อัตโนมัติ
             if (foundBuilding && calculatedArea > 0) {
                 console.log(`📐 คำนวณพื้นที่ได้: ${calculatedArea.toFixed(2)} ตร.ม.`);
                 
                 const input = document.getElementById('calc-input-a');
                 if (input) {
                     input.value = calculatedArea.toFixed(2);
-                    
-                    // ✅ กดปุ่ม "+ บวก" อัตโนมัติ
-                    const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
-                    if (addBtn) {
-                        console.log('🔘 กดปุ่ม "+ บวก" อัตโนมัติ');
-                        addBtn.click();
-                    }
+                }
+                
+                // ✅ ✅ ✅ กดปุ่ม "+ บวก" อัตโนมัติ ✅ ✅ ✅
+                const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
+                if (addBtn) {
+                    console.log('🔘 กดปุ่ม "+ บวก" อัตโนมัติ');
+                    addBtn.click();
                 }
                 
                 showNotificationLeft(`✅ +${calculatedArea.toFixed(2)} ตร.ม.`, 'success');
             } else {
                 console.warn('⚠️ ไม่พบสิ่งปลูกสร้างใต้เป้าเล็ง A');
-                showNotificationLeft('⚠️ ไม่พบสิ่งปลูกสร้างใต้เป้า', 'warning');
+                showNotificationLeft('⚠️ เลื่อนเป้าให้ทับสิ่งปลูกสร้าง', 'warning');
             }
         }
 
