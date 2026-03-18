@@ -8235,9 +8235,20 @@
                 areaCalculatorModalA.querySelector('#area-calculator-a-header')
             );            
 
+            // ✅ ✅ ✅ เพิ่มส่วนนี้ต่อท้าย: ย้าย building_area ขึ้นบนสุด ✅ ✅ ✅
+            if (window.buildingAreaLayer) {
+                window.buildingAreaLayer.eachLayer(function(layer) {
+                    layer.bringToFront(); // ✅ ย้ายแต่ละ polygon ขึ้นบนสุด
+                });
+                // หรือถ้าใช้ Layer Group:
+                // window.buildingAreaLayer.bringToFront(); 
+                console.log('🔝 ย้าย building_area ขึ้นบนสุดสำหรับโหมดคำนวณพื้นที่');
+            }
+
             // ✅ เปิด Cursor + เฉพาะเมื่อมีเมาส์
             if (hasMouse) {
                 enablePlusCursorForCalculator();
+            // ✅ ใน openAreaCalculatorA() - ส่วน else (โหมดสัมผัส)
             } else {
                 // ✅ โหมดสัมผัส: ซ่อน cursor + แสดงเป้าเล็งใหม่
                 const mapContainer = document.getElementById('map');
@@ -8259,29 +8270,21 @@
                     addTrigger.classList.add('visible');
                 }
                 
-                // ✅ ✅ ✅ มือถือ: อย่าโฟกัสช่องกรอก (ป้องกันคีย์บอร์ดบังเป้า) ✅ ✅ ✅
+                // ✅ ✅ ✅ มือถือ: ช่องกรอกเป็น readonly เลย (ไม่ต้องโฟกัส) ✅ ✅ ✅
                 const input = document.getElementById('calc-input-a');
                 if (input) {
+                    // ✅ ทำให้เป็น readonly ทันที (คีย์บอร์ดไม่ขึ้นแน่นอน)
+                    input.setAttribute('readonly', 'readonly');
+                    input.blur();
+                    
                     // ✅ ป้องกัน scroll เปลี่ยนค่า
                     input.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
                     input.addEventListener('keydown', (e) => {
                         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
                     });
-                    
-                    // ✅ ✅ ✅ บังคับไม่โฟกัส + ซ่อนคีย์บอร์ด ✅ ✅ ✅
-                    input.blur();
-                    input.setAttribute('readonly', 'readonly');  // ✅ ซ่อนคีย์บอร์ดแต่ยังกรอกได้ผ่าน JS
-                    
-                    // ✅ Enter เพื่อเพิ่มค่า (ถ้าต้องการกรอกมือ)
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            input.removeAttribute('readonly');
-                            addAreaToAccumulatorA();
-                        }
-                    });
                 }
                 
-                // ✅ แสดงปุ่มใหม่ (ส้ม) + ซ่อนปุ่มเดิม (ม่วง)
+                // ✅ แสดงปุ่มใหม่ (ส้ม 🎯 +) + ซ่อนปุ่มเดิม (ม่วง)
                 const manualAddBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
                 const crosshairAddBtn = document.getElementById('btn-add-area-crosshair');
                 if (manualAddBtn) manualAddBtn.classList.add('hidden');
@@ -8941,6 +8944,14 @@
                     areaAccumulatorA = 0;
                     areaHistoryA = [];
                     
+                    // ✅ ✅ ✅ เพิ่มส่วนนี้ก่อนปิดฟังก์ชัน: ย้ายกลับที่เดิม ✅ ✅ ✅
+                    if (window.buildingAreaLayer) {
+                        window.buildingAreaLayer.eachLayer(function(layer) {
+                            layer.bringToBack(); // ✅ ย้ายกลับลงไปล่าง
+                        });
+                        console.log('🔽 ย้าย building_area กลับลงล่างแล้ว');
+                    }
+
                     // ✅ รีเซ็ตโหมดคำนวณพื้นที่
                     isAreaCalculatorMode = false;
                     
@@ -8959,6 +8970,18 @@
                         addTrigger.classList.remove('visible');
                     }
                     
+                    // ✅ คืนค่า input ให้ปกติ (ลบ readonly)
+                    const input = document.getElementById('calc-input-a');
+                    if (input) {
+                        input.removeAttribute('readonly');
+                    }
+                    
+                    // ✅ คืนค่าปุ่ม: ซ่อนปุ่มใหม่ + แสดงปุ่มเดิมกลับ
+                    const manualAddBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
+                    const crosshairAddBtn = document.getElementById('btn-add-area-crosshair');
+                    if (manualAddBtn) manualAddBtn.classList.remove('hidden');
+                    if (crosshairAddBtn) crosshairAddBtn.classList.add('hidden');
+
                     // ✅ คืนค่าปุ่มยืนยันเดิม (ถ้ามี)
                     const confirmBtn = document.getElementById('btn-confirm-action');
                     if (confirmBtn) {
