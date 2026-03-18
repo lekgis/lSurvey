@@ -6526,20 +6526,29 @@
         // ============================================
         async function cacheMapData(data, lastModified, layerType = 'all') {
             const config = MAP_CONFIG[layerType];
-            if (!config) return;
+            if (!config) {
+                console.warn(`⚠️ ไม่พบ config สำหรับ ${layerType}`);
+                return;
+            }
             
-            const db = await openMapDatabase();
-            const tx = db.transaction(['maps'], 'readwrite');
-            const store = tx.objectStore('maps');
-            
-            // ✅ ใช้ localCacheKey จาก config (สำคัญ!)
-            await store.put({
-                key: config.localCacheKey,  // ← ต้องเป็น 'parcel_geojson_cache' ไม่ใช่ 'parcel_geojson'
-                data: data,
-                lastModified: lastModified,
-                timestamp: Date.now()
-            });
-            db.close();
+            try {
+                const db = await openMapDatabase();
+                const tx = db.transaction(['maps'], 'readwrite');
+                const store = tx.objectStore('maps');
+                
+                // ✅ ✅ ✅ ใช้ config.localCacheKey (สำคัญ!) ✅ ✅ ✅
+                await store.put({
+                    key: config.localCacheKey,  // ← ต้องเป็น 'parcel_geojson_cache'
+                    data: data,
+                    lastModified: lastModified,
+                    timestamp: Date.now()
+                });
+                
+                db.close();
+                console.log(`✅ บันทึก ${layerType} ลงแคช: ${config.localCacheKey}`);
+            } catch (err) {
+                console.error(`❌ บันทึกแคช ${layerType} ล้มเหลว:`, err);
+            }
         }
 
         // ============================================
@@ -6634,23 +6643,28 @@
             const config = MAP_CONFIG[layerType];
             if (!config) return null;
             
-            const db = await openMapDatabase();
-            const tx = db.transaction(['maps'], 'readonly');
-            const store = tx.objectStore('maps');
-            
-            // ✅ ใช้ localCacheKey เดียวกันกับตอนบันทึก
-            const request = store.get(config.localCacheKey);
-            
-            return new Promise((resolve) => {
-                request.onsuccess = () => {
-                    db.close();
-                    resolve(request.result?.data || null);
-                };
-                request.onerror = () => {
-                    db.close();
-                    resolve(null);
-                };
-            });
+            try {
+                const db = await openMapDatabase();
+                const tx = db.transaction(['maps'], 'readonly');
+                const store = tx.objectStore('maps');
+                
+                // ✅ ✅ ✅ ใช้ config.localCacheKey เดียวกัน ✅ ✅ ✅
+                const request = store.get(config.localCacheKey);
+                
+                return new Promise((resolve) => {
+                    request.onsuccess = () => {
+                        db.close();
+                        resolve(request.result?.data || null);
+                    };
+                    request.onerror = () => {
+                        db.close();
+                        resolve(null);
+                    };
+                });
+            } catch (err) {
+                console.error(`❌ อ่านแคช ${layerType} ล้มเหลว:`, err);
+                return null;
+            }
         }
 
         // ============================================
