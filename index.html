@@ -1238,6 +1238,8 @@
             </button>
 
             <!-- ✅ Input ซ่อนสำหรับเลือกไฟล์โดรน -->
+            <!-- ✅ ต้องวางบรรทัดนี้ นอก <div id="settings-menu"> -->
+            <input type="file" id="map-file-input" accept=".geojson,.json" class="hidden" onchange="handleMapFileSelect(event)">
             <input type="file" id="droneFolderInput" webkitdirectory directory multiple class="hidden" onchange="handleDroneFolderSelect(event)">
           </div>
         </div>
@@ -9637,14 +9639,18 @@
         // ============================================
         // เลือกไฟล์แผนที่จากเครื่อง
         // ============================================
+        // ✅ แก้: คลิกไฟล์ก่อนปิดเมนู
         function selectMapFile() {
-            closeSettingsMenu();
-            
-            // ✅ เปิด dialog เลือกไฟล์
+            // ✅ 1. คลิก file input ทันที (ต้องอยู่ในเหตุการณ์เดิมกับผู้ใช้!)
             const fileInput = document.getElementById('map-file-input');
             if (fileInput) {
-                fileInput.click();
+                fileInput.click();  // ✅ ทำทันที! ก่อนทำอย่างอื่น
             }
+            
+            // ✅ 2. ปิดเมนูหลังจากนั้น (ใช้ดีเลย์เล็กน้อย)
+            setTimeout(() => {
+                closeSettingsMenu();
+            }, 10);  // ✅ 10ms พอให้เบราว์เซอร์ประมวลผลการคลิกไฟล์
         }
 
         // ============================================
