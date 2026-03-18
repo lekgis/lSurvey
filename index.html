@@ -1361,6 +1361,15 @@
         </button>
     </div>
 
+    <!-- ✅ ✅ ✅ ปุ่มบวกใหม่ (คำนวณพื้นที่) - สร้างแยก ✅ ✅ ✅ -->
+    <div id="area-calc-trigger-container" class="absolute bottom-10 left-1/2 -translate-x-1/2 z-[1001] hidden">
+        <button onclick="calculateAreaFromAreaCrosshair()" 
+                class="p-4 text-white rounded-full shadow-xl border-[3px] border-white active:scale-90 transition-all"
+                style="background-color: rgba(34, 197, 94, 0.9);">
+            <i data-lucide="plus" class="w-8 h-8"></i>
+        </button>
+    </div>
+
     <!-- ปุ่มแสดงตาราง -->
     <div class="absolute bottom-4 right-4 z-[1002]">
         <button id="btn-show-table" onclick="toggleTable()" class="map-btn p-3 bg-white hover:bg-blue-50">
@@ -8253,23 +8262,17 @@
             // ✅ ใน openAreaCalculatorA() - ส่วน else (โหมดสัมผัส)
             // ✅ ใน openAreaCalculatorA() - ส่วน else (โหมดสัมผัส)
             } else {
-                // ✅ โหมดสัมผัส: ซ่อน cursor + แสดงเป้าเล็งใหม่ (ส้ม)
-                const mapContainer = document.getElementById('map');
-                mapContainer.style.cursor = 'default';
-                mapContainer.classList.remove('cursor-crosshair-add');
+                // ✅ โหมดมือถือ: เรียกสลับปุ่ม
+                toggleAreaCalcButton(true);  // ✅ แสดงปุ่มเขียว (คำนวณพื้นที่)
                 
-                // ✅ ✅ ✅ แสดงเป้าส้มอย่างเดียว (ไม่ต้องซ่อนเป้าขาว เพราะมันไม่เกี่ยวข้อง) ✅ ✅ ✅
+                // ✅ โค้ดเดิม: แสดงเป้าส้ม, ซ่อนเป้าขาว ...
                 const areaCrosshair = document.getElementById('crosshair-area-calc');
                 if (areaCrosshair) {
                     areaCrosshair.classList.remove('hidden');
                     areaCrosshair.classList.add('visible');
                 }
-                
-                const addTrigger = document.getElementById('add-trigger-container');
-                if (addTrigger) {
-                    addTrigger.classList.remove('hidden');
-                    addTrigger.classList.add('visible');
-                }
+                const oldCrosshair = document.getElementById('crosshair');
+                if (oldCrosshair) oldCrosshair.classList.add('hidden');
                 
                 // ✅ มือถือ: อย่าโฟกัสช่องกรอก (ป้องกันคีย์บอร์ดบังเป้า)
                 const input = document.getElementById('calc-input-a');
@@ -8928,6 +8931,30 @@
             bAreaField.value = result.toFixed(2);
             showNotificationLeft(`ตั้งค่าพื้นที่ทั้งหลัง = ${result.toFixed(2)} ตร.ม.`, 'success');
             closeAreaCalculatorA();
+        }
+
+        // ✅ ฟังก์ชันสลับปุ่มบวก (เรียกเมื่อเปิด/ปิดโหมดคำนวณพื้นที่)
+        function toggleAreaCalcButton(showAreaButton) {
+            const originalBtn = document.getElementById('add-trigger-container');
+            const areaBtn = document.getElementById('area-calc-trigger-container');
+            
+            if (showAreaButton) {
+                // ✅ โหมดคำนวณพื้นที่: ซ่อนปุ่มเดิม + แสดงปุ่มใหม่ (เขียว)
+                if (originalBtn) originalBtn.classList.add('hidden');
+                if (areaBtn) {
+                    areaBtn.classList.remove('hidden');
+                    void areaBtn.offsetWidth; // Trigger reflow
+                    areaBtn.classList.add('visible');
+                }
+            } else {
+                // ✅ โหมดปกติ: แสดงปุ่มเดิม + ซ่อนปุ่มใหม่
+                if (originalBtn) {
+                    originalBtn.classList.remove('hidden');
+                    void originalBtn.offsetWidth;
+                    originalBtn.classList.add('visible');
+                }
+                if (areaBtn) areaBtn.classList.add('hidden');
+            }
         }
 
         // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไข: ไม่ต้องแสดงเป้า/ปุ่มเดิมกลับ)
