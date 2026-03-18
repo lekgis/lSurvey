@@ -6699,80 +6699,65 @@
         // ============================================
         // โหลดแผนที่จากข้อมูลแคช (GeoJSON) - แก้ไขแล้ว ✅
         // ============================================
-        // ✅ ฟังก์ชันโหลดแผนที่จากข้อมูลแคช (แก้ไขให้รองรับทุกเลเยอร์)
         async function loadMapFromCache(geoJsonData, layerType = 'all') {
             try {
+                console.log('🗺️ Loading GeoJSON from cache, layerType:', layerType);
                 if (!geoJsonData) throw new Error('ไม่มีข้อมูลแผนที่');
-                
-                let geoJson = typeof geoJsonData === 'string' 
-                    ? JSON.parse(geoJsonData) 
-                    : geoJsonData;
+                let geoJson = typeof geoJsonData === 'string' ? JSON.parse(geoJsonData) : geoJsonData;
                 
                 if (!geoJson.type || geoJson.type !== 'FeatureCollection') {
                     throw new Error('ไฟล์ไม่ใช่ GeoJSON ที่ถูกต้อง');
                 }
+                if (!geoJson.features || !Array.isArray(geoJson.features)) {
+                    console.warn('⚠️ GeoJSON ไม่มี features');
+                    geoJson.features = [];
+                }
                 
-                console.log(`📊 โหลด${layerType}: ${geoJson.features.length} features`);
+                console.log(`📊 Total features: ${geoJson.features.length}`);
                 
-                // ✅ กรณีโหลดเลเยอร์เดี่ยว
-                if (layerType === 'parcel') {
-                    if (window.parcelLayer) map.removeLayer(window.parcelLayer);
-                    window.parcelLayer = L.geoJSON(geoJson, {
-                        style: getMapLayerStyle(geoJson, 'parcel'),
-                        onEachFeature: function(feature, layer) {
-                            layer.options.layerType = 'parcel';
-                            // ✅ เพิ่ม event click สำหรับ parcel
-                            layer.on('click', function(e) {
-                                L.DomEvent.stopPropagation(e);
-                                const props = feature.properties;
-                                showNotificationLeft(`แปลง: ${props.parcel_cod || 'N/A'}`, 'info');
+                // ✅ กรณี 1: โหลดไฟล์เดี่ยว (parcel.geojson, boundary.geojson, building_area.geojson)
+                if (layerType !== 'all') {
+                    displayGeoJSONLayer(geoJson, layerType);
+                    console.log(`✅ โหลดเลเยอร์ ${layerType}: ${geoJson.features.length} features`);
+                    return; // ✅ สำคัญ: return ที่นี่เพื่อไม่ให้ไปกรองต่อ
+                }
+                
+                // ✅ กรณี 2: โหลดไฟล์ผสมที่มีหลายเลเยอร์
+                else {
+                    // ✅ อ่านชื่อเลเยอร์จาก property "name" ที่ระดับ root
+                    const rootLayerName = geoJson.name?.toLowerCase();
+                    
+                    ['parcel', 'boundary', 'building_area'].forEach(targetLayer => {
+                        let layerFeatures = [];
+                        
+                        // ถ้าไฟล์มี name ที่ root และตรงกับ targetLayer → ใช้ features ทั้งหมด
+                        if (rootLayerName && rootLayerName === targetLayer) {
+                            layerFeatures = geoJson.features;
+                            console.log(`🔍 ${targetLayer}: ใช้ทั้งหมด ${layerFeatures.length} features (จาก root.name)`);
+                        } 
+                        // ไม่อย่างนั้นกรองตาม properties.layer หรือ properties.type
+                        else {
+                            layerFeatures = geoJson.features.filter(f => {
+                                const fLayer = (f.properties?.layer || f.properties?.type)?.toLowerCase();
+                                return fLayer === targetLayer;
                             });
+                            console.log(`🔍 ${targetLayer}: filtered ${layerFeatures.length} features (จาก properties)`);
                         }
-                    }).addTo(map);
-                    console.log('✅ โหลด parcel layer เสร็จ');
-                }
-                
-                else if (layerType === 'boundary') {
-                    if (window.boundaryLayer) map.removeLayer(window.boundaryLayer);
-                    window.boundaryLayer = L.geoJSON(geoJson, {
-                        style: getMapLayerStyle(geoJson, 'boundary'),
-                        onEachFeature: function(feature, layer) {
-                            layer.options.layerType = 'boundary';
+                        
+                        if (layerFeatures.length > 0) {
+                            const layerGeoJson = {
+                                type: 'FeatureCollection',
+                                features: layerFeatures
+                            };
+                            displayGeoJSONLayer(layerGeoJson, targetLayer);
                         }
-                    }).addTo(map);
-                    console.log('✅ โหลด boundary layer เสร็จ');
+                    });
                 }
-                
-                else if (layerType === 'building_area') {
-                    if (window.buildingAreaLayer) map.removeLayer(window.buildingAreaLayer);
-                    window.buildingAreaLayer = L.geoJSON(geoJson, {
-                        pane: 'buildingAreaPane',
-                        style: getMapLayerStyle(geoJson, 'building_area'),
-                        onEachFeature: function(feature, layer) {
-                            layer.options.layerType = 'building_area';
-                            layer.options.fileName = 'building_area.geojson';
-                            layer.on('click', function(e) {
-                                L.DomEvent.stopPropagation(e);
-                                const area = calculatePolygonArea(layer.getLatLngs());
-                                document.getElementById('b_area').value = area;
-                                showNotificationLeft(`คำนวณพื้นที่: ${area} ตร.ม.`, 'success');
-                            });
-                        }
-                    }).addTo(map);
-                    console.log('✅ โหลด building_area layer เสร็จ');
-                }
-                
-                // ✅ อัปเดตตัวแปรข้อมูล
-                if (layerType === 'parcel' || layerType === 'all') {
-                    // ✅ โหลดข้อมูลสิ่งปลูกสร้าง/ป้ายจากเซิร์ฟเวอร์ (ถ้ามี)
-                    if (typeof loadExistingData === 'function') {
-                        loadExistingData();
-                    }
-                }
-                
+                console.log('✅ Map loaded successfully');
+                showNotificationLeft('โหลดแผนที่สำเร็จ!', 'success');
             } catch (err) {
-                console.error(`❌ ข้อผิดพลาดในการโหลด${layerType}จากแคช:`, err);
-                throw err;
+                console.error('❌ Error loading map:', err);
+                showNotificationLeft('โหลดแผนที่ล้มเหลว: ' + err.message, 'error');
             }
         }
 
@@ -10247,7 +10232,8 @@
         window.addEventListener('load', async () => {
             
             // ✅ 1. ตรวจสอบและโหลดแผนที่ (ทำทันที)
-            checkAndLoadMap();
+            await checkAndLoadMap();  // ← ✅ ต้องเรียกอันนี้!
+
             
             // ✅ 2. เริ่มต้นติดตามตำแหน่งอัตโนมัติ (รอ 1 วินาทีให้แผนที่พร้อม)
             setTimeout(() => {
