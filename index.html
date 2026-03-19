@@ -1324,9 +1324,13 @@
                         <span>รหัสซ้ำ</span>
                         <span id="duplicate-count-badge" class="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full font-medium">0</span>
                     </div>
-                    <div class="table-tab" onclick="openImportModal()" id="import-tab">
+                    <button type="button" 
+                            class="table-tab bg-transparent border-none p-0 cursor-pointer font-inherit"
+                            onclick="openImportModal()" 
+                            id="import-tab"
+                            style="background: none; border: none; padding: 6px 6px; cursor: pointer; font: inherit;">
                         <span>นำเข้า</span>
-                    </div>
+                    </button>
                 </div>
             </div>
             <button onclick="toggleTable()" class="p-1.5 hover:bg-white/20 rounded-full">
@@ -2263,10 +2267,11 @@
 
         // ✅ แก้ฟังก์ชันแสดงปุ่มยืนยัน
         function showConfirmButton() {
-            // ✅ ✅ ✅ ถ้าอยู่ในโหมดคำนวณพื้นที่ → ไม่ต้องแสดงปุ่มยืนยัน ✅ ✅ ✅
+            // ✅ ✅ ✅ เช็คโหมดคำนวณพื้นที่ก่อน ✅ ✅ ✅
             if (isAreaCalculatorMode) {
-                console.log('ℹ️ โหมดคำนวณพื้นที่: ข้ามขั้นตอนยืนยัน');
-                return;  // ✅ return ทันที → ไม่แสดง overlay
+                console.log('🎯 โหมดคำนวณพื้นที่: เรียกคำนวณจากเป้าทันที');
+                calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันคำนวณพื้นที่!
+                return;  // ✅ return ไม่ต้องแสดง overlay ยืนยัน
             }
             const overlay = document.getElementById('confirm-overlay');
             const btn = document.getElementById('btn-confirm-action');
@@ -2334,23 +2339,27 @@
 
         // ✅ ฟังก์ชันคำนวณพื้นที่จากเป้าเล็งใหม่ (แก้ไข: ดึงพื้นที่ได้จริง)
         function calculateAreaFromAreaCrosshair() {
-            console.log('🎯 คำนวณพื้นที่จากเป้าเล็ง (ตำแหน่งจริง 35%)...');
+            console.log('🎯 คำนวณพื้นที่จากเป้าเล็ง (ตำแหน่งจริงจาก CSS)...');
             
             if (!map || !window.buildingAreaLayer) {
                 showNotificationLeft('⚠️ แผนที่ยังไม่พร้อมหรือยังไม่ได้โหลดข้อมูลสิ่งปลูกสร้าง', 'warning');
                 return;
             }
             
-            // ✅ ✅ ✅ คำนวณพิกัดจากตำแหน่งเป้าจริง (top: 35%, left: 50%) ✅ ✅ ✅
+            // ✅ ✅ ✅ อ่านตำแหน่งเป้าจริงจากค่าใน CSS (top: 35%, left: 50%) ✅ ✅ ✅
+            const crosshairTopPercent = 35;   // จาก CSS: top: 35%
+            const crosshairLeftPercent = 50;  // จาก CSS: left: 50%
+            
             const mapSize = map.getSize();
-            const targetX = mapSize.x * 0.5;   // 50% ความกว้าง (กลางแนวนอน)
-            const targetY = mapSize.y * 0.35;  // 35% ความสูง (สูงกว่ากลาง 15%)
+            const targetX = mapSize.x * (crosshairLeftPercent / 100);  // 50% ของความกว้าง
+            const targetY = mapSize.y * (crosshairTopPercent / 100);   // 35% ของความสูง
             
             // ✅ แปลงพิกัดหน้าจอ → lat/lng
             const latlng = map.containerPointToLatLng(L.point(targetX, targetY));
             const point = turf.point([latlng.lng, latlng.lat]);
             
-            console.log('📍 พิกัดเป้าเล็ง:', latlng.lat.toFixed(6), latlng.lng.toFixed(6));
+            console.log(`📍 พิกัดเป้าเล็ง (CSS: top=${crosshairTopPercent}%, left=${crosshairLeftPercent}%):`, 
+                        latlng.lat.toFixed(6), latlng.lng.toFixed(6));
             
             let calculatedArea = 0;
             let foundBuilding = false;
@@ -2361,10 +2370,10 @@
                 try {
                     const polygon = turf.polygon(layer.feature.geometry.coordinates);
                     if (turf.booleanPointInPolygon(point, polygon)) {
-                        calculatedArea = turf.area(polygon);
+                        calculatedArea = turf.area(polygon);  // ได้ค่าเป็น ตร.ม.
                         foundBuilding = true;
                         
-                        // ไฮไลท์
+                        // ไฮไลท์สิ่งที่คำนวณ
                         const originalStyle = {
                             color: layer.options.color || '#10b981',
                             weight: layer.options.weight || 1,
@@ -4642,11 +4651,7 @@
             );
         }
 
-        // ✅ ฟังก์ชันเปิด Modal นำเข้า (ยังไม่มีเงื่อนไข)
-        function openImportModal() {
-            showNotificationLeft('📥 ฟังก์ชันนำเข้า - กำลังพัฒนา', 'info');
-            // ✅ รอเงื่อนไขเพิ่มเติมจากผู้ใช้
-        }
+
 
         // ✅ อัปเดตจำนวนรหัสซ้ำที่แสดงบน badge
         function updateDuplicateCount() {
@@ -8071,7 +8076,9 @@
         let areaHistoryA = [];
         function openAreaCalculatorA() {
             isAreaCalculatorMode = true;
-            
+            //detectInputMethod();
+            //updateCalculatorMode();
+
             if (areaCalculatorModalA) { areaCalculatorModalA.remove(); }
             areaAccumulatorA = 0;
             areaHistoryA = [];
@@ -8165,7 +8172,7 @@
                 const crosshair = document.getElementById('crosshair');
                 const addTrigger = document.getElementById('add-trigger-container');
                 if (crosshair) {
-                    crosshair.classList.add('hidden');
+                    crosshair.classList.add('visible');
                     crosshair.classList.remove('visible');
                 }
                 if (addTrigger) {
@@ -8174,19 +8181,38 @@
                 }
                 
                 console.log('🖱️ โหมดเมาส์: ใช้ Cursor + คลิกบนสิ่งปลูกสร้าง (ไม่แสดงเป้า)');
-            }
-
-            // ✅ 4. มือถือ: อย่าโฟกัส input (ป้องกันคีย์บอร์ดบัง)
-            const input = document.getElementById('calc-input-a');
-            if (input && !hasMouse) {
-                input.setAttribute('readonly', 'readonly');
-                input.blur();
+            } else {
+                // ✅ โหมดมือถือ: แสดงเป้า + แสดงปุ่มน้ำเงิน
+                const mapContainer = document.getElementById('map');  // ← ต้องประกาศตัวแปรนี้!
+                mapContainer.style.cursor = 'default';
+                mapContainer.classList.remove('cursor-crosshair-add');
+                
+                // ✅ แสดงเป้าเล็ง
+                const crosshair = document.getElementById('crosshair');
+                if (crosshair) {
+                    crosshair.classList.remove('hidden');   // ← ลบ hidden ก่อน
+                    crosshair.classList.add('visible');     // ← แล้วเพิ่ม visible
+                }
+                
+                // ✅ แสดงปุ่ม + สีน้ำเงิน
+                const addTrigger = document.getElementById('add-trigger-container');
+                if (addTrigger) {
+                    addTrigger.classList.remove('hidden');  // ← ลบ hidden ก่อน
+                    addTrigger.classList.add('visible');    // ← แล้วเพิ่ม visible
+                }
+                
+                // ✅ มือถือ: อย่าโฟกัส input
+                const input = document.getElementById('calc-input-a');
+                if (input) {
+                    input.setAttribute('readonly', 'readonly');
+                    input.blur();
+                }
+                
+                console.log('👆 โหมดมือถือ: เป้า + ปุ่มน้ำเงิน');
             }
             
-            console.log('✅ เปิดโหมดคำนวณพื้นที่เรียบร้อย - building_area คลิกได้ตลอด');
+            console.log('✅ เปิดโหมดคำนวณพื้นที่เรียบร้อย');
         }
-
-
 
 
 
@@ -8195,10 +8221,15 @@
             const hasMouseDevice = window.matchMedia('(pointer: fine)').matches;
             const hasTouchDevice = window.matchMedia('(pointer: coarse)').matches;
             
-            // ✅ ✅ ✅ แก้: อย่าเรียก updateCalculatorMode ถ้าอยู่ในโหมดคำนวณพื้นที่ ✅ ✅ ✅
+            // ✅ ตั้งค่า hasMouse ตามอุปกรณ์จริง
+            hasMouse = hasMouseDevice && !hasTouchDevice;
+            
+            console.log('🔍 ตรวจจับอุปกรณ์:', hasMouse ? 'เมาส์' : 'สัมผัส');
+            
+            // ✅ ✅ ✅ อย่าเรียก updateCalculatorMode ถ้าอยู่ในโหมดคำนวณพื้นที่ ✅ ✅ ✅
             const onMouseMove = () => {
                 hasMouse = true;
-                if (!isAreaCalculatorMode) {  // ← เพิ่มบรรทัดนี้
+                if (!isAreaCalculatorMode) {
                     updateCalculatorMode();
                 }
                 document.removeEventListener('mousemove', onMouseMove);
@@ -8206,7 +8237,7 @@
             
             const onTouchStart = () => {
                 hasMouse = false;
-                if (!isAreaCalculatorMode) {  // ← เพิ่มบรรทัดนี้
+                if (!isAreaCalculatorMode) {
                     updateCalculatorMode();
                 }
                 document.removeEventListener('touchstart', onTouchStart);
@@ -8214,9 +8245,6 @@
             
             document.addEventListener('mousemove', onMouseMove, { once: true });
             document.addEventListener('touchstart', onTouchStart, { once: true });
-            
-            hasMouse = hasMouseDevice && !hasTouchDevice;
-            console.log('🔍 ตรวจจับอุปกรณ์:', hasMouse ? 'เมาส์' : 'สัมผัส');
         }
 
         // ✅ ฟังก์ชันอัปเดตโหมดคำนวณพื้นที่ตามอุปกรณ์
@@ -8336,9 +8364,8 @@
                     layer.options.interactive = true;
                     
                     // ✅ ข้อ 3: ผูกคลิกโดยตรง (เหมือนตัวอย่างที่ทำงานได้)
-                    // ✅ ใน displayBuildingAreaLayer() → onEachFeature → layer.on('click')
                     layer.on('click', function(e) {
-                        // ✅ เช็ค mouseAddMode ก่อน
+                        // ✅ ถ้ากำลังเพิ่มจุด → ปล่อยให้คลิกทะลุ
                         if (mouseAddMode && activeTool) {
                             console.log('🔓 ปล่อยให้คลิกทะลุเพื่อเพิ่มจุด');
                             return;
@@ -8349,28 +8376,33 @@
                         // ✅ ทำงานเฉพาะเมื่อเปิดโหมดคำนวณพื้นที่ A
                         if (!isAreaCalculatorMode) return;
                         
-                        // ✅ คำนวณพื้นที่
-                        const area = turf.area(feature).toFixed(2);
+                        // ✅ ✅ ✅ โหมดมือถือ: เรียกฟังก์ชันคำนวณจากเป้า (ไม่ใช่จากจุดคลิก) ✅ ✅ ✅
+                        if (!hasMouse) {
+                            console.log('👆 โหมดมือถือ: คำนวณจากตำแหน่งเป้า (35%, 50%)');
+                            calculateAreaFromAreaCrosshair();  // ← ใช้พิกัดเป้าจริง!
+                            return;
+                        }
                         
-                        // ✅ ✅ ✅ กรอกค่า + บวกเข้าสะสมทันที (ไม่ต้องรอปุ่มยืนยัน) ✅ ✅ ✅
+                        // ✅ โหมดคอม: คำนวณจาก feature ที่คลิก (ใช้ Cursor +)
+                        const area = turf.area(feature).toFixed(2);
                         const input = document.getElementById('calc-input-a');
                         if (input && area > 0) {
                             input.value = area;
-                            
-                            // ✅ เรียก addAreaToAccumulatorA() โดยตรง → บวกทันที!
-                            addAreaToAccumulatorA();
+                            const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
+                            if (addBtn) setTimeout(() => addBtn.click(), 100);
                         }
                         
-                        // ✅ ไฮไลท์ (แล้วคืนค่า)
-                        const originalStyle = {
-                            color: layer.options.color || '#10b981',
-                            weight: layer.options.weight || 1,
-                            fillOpacity: layer.options.fillOpacity || 0.4
-                        };
+                        // ไฮไลท์
                         layer.setStyle({ color: '#fbbf24', weight: 4, fillOpacity: 0.6 });
-                        setTimeout(() => layer.setStyle(originalStyle), 2000);
+                        setTimeout(() => {
+                            layer.setStyle({ 
+                                color: layer.options.color || '#10b981',
+                                weight: 1,
+                                fillOpacity: 0.4
+                            });
+                        }, 2000);
                         
-                        console.log(`✅ +${area} ตร.ม. (คำนวณทันที ไม่ต้องยืนยัน)`);
+                        console.log(`✅ +${area} ตร.ม.`);
                     });
                 }
             });
@@ -8764,6 +8796,10 @@
             
             showNotificationLeft(`+ ${val.toFixed(2)} ตร.ม. (รวม: ${areaAccumulatorA.toFixed(2)} ตร.ม.)`, 'success');
             
+            // ✅ ✅ ✅ ท้ายสุด: บังคับปุ่มตามโหมด ✅ ✅ ✅
+            const addTrigger = document.getElementById('add-trigger-container');
+            const crosshair = document.getElementById('crosshair');
+            
             if (isAreaCalculatorMode) {
                 if (hasMouse) {
                     // ✅ โหมดคอม: อย่าแสดงปุ่มน้ำเงิน
@@ -8772,9 +8808,15 @@
                         addTrigger.classList.remove('visible');
                     }
                 } else {
+
                     // ✅ โหมดมือถือ: ต้องแสดงปุ่มน้ำเงิน
                     if (addTrigger) {
-
+                        addTrigger.classList.remove('hidden');
+                        addTrigger.classList.add('visible');
+                    }
+                    if (crosshair) {
+                        crosshair.classList.remove('hidden');
+                        crosshair.classList.add('visible');
                     }
                 }
             }
@@ -10281,7 +10323,103 @@
             }
         }
 
+        // 1. สร้างฟังก์ชันเพื่อหาพื้นที่จากจุดกึ่งกลางเป้า
+        function calculateAreaAtCrosshair() {
+            if (!window.buildingAreaLayer) {
+                showNotificationLeft("ไม่พบข้อมูลสิ่งปลูกสร้าง", "error");
+                return;
+            }
 
+            // ดึงพิกัดกึ่งกลางแผนที่ (ตำแหน่งเป้าพอดี)
+            const center = map.getCenter();
+            const point = turf.point([center.lng, center.lat]);
+            let found = false;
+
+            window.buildingAreaLayer.eachLayer(function(layer) {
+                if (found) return; // ถ้าเจอแล้วให้หยุดหา
+
+                try {
+                    const geojson = layer.toGeoJSON();
+                    // ตรวจสอบว่าจุดกึ่งกลางเป้า อยู่ใน Polygon ของสิ่งปลูกสร้างหรือไม่
+                    if (turf.booleanPointInPolygon(point, geojson)) {
+                        // คำนวณพื้นที่ (ตร.ม.)
+                        const area = turf.area(geojson);
+                        
+                        // ส่งค่าไปยัง Input ในเครื่องคิดเลข
+                        const inputA = document.getElementById('calc-input-a');
+                        if (inputA) {
+                            inputA.value = area.toFixed(2);
+                            // สั่นเตือนเบาๆ ว่าจับค่าได้แล้ว (ถ้ามือถือรองรับ)
+                            if (navigator.vibrate) navigator.vibrate(50);
+                            
+                            showNotificationLeft(`จับพื้นที่ได้: ${area.toFixed(2)} ตร.ม.`, 'success');
+                            
+                            // เรียกฟังก์ชันบวกค่าสะสมอัตโนมัติ (Optional)
+                            // addAreaToAccumulatorA(); 
+                        }
+                        found = true;
+                    }
+                } catch (e) {
+                    console.error("Area calc error:", e);
+                }
+            });
+
+            if (!found) {
+                showNotificationLeft("เป้าไม่ได้อยู่บนสิ่งปลูกสร้าง", "error");
+            }
+        }
+
+
+        // ✅ แก้ไขฟังก์ชันเปิดหน้านำเข้า (เปิดแท็บใหม่)
+        function openImportModal() {
+            console.log('🔍 openImportModal called'); // ✅ Debug log
+            
+            // ✅ 1. หาพาธของ import.html แบบง่ายและชัวร์
+            const currentPath = window.location.pathname;
+            const lastSlash = currentPath.lastIndexOf('/');
+            const basePath = currentPath.substring(0, lastSlash + 1);
+            const importPage = basePath + 'import.html';
+            
+            console.log('📄 Import page path:', importPage); // ✅ Debug log
+            
+            // ✅ 2. ตรวจสอบว่า CONFIG.SCRIPT_URL มีค่าหรือไม่
+            if (!CONFIG || !CONFIG.SCRIPT_URL) {
+                showNotificationLeft('❌ ไม่พบค่าการตั้งค่าแอป (CONFIG)', 'error');
+                console.error('CONFIG.SCRIPT_URL is undefined');
+                return;
+            }
+            
+            // ✅ 3. สร้างพารามิเตอร์
+            const params = new URLSearchParams({
+                scriptUrl: CONFIG.SCRIPT_URL,
+                spreadsheetId: SPREADSHEET_ID || '16FHHMJzbyglTTIShbZIQvubbCGd2YP-qH94zL-XlxXk'
+            });
+            
+            const fullUrl = `${importPage}?${params.toString()}`;
+            console.log('🔗 เปิดแท็บใหม่:', fullUrl); // ✅ Debug log
+            
+            // ✅ 4. เปิดแท็บใหม่
+            const newTab = window.open(fullUrl, '_blank', 'width=900,height=700,resizable=yes,scrollbars=yes');
+            
+            // ✅ 5. ตรวจสอบผลการเปิดแท็บ
+            if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
+                console.warn('⚠️ Browser blocked popup');
+                showNotificationLeft('⚠️ เบราว์เซอร์บล็อกการเปิดแท็บใหม่! กรุณาอนุญาตป๊อปอัป', 'warning');
+                
+                // ✅ แสดงคำแนะนำผู้ใช้
+                setTimeout(() => {
+                    alert('🔧 วิธีแก้ไข:\n1. คลิกไอคอน 🔒 หรือ ⚙️ ที่แถบที่อยู่เว็บ\n2. เลือก "อนุญาตป๊อปอัป" สำหรับเว็บไซต์นี้\n3. คลิกปุ่ม "นำเข้า" อีกครั้ง');
+                }, 100);
+            } else {
+                console.log('✅ เปิดแท็บใหม่สำเร็จ');
+                showNotificationLeft('📥 เปิดหน้านำเข้ารูปภาพในแท็บใหม่', 'info');
+            }
+            
+            // ✅ 6. ปิดเมนูฟันเฟืองถ้าเปิดอยู่
+            if (document.getElementById('settings-menu')?.classList.contains('hidden') === false) {
+                closeSettingsMenu();
+            }
+        }
 
         // ✅ แก้ฟังก์ชัน updateFileName เดิมของคุณ
         function updateFileName(input, fieldId) {
