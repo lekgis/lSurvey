@@ -2315,7 +2315,7 @@
                 const containerPoint = L.point(map.getSize().x / 2, map.getSize().y * 0.35);
                 latlng = map.containerPointToLatLng(containerPoint);
             }
-            
+
             const parcelCod = getParcelCodeAtLocation(latlng);
             if (parcelCod) {
                 const parcelInput = document.getElementById('parcel_cod');
@@ -2424,10 +2424,16 @@
             // ✅ สร้าง ID ที่ไม่ซ้ำกัน
             const newId = `${type}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
             
-            // ✅ ดึง parcel_cod แบบ sync (ต้องแน่ใจว่าฟังก์ชันนี้คืนค่า string/null)
-            const parcelCod = getParcelCodeAtLocation(latlng);
-            
-            // ✅ ✅ ✅ สร้าง data object ครั้งเดียว พร้อม parcel_cod ✅ ✅ ✅
+            // ✅ ดึง parcel_cod และข้อมูลเจ้าของแบบ sync
+            const parcelData = getParcelOwnerData(latlng);
+
+            // ✅ ✅ ✅ รวมค่าเจ้าของจาก 3 คอลั่มน์ (ใช้ " | " คั่น) ✅ ✅ ✅
+            // (สำหรับแสดงในฟอร์ม - ไม่บันทึกแยก)
+            const ownerParts = [parcelData.title, parcelData.fname, parcelData.lname]
+                .filter(v => v && v.toString().trim());
+            const ownerValue = ownerParts.join(' | ');
+
+            // ✅ ✅ ✅ สร้าง data object ครั้งเดียว พร้อม parcel_cod และ owner data ✅ ✅ ✅
             const data = {
                 id: newId,
                 lat_long: `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`,
@@ -2435,31 +2441,48 @@
                 tempMarker: true,
                 
                 // ✅ ส่ง parcel_cod ไป backend (ค่าถาวรสำหรับ Sheets)
-                parcel_cod: parcelCod || '',
+                parcel_cod: parcelData.parcel_cod || '',
                 
                 // ✅ parcel_cod_temp ยังใช้สำหรับแยกส่วนรหัส
-                parcel_cod_temp: parcelCod || ''
+                parcel_cod_temp: parcelData.parcel_cod || '',
+                
+                // ✅ ✅ ✅ ส่งข้อมูลเจ้าของไปฟอร์ม (แยกคอลั่มน์สำหรับบันทึก) ✅ ✅ ✅
+                title: parcelData.title || '',
+                fname: parcelData.fname || '',
+                lname: parcelData.lname || ''
             };
+
+            console.log(`📦 data.parcel_cod: "${data.parcel_cod}"`);
+            console.log(`📦 data.owner: "${data.title} | ${data.fname} | ${data.lname}"`);
             
             console.log(`📦 data.parcel_cod: "${data.parcel_cod}"`);  // ✅ Debug log
             
             // กำหนดค่าเริ่มต้นตามประเภท
+            // ✅ ใน backgroundUpload() → ส่วนกำหนดค่าเริ่มต้นตามประเภท
             if (type === 'sign') {
                 data.s_name = '';
                 data.s_type = '';
                 data.s_wide = '0';
                 data.s_length = '0';
-                if (parcelCod) {
-                    data.parcel_cod_temp = parcelCod; // ✅ เก็บไว้
-                    console.log(`✅ Auto-fill parcel_cod_temp: ${parcelCod}`);
+                
+                // ✅ ✅ ✅ แก้: ใช้ parcelData แทน parcelCod ✅ ✅ ✅
+                if (parcelData.parcel_cod) {
+                    data.parcel_cod_temp = parcelData.parcel_cod;
+                    console.log(`✅ Auto-fill parcel_cod_temp: ${parcelData.parcel_cod}`);
                 }
+                
+                // ✅ ✅ ✅ เพิ่ม: ตั้งค่า fullname ด้วย ownerValue ✅ ✅ ✅
+                data.fullname = ownerValue || '';
+                
             } else {
-                data.full_name = '';
+                data.full_name = ownerValue || '';  // ✅ ตั้งค่า full_name ด้วย ownerValue
                 data.b_type = '';
                 data.b_area = '0';
-                if (parcelCod) {
-                    data.parcel_cod_temp = parcelCod; // ✅ เก็บไว้
-                    console.log(`✅ Auto-fill parcel_cod_temp: ${parcelCod}`);
+                
+                // ✅ ✅ ✅ แก้: ใช้ parcelData แทน parcelCod ✅ ✅ ✅
+                if (parcelData.parcel_cod) {
+                    data.parcel_cod_temp = parcelData.parcel_cod;
+                    console.log(`✅ Auto-fill parcel_cod_temp: ${parcelData.parcel_cod}`);
                 }
             }
             
@@ -3329,6 +3352,7 @@
             return false;
         }
 
+
         // ✅ ✅ ✅ ฟังก์ชันแยกชื่อเจ้าของกลับเป็น 3 คอลั่มน์ ✅ ✅ ✅
         function parseOwnerName(fullName) {
             if (!fullName || !fullName.trim()) {
@@ -3357,8 +3381,9 @@
             // let html = `<input type="hidden" id="marker-type" name="marker-type" value="${type}">`;
 
             // ✅ ✅ ✅ รวมค่าเจ้าของจาก 3 คอลั่มน์ (ใช้ " | " คั่น) ✅ ✅ ✅
+            // ใช้ข้อมูลจาก data object ที่ส่งเข้ามา (จาก Google Sheets หรือจากใหม่)
             const ownerParts = [data.title, data.fname, data.lname]
-                .filter(v => v && v.toString().trim());  // กรองค่าว่างออก
+                .filter(v => v && v.toString().trim());
             const ownerValue = ownerParts.join(' | ');  // ✅ คั่นด้วย " | "
 
             const buildingFields = [
@@ -3458,12 +3483,13 @@
                 { id: 'ment_use2', label: 'รายละเอียด (2)', type: 'select', options: ['', 'ยุ้งข้าว', 'คอกวัว', 'เล้าไก่', 'คอกหมู', 'โรงจอดรถ', 'ห้องน้ำ', 'ร้านค้าของชำ', 'ขายอาหาร', 'มินิมาร์ท', 'กระท่อมนา', 'เพิงพัก', 'โรงเก็บของ', 'เก็บฟาง', 'โรงครัว', 'ศาลาพักผ่อน', 'ตู้เติมเงิน', 'ตู้น้ำมันหยอดเหรียญ', 'ตู้น้ำดื่มหยอดเหรียญ', 'ห้องเช่ารายเดือน', 'รีสอร์ท', 'รื้อ'], allowCustom: true, customClass: 'bg-custom-pink' },
                 { id: 'full_area2', label: 'ใช้ทั้งหลัง (2)', type: 'select', options: ['', 'บางส่วน'], defaultValue: 'บางส่วน', customClass: 'bg-custom-pink' },
                 // ✅ ฟิลด์เจ้าของ - แสดงค่าจาก title+fname+lname ด้วย | คั่น
+                // ✅ ใช้ค่านี้ในฟิลด์เจ้าของ (building)
                 { 
                     id: 'full_name', 
                     label: 'เจ้าของ', 
                     type: 'text',
                     placeholder: 'เช่น นาย | สมชาย | ใจดี',
-                    defaultValue: ownerValue,  // ✅ ใช้ค่าที่รวมจาก 3 คอลั่มน์
+                    defaultValue: ownerValue,  // ✅ ใช้ค่าที่คำนวณ
                     customClass: 'bg-white'
                 },
 
@@ -9411,6 +9437,55 @@
             }
             
             return foundParcelCod; // ✅ คืนค่า string หรือ null เท่านั้น (ไม่ใช่ Promise!)
+        }
+
+        // ✅ ✅ ✅ ฟังก์ชันดึงข้อมูลเจ้าของจากแปลง (ใช้เทคนิคเดียวกับ getParcelCodeAtLocation) ✅ ✅ ✅
+        function getParcelOwnerData(latlng) {
+            if (!window.parcelLayer) {
+                console.warn('⚠️ parcelLayer ยังไม่พร้อม');
+                return { parcel_cod: null, title: '', fname: '', lname: '' };
+            }
+            
+            const point = turf.point([latlng.lng, latlng.lat]);
+            let foundData = { parcel_cod: null, title: '', fname: '', lname: '' };
+            
+            window.parcelLayer.eachLayer(function(layer) {
+                if (foundData.parcel_cod) return; // เจอแล้วไม่ต้องหาต่อ
+                if (!layer.feature || !layer.feature.geometry) return;
+                
+                try {
+                    // เช็คด้วย bounds ก่อน (เร็ว)
+                    if (layer.getBounds && !layer.getBounds().contains(latlng)) {
+                        return;
+                    }
+                    
+                    const geom = layer.feature.geometry;
+                    if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
+                        const polygon = geom.type === 'MultiPolygon' 
+                            ? turf.polygon(geom.coordinates[0]) 
+                            : turf.polygon(geom.coordinates);
+                        
+                        if (turf.booleanPointInPolygon(point, polygon)) {
+                            const p = layer.feature.properties || {};
+                            
+                            // ✅ ดึง parcel_cod (รองรับหลายรูปแบบชื่อคอลั่มน์)
+                            foundData.parcel_cod = p?.parcel_cod || p?.Parcel_cod || p?.PARCEL_COD || p?.parcelCod || p?.ParcelCod || p?.PARCELCOD || null;
+                            
+                            // ✅ ✅ ✅ ดึงข้อมูลเจ้าของ (รองรับหลายรูปแบบชื่อคอลั่มน์) ✅ ✅ ✅
+                            foundData.title = p?.title || p?.Title || p?.TITLE || '';
+                            foundData.fname = p?.fname || p?.Fname || p?.FNAME || p?.first_name || p?.FirstName || '';
+                            foundData.lname = p?.lname || p?.Lname || p?.LNAME || p?.last_name || p?.LastName || '';
+                        }
+                    }
+                } catch (err) {
+                    return; // ข้ามฟีเจอร์ที่มีปัญหา
+                }
+            });
+            
+            if (foundData.parcel_cod) {
+                console.log(`✅ พบข้อมูลแปลง: ${foundData.parcel_cod}, เจ้าของ: ${foundData.title} ${foundData.fname} ${foundData.lname}`);
+            }
+            return foundData;
         }
 
         // ✅ ฟังก์ชันคัดลอกรูปภาพไปยังคลิปบอร์ด
