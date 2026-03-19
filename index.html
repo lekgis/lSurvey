@@ -4938,15 +4938,17 @@
                 icon.classList.add('animate-spin');
                 if (badge) badge.classList.add('hidden');
                 
-                // ✅ ใช้ requestAnimationFrame 2 ชั้น (สำคัญมาก!)
+                // ✅ ✅ ✅ ใช้ requestAnimationFrame 2 ชั้น (สำคัญมาก!) ✅ ✅ ✅
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         const buttons = menu.querySelectorAll('button');
+                        
+                        // ✅ ✅ ✅ แก้: ดีเลย์น้อยมาก (30ms แทน 100ms) หรือแสดงพร้อมกัน ✅ ✅ ✅
                         buttons.forEach((btn, index) => {
                             setTimeout(() => {
                                 btn.style.opacity = '1';
                                 btn.style.transform = 'translateY(0)';
-                            }, index * 100);
+                            }, index * 15);  // ← เปลี่ยนจาก 100 เป็น 30 (เร็วขึ้น 3 เท่า!)
                         });
                     });
                 });
@@ -4979,16 +4981,15 @@
         function closeSettingsMenu() {
             const menu = document.getElementById('settings-menu');
             const icon = document.getElementById('settings-icon');
-            
             const buttons = menu.querySelectorAll('button');
             
-            // ✅ ใช้ requestAnimationFrame สำหรับปิดเมนูด้วย
+            // ✅ ✅ ✅ ใช้ requestAnimationFrame สำหรับปิดเมนูด้วย ✅ ✅ ✅
             requestAnimationFrame(() => {
                 buttons.forEach((btn, index) => {
                     setTimeout(() => {
                         btn.style.opacity = '0';
                         btn.style.transform = 'translateY(-20px)';
-                    }, (buttons.length - index - 1) * 60);
+                    }, (buttons.length - index - 1) * 30);  // ← เปลี่ยนจาก 60 เป็น 30
                 });
             });
             
@@ -4996,7 +4997,7 @@
                 menu.classList.add('hidden');
                 icon.classList.remove('animate-spin');
                 document.removeEventListener('click', closeSettingsMenuOnClickOutside);
-            }, buttons.length * 60 + 100);
+            }, buttons.length * 30 + 100);  // ← ปรับเวลาตามดีเลย์ใหม่
         }
 
         /**
