@@ -74,6 +74,11 @@
             border: 2px solid #dc2626 !important; /* เพิ่มขอบสีแดงให้เห็นชัด */
         }
 
+        /* ✅ ทับกฎ readonly สำหรับฟิลด์เจ้าของ */
+        .form-input.owner-field[readonly] {
+            background-color: white !important;
+        }
+
         /* ข้อ 1: ปรับแต่งเป้าเล็งใหม่ (ใหญ่ขึ้น 20%, หนาขึ้น, สูงขึ้น 15%) */
         .crosshair {
             position: absolute;
@@ -3490,8 +3495,8 @@
                     type: 'text',
                     readonly: true,
                     placeholder: '-',
-                    defaultValue: ownerValue,  // ✅ ใช้ค่าที่คำนวณ
-                    customClass: 'bg-white'
+                    defaultValue: ownerValue,
+                    customClass: 'owner-field'  // ← ใช้คลาสเฉพาะ (ไม่ใช่ bg-white!important)
                 },
 
                 { id: 'land_type', label: 'ประเภทที่ดิน', type: 'select', options: ['', 'โฉนด', 'โฉนดตราจอง', 'น.ส.2', 'น.ส.3', 'น.ส.3ก', 'น.ส.ล.', 'ที่ราชพัสดุ', 'ส.ธ.1', 'ส.ป.ก.4-01', 'ท.ค.', 'ทุ่งเลี้ยงสัตว์', 'อื่นๆ'], customClass: 'bg-custom-green' },
@@ -3591,8 +3596,8 @@
                     type: 'text',
                     readonly: true,
                     placeholder: '-',
-                    defaultValue: ownerValue,  // ✅ ใช้ค่าที่รวมจาก 3 คอลั่มน์
-                    customClass: 'bg-white'
+                    defaultValue: ownerValue,
+                    customClass: 'bg-white!important'
                 },
                 { id: 'check', label: 'สถานะการตรวจสอบ', type: 'select', options: ['ยังไม่สำรวจ', 'ถ่ายรูปแล้ว', 'ตรวจสอบแล้ว'], customClass: 'bg-custom-check-status' }
             ];
