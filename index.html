@@ -8071,9 +8071,7 @@
         let areaHistoryA = [];
         function openAreaCalculatorA() {
             isAreaCalculatorMode = true;
-            //detectInputMethod();
-            //updateCalculatorMode();
-
+            
             if (areaCalculatorModalA) { areaCalculatorModalA.remove(); }
             areaAccumulatorA = 0;
             areaHistoryA = [];
@@ -8171,7 +8169,7 @@
                     crosshair.classList.remove('visible');
                 }
                 if (addTrigger) {
-                    addTrigger.classList.add('hidden');
+                    addTrigger.classList.add('visible');
                     addTrigger.classList.remove('visible');
                 }
                 
@@ -8338,37 +8336,41 @@
                     layer.options.interactive = true;
                     
                     // ✅ ข้อ 3: ผูกคลิกโดยตรง (เหมือนตัวอย่างที่ทำงานได้)
+                    // ✅ ใน displayBuildingAreaLayer() → onEachFeature → layer.on('click')
                     layer.on('click', function(e) {
-                        // ✅ ถ้ากำลังเพิ่มจุด → ปล่อยให้คลิกทะลุ
-                        if (mouseAddMode && activeTool) return;
+                        // ✅ เช็ค mouseAddMode ก่อน
+                        if (mouseAddMode && activeTool) {
+                            console.log('🔓 ปล่อยให้คลิกทะลุเพื่อเพิ่มจุด');
+                            return;
+                        }
                         
                         L.DomEvent.stopPropagation(e);
                         
-                        // ✅ ทำงานเฉพาะเมื่อเปิดโหมดคำนวณพื้นที่
+                        // ✅ ทำงานเฉพาะเมื่อเปิดโหมดคำนวณพื้นที่ A
                         if (!isAreaCalculatorMode) return;
                         
                         // ✅ คำนวณพื้นที่
                         const area = turf.area(feature).toFixed(2);
                         
-                        // ✅ กรอกค่า + บวกทันที
+                        // ✅ ✅ ✅ กรอกค่า + บวกเข้าสะสมทันที (ไม่ต้องรอปุ่มยืนยัน) ✅ ✅ ✅
                         const input = document.getElementById('calc-input-a');
                         if (input && area > 0) {
                             input.value = area;
-                            const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
-                            if (addBtn) setTimeout(() => addBtn.click(), 100);
+                            
+                            // ✅ เรียก addAreaToAccumulatorA() โดยตรง → บวกทันที!
+                            addAreaToAccumulatorA();
                         }
                         
-                        // ✅ ไฮไลท์
+                        // ✅ ไฮไลท์ (แล้วคืนค่า)
+                        const originalStyle = {
+                            color: layer.options.color || '#10b981',
+                            weight: layer.options.weight || 1,
+                            fillOpacity: layer.options.fillOpacity || 0.4
+                        };
                         layer.setStyle({ color: '#fbbf24', weight: 4, fillOpacity: 0.6 });
-                        setTimeout(() => {
-                            layer.setStyle({ 
-                                color: layer.options.color || '#10b981',
-                                weight: 1,
-                                fillOpacity: 0.4
-                            });
-                        }, 2000);
+                        setTimeout(() => layer.setStyle(originalStyle), 2000);
                         
-                        console.log(`✅ +${area} ตร.ม.`);
+                        console.log(`✅ +${area} ตร.ม. (คำนวณทันที ไม่ต้องยืนยัน)`);
                     });
                 }
             });
@@ -8761,10 +8763,6 @@
             input.value = ''; // ล้างค่า พร้อมคำนวณอันต่อไป
             
             showNotificationLeft(`+ ${val.toFixed(2)} ตร.ม. (รวม: ${areaAccumulatorA.toFixed(2)} ตร.ม.)`, 'success');
-            
-            // ✅ ✅ ✅ ท้ายสุด: บังคับปุ่มตามโหมด ✅ ✅ ✅
-            const addTrigger = document.getElementById('add-trigger-container');
-            const crosshair = document.getElementById('crosshair');
             
             if (isAreaCalculatorMode) {
                 if (hasMouse) {
