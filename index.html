@@ -8157,67 +8157,54 @@
                 areaCalculatorModalA.querySelector('#area-calculator-a-header')
             );            
 
-            // ✅ 2. ย้าย building_area ขึ้นบนสุด (ให้คลิกได้ก่อน layer อื่น)
-            if (window.buildingAreaLayer) {
-                window.buildingAreaLayer.eachLayer(function(layer) {
-                    layer.bringToFront();
-                });
-                console.log('🔝 ย้าย building_area ขึ้นบนสุดสำหรับโหมดคำนวณพื้นที่');
+            // ✅ ย้าย building_area ขึ้นบนสุด
+            if (window.buildingLayer) {  // ← ใช้ buildingLayer ตามที่แก้ไว้
+                window.buildingLayer.eachLayer(layer => layer.bringToFront());
             }
             
-            // ✅ 3. ปิดการโต้ตอบกับ parcel/boundary ชั่วคราว (ป้องกันคลิกผิด)
-            if (window.parcelLayer) {
-                window.parcelLayer.setStyle({ interactive: false });
-                if (window.parcelLayer._path) {
-                    window.parcelLayer._path.style.pointerEvents = 'none';
-                }
-            }
-            if (window.boundaryLayer) {
-                window.boundaryLayer.setStyle({ interactive: false });
-                if (window.boundaryLayer._path) {
-                    window.boundaryLayer._path.style.pointerEvents = 'none';
-                }
-            }
+            // ✅ ปิดการโต้ตอบกับ parcel/boundary ชั่วคราว
+            if (window.parcelLayer) window.parcelLayer.setStyle({ interactive: false });
+            if (window.boundaryLayer) window.boundaryLayer.setStyle({ interactive: false });
             
-            // ✅ เปิด Cursor + เฉพาะเมื่อมีเมาส์
+            // ✅ แยกโหมดคอม/มือถือ
             if (hasMouse) {
-                // ✅ โหมดเมาส์: ใช้ Cursor + คลิกบนสิ่งปลูกสร้าง → ไม่ต้องแสดงเป้า/+
+                // โหมดคอม: ใช้ Cursor +
                 enablePlusCursorForCalculator();
+                console.log('🖱️ โหมดคอม: ใช้ Cursor +');
                 
-                // ✅ ✅ ✅ ซ่อนเป้าและปุ่มยืนยันในโหมดเมาส์ ✅ ✅ ✅
-                const crosshair = document.getElementById('crosshair');
-                const addTrigger = document.getElementById('add-trigger-container');
-                if (crosshair) {
-                    crosshair.classList.add('visible');
-                    crosshair.classList.remove('visible');
-                }
-                if (addTrigger) {
-                    addTrigger.classList.add('visible');
-                    addTrigger.classList.remove('visible');
-                }
-                
-                console.log('🖱️ โหมดเมาส์: ใช้ Cursor + คลิกบนสิ่งปลูกสร้าง (ไม่แสดงเป้า)');
             } else {
-                // ✅ โหมดมือถือ: แสดงเป้า + แสดงปุ่มน้ำเงิน
-                const mapContainer = document.getElementById('map');  // ← ต้องประกาศตัวแปรนี้!
+                // ✅ ✅ ✅ โหมดมือถือ: แสดงเป้า + ปุ่มน้ำเงิน ✅ ✅ ✅
+                const mapContainer = document.getElementById('map');
                 mapContainer.style.cursor = 'default';
                 mapContainer.classList.remove('cursor-crosshair-add');
                 
-                // ✅ แสดงเป้าเล็ง
+                // แสดงเป้า
                 const crosshair = document.getElementById('crosshair');
                 if (crosshair) {
-                    crosshair.classList.remove('hidden');   // ← ลบ hidden ก่อน
-                    crosshair.classList.add('visible');     // ← แล้วเพิ่ม visible
+                    crosshair.classList.remove('hidden');
+                    crosshair.classList.add('visible');
                 }
                 
-                // ✅ แสดงปุ่ม + สีน้ำเงิน
+                // แสดงปุ่ม +
                 const addTrigger = document.getElementById('add-trigger-container');
                 if (addTrigger) {
-                    addTrigger.classList.remove('hidden');  // ← ลบ hidden ก่อน
-                    addTrigger.classList.add('visible');    // ← แล้วเพิ่ม visible
+                    addTrigger.classList.remove('hidden');
+                    addTrigger.classList.add('visible');
+                    
+                    // ✅ ✅ ✅ ✅ ✅ ใส่โค้ดผูกปุ่มตรงนี้! ✅ ✅ ✅ ✅ ✅
+                    const btn = addTrigger.querySelector('button');
+                    if (btn) {
+                        btn.onclick = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('🔘 คลิกปุ่ม + → คำนวณจากเป้า');
+                            calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันคำนวณ!
+                        };
+                    }
+                    // ✅ ✅ ✅ ✅ ✅ จบบล็อกผูกปุ่ม ✅ ✅ ✅ ✅ ✅
                 }
                 
-                // ✅ มือถือ: อย่าโฟกัส input
+                // มือถือ: อย่าโฟกัส input
                 const input = document.getElementById('calc-input-a');
                 if (input) {
                     input.setAttribute('readonly', 'readonly');
@@ -8232,35 +8219,39 @@
 
 
 
-        // ✅ ฟังก์ชันตรวจจับประเภทอุปกรณ์ (เมาส์ หรือ สัมผัส)
+        // ✅ ฟังก์ชันตรวจจับประเภทอุปกรณ์ (เมาส์ หรือ สัมผัส) - เวอร์ชั่นยืดหยุ่น
         function detectInputMethod() {
-            const hasMouseDevice = window.matchMedia('(pointer: fine)').matches;
-            const hasTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+            // ✅ 1. เช็คจาก Pointer Events API (มาตรฐานใหม่)
+            const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
+            const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
             
-            // ✅ ตั้งค่า hasMouse ตามอุปกรณ์จริง
-            hasMouse = hasMouseDevice && !hasTouchDevice;
+            // ✅ 2. เช็คจาก Touch API
+            const hasTouch = 'ontouchstart' in window || 
+                             navigator.maxTouchPoints > 0 || 
+                             navigator.msMaxTouchPoints > 0;
             
-            console.log('🔍 ตรวจจับอุปกรณ์:', hasMouse ? 'เมาส์' : 'สัมผัส');
+            // ✅ 3. เช็คจาก User Agent (สำรอง)
+            const ua = navigator.userAgent.toLowerCase();
+            const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(ua);
             
-            // ✅ ✅ ✅ อย่าเรียก updateCalculatorMode ถ้าอยู่ในโหมดคำนวณพื้นที่ ✅ ✅ ✅
-            const onMouseMove = () => {
-                hasMouse = true;
-                if (!isAreaCalculatorMode) {
-                    updateCalculatorMode();
-                }
-                document.removeEventListener('mousemove', onMouseMove);
-            };
+            // ✅ ตัดสินใจแบบยืดหยุ่น:
+            // - ถ้ามี coarse pointer + ไม่มี fine pointer → มือถือแน่นอน
+            // - ถ้ามี fine pointer + ไม่มี touch → คอมแน่นอน  
+            // - ถ้ามีทั้งคู่ → ใช้ UA ช่วยตัดสิน
+            // - ถ้าไม่มีอะไรชัดเจน → ถือว่าเป็นมือถือ (ปลอดภัยกว่า)
             
-            const onTouchStart = () => {
-                hasMouse = false;
-                if (!isAreaCalculatorMode) {
-                    updateCalculatorMode();
-                }
-                document.removeEventListener('touchstart', onTouchStart);
-            };
+            if (hasCoarsePointer && !hasFinePointer) {
+                hasMouse = false;  // ✅ มือถือ
+            } else if (hasFinePointer && !hasTouch) {
+                hasMouse = true;   // ✅ คอม
+            } else if (isMobileUA) {
+                hasMouse = false;  // ✅ UA บอกว่ามือถือ
+            } else {
+                hasMouse = false;  // ✅ ค่าเริ่มต้น: ถือว่าเป็นมือถือ (แสดงเป้า/ปุ่มไว้ก่อน)
+            }
             
-            document.addEventListener('mousemove', onMouseMove, { once: true });
-            document.addEventListener('touchstart', onTouchStart, { once: true });
+            console.log('🔍 ตรวจจับอุปกรณ์:', hasMouse ? 'เมาส์' : 'สัมผัส', 
+                        `(fine:${hasFinePointer}, coarse:${hasCoarsePointer}, touch:${hasTouch}, mobileUA:${isMobileUA})`);
         }
 
         // ✅ ฟังก์ชันอัปเดตโหมดคำนวณพื้นที่ตามอุปกรณ์
@@ -8379,46 +8370,42 @@
                     layer.options.layerType = 'building_area';
                     layer.options.interactive = true;
                     
-                    // ✅ ข้อ 3: ผูกคลิกโดยตรง (เหมือนตัวอย่างที่ทำงานได้)
+                    // ✅ ใน layer.on('click') ของ building_area
                     layer.on('click', function(e) {
                         // ✅ ถ้ากำลังเพิ่มจุด → ปล่อยให้คลิกทะลุ
-                        if (mouseAddMode && activeTool) {
-                            console.log('🔓 ปล่อยให้คลิกทะลุเพื่อเพิ่มจุด');
-                            return;
-                        }
+                        if (mouseAddMode && activeTool) return;
                         
                         L.DomEvent.stopPropagation(e);
                         
                         // ✅ ทำงานเฉพาะเมื่อเปิดโหมดคำนวณพื้นที่ A
                         if (!isAreaCalculatorMode) return;
                         
-                        // ✅ ✅ ✅ โหมดมือถือ: เรียกฟังก์ชันคำนวณจากเป้า (ไม่ใช่จากจุดคลิก) ✅ ✅ ✅
+                        // ✅ ✅ ✅ แยกการทำงานตามอุปกรณ์ ✅ ✅ ✅
                         if (!hasMouse) {
-                            console.log('👆 โหมดมือถือ: คำนวณจากตำแหน่งเป้า (35%, 50%)');
-                            calculateAreaFromAreaCrosshair();  // ← ใช้พิกัดเป้าจริง!
+                            // 📱 มือถือ: คำนวณจากตำแหน่งเป้า (35%, 50%)
+                            console.log('👆 โหมดมือถือ: คำนวณจากเป้า');
+                            calculateAreaFromAreaCrosshair();
                             return;
+                        } else {
+                            // 🖱️ คอม: คำนวณจาก feature ที่คลิก (Cursor +)
+                            console.log('🖱️ โหมดคอม: คำนวณจากคลิก');
+                            const area = turf.area(feature).toFixed(2);
+                            const input = document.getElementById('calc-input-a');
+                            if (input && area > 0) {
+                                input.value = area;
+                                const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
+                                if (addBtn) setTimeout(() => addBtn.click(), 100);
+                            }
+                            // ไฮไลท์
+                            layer.setStyle({ color: '#fbbf24', weight: 4, fillOpacity: 0.6 });
+                            setTimeout(() => {
+                                layer.setStyle({ 
+                                    color: layer.options.color || '#10b981',
+                                    weight: 1,
+                                    fillOpacity: 0.4
+                                });
+                            }, 2000);
                         }
-                        
-                        // ✅ โหมดคอม: คำนวณจาก feature ที่คลิก (ใช้ Cursor +)
-                        const area = turf.area(feature).toFixed(2);
-                        const input = document.getElementById('calc-input-a');
-                        if (input && area > 0) {
-                            input.value = area;
-                            const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
-                            if (addBtn) setTimeout(() => addBtn.click(), 100);
-                        }
-                        
-                        // ไฮไลท์
-                        layer.setStyle({ color: '#fbbf24', weight: 4, fillOpacity: 0.6 });
-                        setTimeout(() => {
-                            layer.setStyle({ 
-                                color: layer.options.color || '#10b981',
-                                weight: 1,
-                                fillOpacity: 0.4
-                            });
-                        }, 2000);
-                        
-                        console.log(`✅ +${area} ตร.ม.`);
                     });
                 }
             });
