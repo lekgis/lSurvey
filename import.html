@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>นำเข้ารูปภาพเชื่อมตาราง - กูเกิ้ลไดร์</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Sarabun', 'Tahoma', sans-serif; }
+        .progress-bar { transition: width 0.3s ease; }
+        .log-entry { font-size: 12px; padding: 4px 8px; border-bottom: 1px solid #eee; }
+        .log-success { color: #16a34a; }
+        .log-error { color: #dc2626; }
+        .log-skip { color: #6b7280; }
+        .log-info { color: #2563eb; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow p-4 mb-4 flex items-center justify-between">
+            <h1 class="text-xl font-bold text-blue-900">📥 นำเข้ารูปภาพจากโฟลเดอร์</h1>
+            <button onclick="window.close()" class="p-2 hover:bg-gray-100 rounded-full">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- Selection Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <!-- Building Import -->
+            <div class="bg-white rounded-xl shadow p-5 border-2 border-orange-200 hover:border-orange-400 transition">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                        <i data-lucide="home" class="w-6 h-6 text-orange-600"></i>
+                    </div>
+                    <h2 class="font-bold text-lg">สิ่งปลูกสร้าง</h2>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">
+                    นำเข้ารูปภาพโดยจับคู่กับ <code class="bg-gray-100 px-1 rounded">building_c</code>
+                </p>
+                <input type="file" id="building-folder" webkitdirectory directory multiple 
+                    class="hidden" accept="image/*" onchange="handleFolderSelect(this, 'building')">
+                <button onclick="document.getElementById('building-folder').click()"
+                    class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                    <i data-lucide="folder-open" class="w-5 h-5"></i>
+                    เลือกโฟลเดอร์รูปสิ่งปลูกสร้าง
+                </button>
+            </div>
+
+            <!-- Sign Import -->
+            <div class="bg-white rounded-xl shadow p-5 border-2 border-green-200 hover:border-green-400 transition">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <i data-lucide="map-pin" class="w-6 h-6 text-green-600"></i>
+                    </div>
+                    <h2 class="font-bold text-lg">ป้าย</h2>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">
+                    นำเข้ารูปภาพโดยจับคู่กับ <code class="bg-gray-100 px-1 rounded">s_code</code>
+                </p>
+                <input type="file" id="sign-folder" webkitdirectory directory multiple 
+                    class="hidden" accept="image/*" onchange="handleFolderSelect(this, 'sign')">
+                <button onclick="document.getElementById('sign-folder').click()"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                    <i data-lucide="folder-open" class="w-5 h-5"></i>
+                    เลือกโฟลเดอร์รูปป้าย
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div id="progress-section" class="bg-white rounded-xl shadow p-4 mb-4 hidden">
+            <div class="flex items-center justify-between mb-2">
+                <span class="font-bold text-sm" id="progress-title">กำลังประมวลผล...</span>
+                <span class="text-sm text-gray-600" id="progress-percent">0%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3 mb-3">
+                <div id="progress-bar" class="progress-bar bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
+            </div>
+            <div class="flex gap-4 text-xs text-gray-600">
+                <span>✅ สำเร็จ: <b id="count-success" class="text-green-600">0</b></span>
+                <span>⏭️ ข้าม: <b id="count-skip" class="text-gray-500">0</b></span>
+                <span>❌ ล้มเหลว: <b id="count-error" class="text-red-600">0</b></span>
+            </div>
+        </div>
+
+        <!-- Log Section -->
+        <div class="bg-white rounded-xl shadow p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-sm">📋 บันทึกการทำงาน</h3>
+                <button onclick="clearLog()" class="text-xs text-blue-600 hover:underline">ล้าง</button>
+            </div>
+            <div id="log-container" class="max-h-64 overflow-y-auto border rounded bg-gray-50 p-2 text-xs">
+                <div class="log-entry log-info">พร้อมเริ่มนำเข้ารูปภาพ...</div>
+            </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="mt-4 bg-blue-50 rounded-lg p-4 text-xs text-blue-800">
+            <p class="font-bold mb-2">📌 วิธีใช้งาน:</p>
+            <ol class="list-decimal list-inside space-y-1">
+                <li>คลิกปุ่มเลือกโฟลเดอร์ตามประเภทที่ต้องการ</li>
+                <li>เลือกรูปภาพที่ต้องการนำเข้า (รองรับหลายไฟล์)</li>
+                <li>ระบบจะตรวจสอบชื่อไฟล์ 11 อักษรแรกเพื่อจับคู่กับรหัส</li>
+                <li>รูปภาพที่มีอยู่แล้วในระบบจะถูกข้ามอัตโนมัติ</li>
+                <li>ติดตามความคืบหน้าในแถบด้านบน</li>
+            </ol>
+            <p class="mt-2 text-gray-600">
+                💡 ชื่อไฟล์ควรขึ้นต้นด้วยรหัส เช่น <code>14B001-B006.jpg</code> หรือ <code>14B007-S001.jpg</code>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // ✅ ดึงพารามิเตอร์จาก URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const SCRIPT_URL = decodeURIComponent(urlParams.get('scriptUrl') || '');
+        const SPREADSHEET_ID = urlParams.get('spreadsheetId') || '16FHHMJzbyglTTIShbZIQvubbCGd2YP-qH94zL-XlxXk';
+        
+        // ✅ ตัวแปรสถานะ
+        let isProcessing = false;
+        let stats = { success: 0, skip: 0, error: 0, total: 0 };
+        let existingCodes = { building: new Set(), sign: new Set() };
+        
+        // ✅ โหลดข้อมูลรหัสที่มีอยู่แล้วจากเซิร์ฟเวอร์
+        async function loadExistingCodes(type) {
+            try {
+                addLog(`🔄 โหลดข้อมูล${type === 'building' ? 'สิ่งปลูกสร้าง' : 'ป้าย'}ที่มีอยู่...`, 'info');
+                
+                const response = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await response.json();
+                
+                const records = type === 'building' ? data.buildings : data.signs;
+                const codeField = type === 'building' ? 'building_c' : 's_code';
+                
+                records.forEach(r => {
+                    if (r[codeField] && r[codeField].trim() !== '') {
+                        existingCodes[type].add(r[codeField].trim());
+                    }
+                });
+                
+                addLog(`✅ พบรหัส${type === 'building' ? 'สิ่งปลูกสร้าง' : 'ป้าย'}ที่มีอยู่: ${existingCodes[type].size} รหัส`, 'success');
+                return true;
+            } catch (err) {
+                addLog(`❌ โหลดข้อมูลล้มเหลว: ${err.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // ✅ จัดการเมื่อเลือกโฟลเดอร์
+        async function handleFolderSelect(input, type) {
+            if (isProcessing) {
+                alert('กำลังประมวลผลอยู่ กรุณารอจนเสร็จสิ้น');
+                input.value = '';
+                return;
+            }
+            
+            const files = Array.from(input.files).filter(f => 
+                /\.(jpg|jpeg|png|gif)$/i.test(f.name)
+            );
+            
+            if (files.length === 0) {
+                alert('ไม่พบไฟล์รูปภาพในโฟลเดอร์ที่เลือก');
+                input.value = '';
+                return;
+            }
+            
+            // โหลดข้อมูลรหัสที่มีอยู่ก่อนเริ่ม
+            if (!await loadExistingCodes(type)) {
+                if (!confirm('ไม่สามารถโหลดข้อมูลรหัสได้ ต้องการดำเนินการต่อหรือไม่? (อาจจับคู่ไม่ถูกต้อง)')) {
+                    input.value = '';
+                    return;
+                }
+            }
+            
+            isProcessing = true;
+            stats = { success: 0, skip: 0, error: 0, total: files.length };
+            
+            // แสดงส่วนความคืบหน้า
+            document.getElementById('progress-section').classList.remove('hidden');
+            document.getElementById('progress-title').textContent = 
+                `กำลังประมวลผล ${type === 'building' ? 'สิ่งปลูกสร้าง' : 'ป้าย'}...`;
+            
+            addLog(`📁 พบไฟล์รูปภาพ ${files.length} ไฟล์ เริ่มประมวลผล...`, 'info');
+            
+            // ประมวลผลไฟล์ทีละไฟล์
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                await processImageFile(file, type, i + 1, files.length);
+                
+                // อัปเดต UI
+                updateProgress(i + 1, files.length);
+                
+                // รอเล็กน้อยเพื่อไม่ให้เบราว์เซอร์ค้าง
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            // เสร็จสิ้น
+            addLog(`🎉 เสร็จสิ้น! สำเร็จ: ${stats.success}, ข้าม: ${stats.skip}, ล้มเหลว: ${stats.error}`, 'success');
+            document.getElementById('progress-title').textContent = '✅ เสร็จสิ้น';
+            
+            isProcessing = false;
+            input.value = ''; // รีเซ็ต input
+            
+            // แจ้งเตือนเมื่อเสร็จ
+            if (stats.success > 0) {
+                alert(`✅ นำเข้าสำเร็จ ${stats.success} รูปจาก ${stats.total} รูป`);
+            }
+        }
+        
+        // ✅ ประมวลผลไฟล์รูปภาพแต่ละไฟล์
+        async function processImageFile(file, type, currentIndex, totalFiles) {
+            const fileName = file.name;
+            
+            // ✅ ข้อ 1: ตรวจสอบชื่อรูป 11 อักษรแรก
+            const codePart = fileName.length >= 11 ? fileName.substring(0, 11) : fileName;
+            const cleanCode = codePart.replace(/\.[^/.]+$/, ""); // ตัดนามสกุลออกถ้ามี
+            
+            addLog(`🔍 [${currentIndex}/${totalFiles}] ${fileName} → รหัส: ${cleanCode}`, 'info');
+            
+            // ✅ ข้อ 3: ตรวจสอบว่ามีรูปอยู่แล้วหรือไม่
+            const hasImage = await checkImageExists(cleanCode, type);
+            if (hasImage) {
+                addLog(`⏭️ ข้าม: ${fileName} (มีรูปภาพอยู่แล้ว)`, 'skip');
+                stats.skip++;
+                updateCounters();
+                return;
+            }
+            
+            try {
+                // อ่านไฟล์เป็น base64
+                const base64 = await fileToBase64(file);
+                
+                // อัปโหลดผ่าน Apps Script
+                const result = await uploadImageToDrive(base64, fileName, cleanCode, type);
+                
+                if (result.success) {
+                    // ✅ อัปเดตข้อมูลในชีท
+                    const updateSuccess = await updateSheetRecord(cleanCode, type, result.imageUrl, result.fileName);
+                    
+                    if (updateSuccess) {
+                        addLog(`✅ สำเร็จ: ${fileName} → ${result.fileName}`, 'success');
+                        stats.success++;
+                    } else {
+                        addLog(`❌ อัปเดตชีทล้มเหลว: ${fileName}`, 'error');
+                        stats.error++;
+                    }
+                } else {
+                    addLog(`❌ อัปโหลดล้มเหลว: ${result.error || 'ไม่ทราบสาเหตุ'}`, 'error');
+                    stats.error++;
+                }
+                
+            } catch (err) {
+                addLog(`❌ ข้อผิดพลาด: ${err.message}`, 'error');
+                stats.error++;
+            }
+            
+            updateCounters();
+        }
+        
+        // ✅ ตรวจสอบว่ามีรูปภาพสำหรับรหัสนี้แล้วหรือไม่
+        async function checkImageExists(code, type) {
+            try {
+                const response = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await response.json();
+                
+                const records = type === 'building' ? data.buildings : data.signs;
+                const codeField = type === 'building' ? 'building_c' : 's_code';
+                
+                const record = records.find(r => 
+                    r[codeField]?.trim() === code && 
+                    (r.picture?.trim() || r.image?.trim())
+                );
+                
+                return !!record;
+            } catch {
+                return false; // ถ้าเช็คไม่ได้ ให้ถือว่าไม่มี (เพื่อความปลอดภัย)
+            }
+        }
+        
+        // ✅ แปลงไฟล์เป็น base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        // ✅ อัปโหลดรูปภาพผ่าน Apps Script
+        async function uploadImageToDrive(base64, originalFileName, code, type) {
+            const formData = new FormData();
+            formData.append('action', 'quickAdd');
+            formData.append('type', type);
+            formData.append('payload', JSON.stringify({
+                id: `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                [type === 'building' ? 'building_c' : 's_code']: code,
+                // ฟิลด์อื่นๆ ว่างไว้ เพราะเราแค่ต้องการอัปโหลดรูป
+            }));
+            formData.append('image', base64);
+            formData.append('fileName', originalFileName);
+            
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 200 && result.data) {
+                    return {
+                        success: true,
+                        imageUrl: result.data.imageUrl,
+                        fileName: result.data.pictureName
+                    };
+                }
+                
+                return { success: false, error: result.message };
+                
+            } catch (err) {
+                return { success: false, error: err.message };
+            }
+        }
+        
+        // ✅ อัปเดตข้อมูลในชีท (เชื่อมรูปกับรหัส)
+        async function updateSheetRecord(code, type, imageUrl, pictureName) {
+            try {
+                // ดึงข้อมูลทั้งหมดเพื่อหา rowKey
+                const response = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await response.json();
+                
+                const records = type === 'building' ? data.buildings : data.signs;
+                const codeField = type === 'building' ? 'building_c' : 's_code';
+                
+                const record = records.find(r => r[codeField]?.trim() === code);
+                if (!record || !record._row_num) {
+                    addLog(`⚠️ ไม่พบข้อมูลสำหรับรหัส: ${code}`, 'error');
+                    return false;
+                }
+                
+                // ส่งคำขออัปเดต
+                const updateResponse = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: new URLSearchParams({
+                        action: 'update',
+                        type: type,
+                        rowKey: record._row_num,
+                        payload: JSON.stringify({
+                            image: imageUrl,
+                            picture: pictureName,
+                            check: record.check || 'ถ่ายรูปแล้ว' // อัปเดตสถานะถ้าจำเป็น
+                        })
+                    })
+                });
+                
+                const result = await updateResponse.json();
+                return result.status === 200;
+                
+            } catch (err) {
+                addLog(`❌ อัปเดตชีทล้มเหลว: ${err.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // ✅ อัปเดตแถบความคืบหน้า
+        function updateProgress(current, total) {
+            const percent = Math.round((current / total) * 100);
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+            document.getElementById('progress-percent').textContent = `${percent}%`;
+        }
+        
+        // ✅ อัปเดตตัวนับ
+        function updateCounters() {
+            document.getElementById('count-success').textContent = stats.success;
+            document.getElementById('count-skip').textContent = stats.skip;
+            document.getElementById('count-error').textContent = stats.error;
+        }
+        
+        // ✅ เพิ่มข้อความในล็อก
+        function addLog(message, type = 'info') {
+            const container = document.getElementById('log-container');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString('th-TH')}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        // ✅ ล้างล็อก
+        function clearLog() {
+            document.getElementById('log-container').innerHTML = 
+                '<div class="log-entry log-info">ล้างบันทึกแล้ว...</div>';
+        }
+        
+        // ✅ เริ่มต้น
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            addLog('🚀 หน้าจอพร้อมใช้งาน', 'info');
+        });
+    </script>
+</body>
+</html>
