@@ -2339,43 +2339,50 @@
             }
         }
 
-        // ✅ ฟังก์ชันคำนวณพื้นที่จากเป้าเล็งใหม่ (แก้ไข: ดึงพื้นที่ได้จริง)
+        // ✅ ✅ ✅ แก้ฟังก์ชันคำนวณพื้นที่ ✅ ✅ ✅
         function calculateAreaFromAreaCrosshair() {
-            console.log('🎯 คำนวณพื้นที่จากเป้าเล็ง (ตำแหน่งจริงจาก CSS)...');
+            console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าเล็ง...');
             
-            if (!map || !window.buildingAreaLayer) {
-                showNotificationLeft('⚠️ แผนที่ยังไม่พร้อมหรือยังไม่ได้โหลดข้อมูลสิ่งปลูกสร้าง', 'warning');
+            if (!map || !window.buildingLayer) {
+                showNotificationLeft('⚠️ โหลดข้อมูลสิ่งปลูกสร้างก่อน', 'warning');
                 return;
             }
             
-            // ✅ ✅ ✅ อ่านตำแหน่งเป้าจริงจากค่าใน CSS (top: 35%, left: 50%) ✅ ✅ ✅
-            const crosshairTopPercent = 35;   // จาก CSS: top: 35%
-            const crosshairLeftPercent = 50;  // จาก CSS: left: 50%
-            
+            // ✅ คำนวณพิกัดจากตำแหน่งเป้าจริง (35%, 50%)
             const mapSize = map.getSize();
-            const targetX = mapSize.x * (crosshairLeftPercent / 100);  // 50% ของความกว้าง
-            const targetY = mapSize.y * (crosshairTopPercent / 100);   // 35% ของความสูง
-            
-            // ✅ แปลงพิกัดหน้าจอ → lat/lng
+            const targetX = mapSize.x * 0.5;
+            const targetY = mapSize.y * 0.35;
             const latlng = map.containerPointToLatLng(L.point(targetX, targetY));
             const point = turf.point([latlng.lng, latlng.lat]);
             
-            console.log(`📍 พิกัดเป้าเล็ง (CSS: top=${crosshairTopPercent}%, left=${crosshairLeftPercent}%):`, 
-                        latlng.lat.toFixed(6), latlng.lng.toFixed(6));
+            console.log(`📍 พิกัดเป้าเล็ง: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`);
             
             let calculatedArea = 0;
             let foundBuilding = false;
+            let checkedCount = 0;
             
-            // ✅ วนหา building_area ที่ใต้เป้า
-            window.buildingAreaLayer.eachLayer(function(layer) {
-                if (foundBuilding || !layer.feature?.geometry?.coordinates) return;
+            window.buildingLayer.eachLayer(function(layer) {
+                if (foundBuilding) return; 
+
                 try {
-                    const polygon = turf.polygon(layer.feature.geometry.coordinates);
-                    if (turf.booleanPointInPolygon(point, polygon)) {
-                        calculatedArea = turf.area(polygon);  // ได้ค่าเป็น ตร.ม.
+                    // 1. แปลง Layer เป็น GeoJSON ก่อน (วิธีนี้ปลอดภัยที่สุดสำหรับ Turf)
+                    const feature = layer.toGeoJSON();
+                    
+                    // 2. เช็คว่าเป็น Polygon หรือ MultiPolygon ไหม (ป้องกัน Error จากพวกเส้นหรือจุด)
+                    if (!feature || !feature.geometry || 
+                        (feature.geometry.type !== 'Polygon' && feature.geometry.type !== 'MultiPolygon')) {
+                        return; // ข้ามไปตัวถัดไปเลย ไม่ต้อง Error
+                    }
+
+                    // 3. ใช้ turf เช็คว่าจุดอยู่ใน Polygon ไหม
+                    const isInside = turf.booleanPointInPolygon(point, feature);
+
+                    if (isInside) {
+                        // ถ้าใช่ ให้คำนวณพื้นที่จาก feature นั้นเลย
+                        calculatedArea = turf.area(feature); 
                         foundBuilding = true;
                         
-                        // ไฮไลท์สิ่งที่คำนวณ
+                        // --- ส่วนการแสดงผล Highlight เดิมของคุณ ---
                         const originalStyle = {
                             color: layer.options.color || '#10b981',
                             weight: layer.options.weight || 1,
@@ -2384,8 +2391,14 @@
                         layer.setStyle({ color: '#fbbf24', weight: 4, fillOpacity: 0.6 });
                         setTimeout(() => layer.setStyle(originalStyle), 2000);
                     }
-                } catch (err) { console.error('❌ Error:', err); }
+                } catch (err) {
+                    // ✅ จุดสำคัญ: ถ้าตัวไหนพัง (เช่น พิกัดไม่ครบ 4 จุดตาม Log) 
+                    // ให้มันข้ามไปเงียบๆ เพื่อไปตรวจตัวอื่นต่อ
+                    console.warn('⚠️ ข้ามข้อมูลที่ไม่สมบูรณ์:', err.message);
+                }
             });
+            
+            console.log(`🔍 ตรวจไป ${checkedCount} layers, พบ building: ${foundBuilding}`);
             
             if (foundBuilding && calculatedArea > 0) {
                 const input = document.getElementById('calc-input-a');
@@ -2396,6 +2409,7 @@
                 
                 showNotificationLeft(`✅ +${calculatedArea.toFixed(2)} ตร.ม.`, 'success');
             } else {
+                console.warn('⚠️ ไม่พบสิ่งปลูกสร้างใต้เป้า');
                 showNotificationLeft('⚠️ เลื่อนเป้าให้ทับสิ่งปลูกสร้างสีเขียว', 'warning');
             }
         }
