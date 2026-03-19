@@ -2554,6 +2554,22 @@
                 }
             }
             
+            // ✅ 2. ✅ ✅ ✅ วางโค้ดแยกชื่อเจ้าของที่นี่! ✅ ✅ ✅
+            // (หลังจากได้ data object แล้ว แต่ก่อนส่งไปเซิร์ฟเวอร์)
+            if (data.full_name || data.fullname) {
+                const ownerField = data.full_name || data.fullname;
+                const ownerData = parseOwnerName(ownerField);
+                
+                data.title = ownerData.title;
+                data.fname = ownerData.fname;
+                data.lname = ownerData.lname;
+                
+                delete data.full_name;
+                delete data.fullname;
+                
+                console.log('✅ แยกชื่อเจ้าของ:', ownerData);
+            }
+
             // ✅ เพิ่มค่าฟิลด์ที่ถูกปิดการใช้งาน (เฉพาะสิ่งปลูกสร้าง)
             if (form.querySelector('[name="b_use2"]')) {
                 const disabledFields = [
@@ -3313,6 +3329,23 @@
             return false;
         }
 
+        // ✅ ✅ ✅ ฟังก์ชันแยกชื่อเจ้าของกลับเป็น 3 คอลั่มน์ ✅ ✅ ✅
+        function parseOwnerName(fullName) {
+            if (!fullName || !fullName.trim()) {
+                return { title: '', fname: '', lname: '' };
+            }
+            
+            // ✅ แยกด้วย " | " (มีช่องว่าง) + ลบช่องว่างส่วนเกิน
+            const parts = fullName.split(' | ').map(p => p.trim()).filter(p => p);
+            
+            return {
+                title: parts[0] || '',
+                fname: parts[1] || '',
+                lname: parts.slice(2).join(' ') || ''  // ✅ กรณีนามสกุลมีหลายคำ
+            };
+        }
+
+
         function openEditPanel(data, type, marker) {
             editingMarker = marker;
             const form = document.getElementById('survey-form');
@@ -3323,7 +3356,10 @@
             // ✅ เพิ่มฟิลด์ประเภทมาร์กเกอร์เป็นบรรทัดแรกของฟอร์ม
             // let html = `<input type="hidden" id="marker-type" name="marker-type" value="${type}">`;
 
-
+            // ✅ ✅ ✅ รวมค่าเจ้าของจาก 3 คอลั่มน์ (ใช้ " | " คั่น) ✅ ✅ ✅
+            const ownerParts = [data.title, data.fname, data.lname]
+                .filter(v => v && v.toString().trim());  // กรองค่าว่างออก
+            const ownerValue = ownerParts.join(' | ');  // ✅ คั่นด้วย " | "
 
             const buildingFields = [
                 { id: 'image', label: 'รูปสิ่งปลูกสร้าง', type: 'file', icon: 'camera' },
@@ -3421,7 +3457,16 @@
                 },
                 { id: 'ment_use2', label: 'รายละเอียด (2)', type: 'select', options: ['', 'ยุ้งข้าว', 'คอกวัว', 'เล้าไก่', 'คอกหมู', 'โรงจอดรถ', 'ห้องน้ำ', 'ร้านค้าของชำ', 'ขายอาหาร', 'มินิมาร์ท', 'กระท่อมนา', 'เพิงพัก', 'โรงเก็บของ', 'เก็บฟาง', 'โรงครัว', 'ศาลาพักผ่อน', 'ตู้เติมเงิน', 'ตู้น้ำมันหยอดเหรียญ', 'ตู้น้ำดื่มหยอดเหรียญ', 'ห้องเช่ารายเดือน', 'รีสอร์ท', 'รื้อ'], allowCustom: true, customClass: 'bg-custom-pink' },
                 { id: 'full_area2', label: 'ใช้ทั้งหลัง (2)', type: 'select', options: ['', 'บางส่วน'], defaultValue: 'บางส่วน', customClass: 'bg-custom-pink' },
-                { id: 'full_name', label: 'เจ้าของ', type: 'text' },
+                // ✅ ฟิลด์เจ้าของ - แสดงค่าจาก title+fname+lname ด้วย | คั่น
+                { 
+                    id: 'full_name', 
+                    label: 'เจ้าของ', 
+                    type: 'text',
+                    placeholder: 'เช่น นาย | สมชาย | ใจดี',
+                    defaultValue: ownerValue,  // ✅ ใช้ค่าที่รวมจาก 3 คอลั่มน์
+                    customClass: 'bg-white'
+                },
+
                 { id: 'land_type', label: 'ประเภทที่ดิน', type: 'select', options: ['', 'โฉนด', 'โฉนดตราจอง', 'น.ส.2', 'น.ส.3', 'น.ส.3ก', 'น.ส.ล.', 'ที่ราชพัสดุ', 'ส.ธ.1', 'ส.ป.ก.4-01', 'ท.ค.', 'ทุ่งเลี้ยงสัตว์', 'อื่นๆ'], customClass: 'bg-custom-green' },
                 { 
                   id: 'land_use', 
@@ -3512,7 +3557,15 @@
                 },
                 { id: 's_text', label: 'ข้อความในป้าย', type: 'text' },
                 { id: 'comment', label: 'หมายเหตุ', type: 'text' },
-                { id: 'fullname', label: 'เจ้าของ', type: 'text' },
+                // ✅ ฟิลด์เจ้าของ (ป้าย) - แสดงค่าจาก title+fname+lname ด้วย | คั่น
+                { 
+                    id: 'fullname', 
+                    label: 'เจ้าของ', 
+                    type: 'text',
+                    placeholder: 'เช่น นาง | สมหญิง | ใจดี',
+                    defaultValue: ownerValue,  // ✅ ใช้ค่าที่รวมจาก 3 คอลั่มน์
+                    customClass: 'bg-white'
+                },
                 { id: 'check', label: 'สถานะการตรวจสอบ', type: 'select', options: ['ยังไม่สำรวจ', 'ถ่ายรูปแล้ว', 'ตรวจสอบแล้ว'], customClass: 'bg-custom-check-status' }
             ];
             
@@ -4285,6 +4338,7 @@
                 }, 100);
             }
 
+
             // ============================================
             // ✅ ระบบแยก/รวมรหัสสิ่งปลูกสร้างและป้ายอัตโนมัติ
             // ============================================
@@ -4461,6 +4515,7 @@
             document.getElementById('side-panel').classList.add('open');
             marker.closePopup();
         }
+
 
         // ✅ เพิ่มฟังก์ชันควบคุมการแสดงตัวเลือก '2-(1)ที่อยู่อาศัย หลังหลัก'
         function updateBUseOptions() {
