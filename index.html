@@ -3504,7 +3504,11 @@
                     readonly: true,
                     placeholder: 'ไม่ทราบเจ้าของ',
                     defaultValue: ownerValue,
-                    customClass: 'owner-field'  // ← ใช้คลาสเฉพาะ (ไม่ใช่ bg-white!important)
+                    customClass: 'owner-field',
+                    withButton: true,  // ✅ มีปุ่ม
+                    buttonLabel: 'W',  // ✅ ปุ่ม W
+                    buttonClass: 'bg-gray-300 hover:bg-gray-200 text-gray-800 border border-gray-400',
+                    buttonOnclick: 'openOwnerSearchModal("building")'  // ✅ เรียกฟังก์ชันค้นหา
                 },
 
                 { id: 'land_type', label: 'ประเภทที่ดิน', type: 'select', options: ['', 'โฉนด', 'โฉนดตราจอง', 'น.ส.2', 'น.ส.3', 'น.ส.3ก', 'น.ส.ล.', 'ที่ราชพัสดุ', 'ส.ธ.1', 'ส.ป.ก.4-01', 'ท.ค.', 'ทุ่งเลี้ยงสัตว์', 'อื่นๆ'], customClass: 'bg-custom-green' },
@@ -3605,7 +3609,11 @@
                     readonly: true,
                     placeholder: 'ไม่ทราบเจ้าของ',
                     defaultValue: ownerValue,
-                    customClass: 'owner-field'  // ← ใช้คลาสเดียวกัน
+                    customClass: 'owner-field',  // ← ใช้คลาสเดียวกัน
+                    withButton: true,  // ✅ มีปุ่ม
+                    buttonLabel: 'W',  // ✅ ปุ่ม W
+                    buttonClass: 'bg-gray-300 hover:bg-gray-200 text-gray-800 border border-gray-400',
+                    buttonOnclick: 'openOwnerSearchModal("building")'  // ✅ เรียกฟังก์ชันค้นหา
                 },
                 { id: 'check', label: 'สถานะการตรวจสอบ', type: 'select', options: ['ยังไม่สำรวจ', 'ถ่ายรูปแล้ว', 'ตรวจสอบแล้ว'], customClass: 'bg-custom-check-status' }
             ];
@@ -3752,6 +3760,50 @@
                             });
                             html += `</select>`;
                         }
+                    }
+                } else if (f.type === 'text') {
+                    const customClass = f.customClass || '';
+                    const isDisabled = (f.readonly || f.disabled) ? ' readonly' : '';
+                    
+                    // ✅ กรณีพิเศษ: ฟิลด์เจ้าของ (full_name / fullname) มีปุ่ม W
+                    if ((f.id === 'full_name' || f.id === 'fullname') && f.withButton) {
+                        
+                        // ✅ คำนวณค่าเจ้าของจาก title/fname/lname (ถ้า full_name ว่าง)
+                        let fieldValue = data[f.id];
+                        if (!fieldValue || fieldValue.trim() === '') {
+                            const ownerParts = [data.title, data.fname, data.lname]
+                                .filter(v => v && v.toString().trim());
+                            fieldValue = ownerParts.join(' | ');
+                        }
+                        
+                        const btnLabel = f.buttonLabel || 'W';
+                        const btnClass = f.buttonClass || 'bg-gray-800 hover:bg-gray-700 text-white';
+                        const btnOnclick = f.buttonOnclick || '';
+                        
+                        // ✅ ✅ ✅ ปุ่มอยู่ "ในช่อง" แบบเดียวกับปุ่ม A ✅ ✅ ✅
+                        html += `
+                        <div class="relative">
+                            <input type="text" name="${f.id}"
+                                   class="form-input ${customClass} w-full pr-12 md:pr-10"
+                                   value="${fieldValue || ''}" placeholder="${f.placeholder || ''}"${isDisabled}
+                                   style="padding-right: 3rem;">
+                            <button type="button" onclick="${btnOnclick}"
+                                    class="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-7 md:h-7 ${btnClass} rounded-md font-bold text-sm hover:opacity-90 active:opacity-80 transition-all flex items-center justify-center shadow-sm"
+                                    title="ค้นหาเจ้าของ">
+                                ${btnLabel}
+                            </button>
+                        </div>`;
+                        
+                    } else {
+                        // ✅ กรณีปกติ: input ข้อความไม่มีปุ่ม
+                        let fieldValue = data[f.id];
+                        if ((f.id === 'full_name' || f.id === 'fullname') && (!fieldValue || fieldValue.trim() === '')) {
+                            const ownerParts = [data.title, data.fname, data.lname]
+                                .filter(v => v && v.toString().trim());
+                            fieldValue = ownerParts.join(' | ');
+                        }
+                        html += `<input type="text" name="${f.id}" class="form-input ${customClass}" 
+                                        value="${fieldValue || ''}" placeholder="${f.placeholder || ''}"${isDisabled}>`;
                     }
                 } else if (f.type === 'number') {
                     const customClass = f.customClass || '';
