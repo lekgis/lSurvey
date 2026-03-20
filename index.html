@@ -2398,9 +2398,11 @@
             // ✅ สร้าง Modal ใหม่
             ownerSearchModal = document.createElement('div');
             ownerSearchModal.className = 'fixed inset-0 z-[4000] p-4 pointer-events-none';
+            // ✅ ✅ ✅ แก้: top: 25% + transform: translateX(-50%) เฉพาะแนวนอน ✅ ✅ ✅
             ownerSearchModal.innerHTML = `
             <div id="owner-search-window" class="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-lg animate-scale-in pointer-events-auto" 
-                 style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">
+                 style="position: absolute; left: 50%; top: 25%; transform: translateX(-50%);">
+                <!-- เนื้อหาข้างในเหมือนเดิม -->
                 <div id="owner-search-header" class="p-3 border-b flex justify-between items-center bg-gray-800 cursor-move rounded-t-lg">
                     <h3 class="font-bold text-sm text-white">🔍 ค้นหาเจ้าของ</h3>
                     <button onclick="closeOwnerSearchModal()" class="p-1 hover:bg-gray-700 rounded-full transition">
@@ -2439,24 +2441,15 @@
             `;
             
             document.body.appendChild(ownerSearchModal);
-            
-            // ✅ สร้าง icons (ถ้าใช้ lucide)
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
-            
-            // ✅ ทำให้ลากได้
+            if (typeof lucide !== 'undefined') { lucide.createIcons(); }
             makeDraggable(
                 ownerSearchModal.querySelector('#owner-search-window'),
                 ownerSearchModal.querySelector('#owner-search-header')
             );
             
-            // ✅ กด Enter เพื่อค้นหา
             const searchInput = document.getElementById('owner-search-input');
             if (searchInput) {
-                searchInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') searchOwners();
-                });
+                searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchOwners(); });
                 searchInput.focus();
             }
         }
@@ -2473,38 +2466,49 @@
             const resultsDiv = document.getElementById('owner-search-results');
             
             if (!resultsDiv) return;
-            
             resultsDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">กำลังค้นหา...</p>';
             
             try {
                 const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getData&type=owner`);
                 const data = await response.json();
-                const owners = data.owners || [];
+                let owners = data.owners || [];
                 
-                // ✅ กรองตามคำค้นหา
-                const filtered = owners.filter(o => {
-                    const fullName = `${o.title || ''} ${o.fname || ''} ${o.lname || ''}`.toString().toLowerCase();
+                // ✅ ✅ ✅ 1. เรียงตามวันที่อัปเดตล่าสุด (ใหม่สุดก่อน) ✅ ✅ ✅
+                owners.sort((a, b) => {
+                    // แปลงค่าอัปเดตเป็น timestamp สำหรับเปรียบเทียบ
+                    const timeA = a.update ? new Date(a.update).getTime() : 0;
+                    const timeB = b.update ? new Date(b.update).getTime() : 0;
+                    return timeB - timeA;  // Descending: ใหม่สุดก่อน
+                });
+                
+                // ✅ ✅ ✅ 2. ถ้าไม่มีการค้นหา → แสดงแค่ 50 รายการแรก ✅ ✅ ✅
+                if (!query) {
+                    owners = owners.slice(0, 50);
+                }
+                
+                // ✅ กรองตามคำค้นหา (ถ้ามี)
+                const filtered = query ? owners.filter(o => {
+                    const fullName = `${o.title||''} ${o.fname||''} ${o.lname||''}`.toString().toLowerCase();
                     const pop = String(o.pop || '').toLowerCase();
                     const searchLower = query.toLowerCase();
                     return fullName.includes(searchLower) || pop.includes(searchLower);
-                });
+                }) : owners;  // ถ้าไม่ค้นหา → ใช้รายการที่เรียงและตัดแล้ว
                 
                 ownerSearchResults = filtered;
                 
-                // ✅ แสดงผลลัพธ์
                 if (filtered.length === 0) {
                     resultsDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">ไม่พบเจ้าของที่ค้นหา</p>';
                 } else {
-                    // ✅ ✅ ✅ เพิ่มปุ่มแก้ไขท้ายแต่ละรายการ ✅ ✅ ✅
+                    // ✅ แสดงผลลัพธ์ (มีปุ่มแก้ไข)
                     resultsDiv.innerHTML = filtered.map((owner, index) => `
                     <div class="p-2 bg-white border rounded-lg hover:bg-gray-100 transition">
                         <div class="flex justify-between items-start gap-2">
                             <div class="flex-1 cursor-pointer" onclick="selectOwner(${index})">
-                                <p class="font-bold text-sm text-gray-900">${owner.title || ''} ${owner.fname || ''} ${owner.lname || ''}</p>
-                                <p class="text-xs text-gray-500">บัตร ปชช: ${owner.pop || '-'}</p>
-                                <p class="text-xs text-gray-500">โทร: ${owner.tel || '-'}</p>
+                                <p class="font-bold text-sm text-gray-900">${owner.title||''} ${owner.fname||''} ${owner.lname||''}</p>
+                                <p class="text-xs text-gray-500">บัตร ปชช: ${owner.pop||'-'}</p>
+                                <p class="text-xs text-gray-500">โทร: ${owner.tel||'-'}</p>
+                                ${owner.update ? `<p class="text-[10px] text-gray-400 mt-1">อัปเดต: ${formatDisplayDate(owner.update)}</p>` : ''}
                             </div>
-                            <!-- ✅ ปุ่มแก้ไข -->
                             <button type="button" onclick="editOwner(${index})" 
                                     class="px-2 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 transition whitespace-nowrap"
                                     title="แก้ไขข้อมูลเจ้าของ">
@@ -2514,10 +2518,21 @@
                     </div>
                     `).join('');
                 }
-                
             } catch (err) {
                 console.error('❌ ค้นหาเจ้าของล้มเหลว:', err);
                 resultsDiv.innerHTML = '<p class="text-sm text-red-500 text-center">ค้นหาไม่สำเร็จ</p>';
+            }
+        }
+
+        // ✅ ✅ ✅ ฟังก์ชันช่วย: แปลงวันที่อัปเดตเป็นรูปแบบไทย ✅ ✅ ✅
+        function formatDisplayDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const d = new Date(dateStr);
+                const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+                return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()+543} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            } catch {
+                return dateStr;
             }
         }
 
@@ -2543,15 +2558,41 @@
             closeOwnerSearchModal();
         }
 
+        // ✅ ✅ ✅ ข้อ 2: เพิ่มฟังก์ชันนับจำนวนหลักบัตร ปชช. ✅ ✅ ✅
+        function updatePopCounter() {
+            const popInput = document.getElementById('owner-pop');
+            const counterDisplay = document.getElementById('owner-pop-counter');
+            
+            if (!popInput || !counterDisplay) return;
+            
+            const currentLength = popInput.value.replace(/\D/g, '').length;  // นับเฉพาะตัวเลข
+            const maxLength = 13;
+            
+            // ✅ เปลี่ยนสีตามจำนวนหลัก
+            if (currentLength === 0) {
+                counterDisplay.className = 'text-xs text-gray-400';
+                counterDisplay.textContent = `${currentLength}/${maxLength} หลัก`;
+            } else if (currentLength < maxLength) {
+                counterDisplay.className = 'text-xs text-orange-500 font-medium';
+                counterDisplay.textContent = `${currentLength}/${maxLength} หลัก`;
+            } else {
+                counterDisplay.className = 'text-xs text-green-600 font-bold';
+                counterDisplay.textContent = `✅ ครบ ${maxLength} หลัก`;
+            }
+        }
+
+
         function openOwnerAddForm() {
             closeOwnerSearchModal();
             
             // ✅ สร้างฟอร์มเพิ่มเจ้าของใหม่
             const addModal = document.createElement('div');
             addModal.className = 'fixed inset-0 z-[4100] p-4 pointer-events-none';
+            // ✅ ✅ ✅ ข้อ 2: top: 5% + translateX(-50%) เฉพาะแนวนอน ✅ ✅ ✅
             addModal.innerHTML = `
             <div id="owner-add-window" class="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-lg animate-scale-in pointer-events-auto" 
-                 style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">
+                 style="position: absolute; left: 50%; top: 5%; transform: translateX(-50%);">
+                <!-- เนื้อหาข้างในเหมือนเดิม -->
                 <div id="owner-add-header" class="p-3 border-b flex justify-between items-center bg-green-800 cursor-move rounded-t-lg">
                     <h3 class="font-bold text-sm text-white">➕ เพิ่มเจ้าของใหม่</h3>
                     <button onclick="this.closest('.fixed').remove()" class="p-1 hover:bg-green-700 rounded-full transition">
@@ -2564,14 +2605,51 @@
                         <input type="text" id="owner-fname" class="form-input" placeholder="ชื่อ">
                         <input type="text" id="owner-lname" class="form-input" placeholder="นามสกุล">
                     </div>
-                    <input type="text" id="owner-pop" class="form-input" placeholder="เลขบัตร ปชช. (13 หลัก)">
-                    <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="owner-pop" class="form-input" 
+                           placeholder="เลขบัตร ปชช. (13 หลัก)" 
+                           maxlength="13"
+                           oninput="this.value = this.value.replace(/[^0-9]/g, ''); updatePopCounter()">
+                    <div id="owner-pop-counter" class="text-xs text-gray-400 mt-1 text-right">0/13 หลัก</div>
+
+                    <div class="grid grid-cols-3 gap-2">
                         <input type="text" id="owner-h_no" class="form-input" placeholder="บ้านเลขที่">
-                        <input type="text" id="owner-moo" class="form-input" placeholder="หมู่">
+                        
+                        <!-- ✅ หมู่ เป็นเมนูเลือก 1-22 -->
+                        <select id="owner-moo" class="form-input">
+                            <option value="">หมู่</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                            <option value="13">13</option>
+                            <option value="14">14</option>
+                            <option value="15">15</option>
+                            <option value="16">16</option>
+                            <option value="17">17</option>
+                            <option value="18">18</option>
+                            <option value="19">19</option>
+                            <option value="20">20</option>
+                            <option value="21">21</option>
+                            <option value="22">22</option>
+                            <option value="23">23</option>
+                            <option value="24">24</option>
+                            <option value="25">25</option>
+                        </select>
+                        
+                        <input type="text" id="owner-village" class="form-input" placeholder="หมู่บ้าน">
                     </div>
-                    <input type="text" id="owner-village" class="form-input" placeholder="หมู่บ้าน">
-                    <input type="text" id="owner-soi" class="form-input" placeholder="ซอย">
-                    <input type="text" id="owner-road" class="form-input" placeholder="ถนน">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="owner-soi" class="form-input" placeholder="ซอย">
+                        <input type="text" id="owner-road" class="form-input" placeholder="ถนน">
+                    </div>
                     <div class="grid grid-cols-3 gap-2">
                         <input type="text" id="owner-tambol" class="form-input" placeholder="ตำบล">
                         <input type="text" id="owner-amphoe" class="form-input" placeholder="อำเภอ">
@@ -2630,7 +2708,13 @@
                         <input type="text" id="owner-fname" class="form-input" placeholder="ชื่อ" value="${owner.fname || ''}">
                         <input type="text" id="owner-lname" class="form-input" placeholder="นามสกุล" value="${owner.lname || ''}">
                     </div>
-                    <input type="text" id="owner-pop" class="form-input" placeholder="เลขบัตร ปชช. (13 หลัก)" value="${owner.pop || ''}">
+                    <input type="text" id="owner-pop" class="form-input" 
+                           placeholder="เลขบัตร ปชช. (13 หลัก)" 
+                           maxlength="13"
+                           value="${owner.pop || ''}"
+                           oninput="this.value = this.value.replace(/[^0-9]/g, ''); updatePopCounter()">
+                    <div id="owner-pop-counter" class="text-xs text-gray-400 mt-1 text-right">${owner.pop ? owner.pop.length : 0}/13 หลัก</div>
+
                     <div class="grid grid-cols-2 gap-2">
                         <input type="text" id="owner-h_no" class="form-input" placeholder="บ้านเลขที่" value="${owner.h_no || ''}">
                         <input type="text" id="owner-moo" class="form-input" placeholder="หมู่" value="${owner.moo || ''}">
@@ -2768,8 +2852,15 @@
                 tel: document.getElementById('owner-tel')?.value?.trim() || '',
                 date_added: formatThaiDateTimeBE(new Date()),
                 update: formatThaiDateTimeBE(new Date()),
-                id: `owner_${Date.now()}_${Math.floor(Math.random() * 1000)}`  // ✅ ID ไม่ซ้ำ
+                id: `owner_${Date.now()}_${Math.floor(Math.random() * 1000)}`
             };
+            
+            // ✅ ✅ ✅ ข้อ 1: ตรวจสอบว่ามีการกรอกข้อมูลอย่างน้อย 1 ฟิลด์ ✅ ✅ ✅
+            const hasData = Object.values(newOwner).some(v => v && v.toString().trim() !== '');
+            if (!hasData) {
+                showNotificationLeft('⚠️ กรุณากรอกข้อมูลอย่างน้อย 1 ช่อง', 'warning');
+                return;  // ❌ หยุดการทำงาน ไม่สร้างคิว
+            }
             
             // ✅ ตรวจสอบบัตร ปชช. (ต้อง 13 หลัก)
             if (newOwner.pop && !/^\d{13}$/.test(newOwner.pop)) {
@@ -2777,20 +2868,18 @@
                 return;
             }
             
-            // ✅ 2. ✅ ✅ ✅ ปิดหน้าต่างทันที (ก่อนส่งข้อมูล) ✅ ✅ ✅
+            // ✅ 2. ปิดหน้าต่างทันที (ก่อนส่งข้อมูล)
             document.querySelectorAll('.fixed.z-\\[4100\\]').forEach(m => m.remove());
             showNotificationLeft('✅ กำลังบันทึกเจ้าของ...', 'info');
             
-            // ✅ 3. ✅ ✅ ✅ สร้างคิวสำหรับอัปโหลด (เหมือน building/sign) ✅ ✅ ✅
+            // ✅ 3. สร้างคิวสำหรับอัปโหลด
             try {
                 const queueId = addToSyncQueue('quickAdd', 'owner', newOwner, null, null, null);
                 console.log(`✅ สร้างคิวเจ้าของสำเร็จ: ${queueId}`);
                 
                 // ✅ 4. ถ้าออนไลน์ → ประมวลผลทันที
                 if (isOnline && navigator.onLine) {
-                    setTimeout(() => {
-                        processSyncQueue();
-                    }, 300);
+                    setTimeout(() => { processSyncQueue(); }, 300);
                 }
                 
                 // ✅ 5. กรอกค่าลงฟอร์ม (ถ้ามีฟอร์มเปิดอยู่)
