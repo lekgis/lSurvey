@@ -2387,22 +2387,20 @@
         let currentMarkerType = 'building';
 
         function openOwnerSearchModal(markerType) {
-            console.log('🔍 เปิด Modal ค้นหาเจ้าของ:', markerType);  // ✅ Debug log
+            console.log('🔍 เปิด Modal ค้นหาเจ้าของ:', markerType);
             currentMarkerType = markerType;
             
             // ✅ ซ่อน Modal เก่า (ถ้ามี)
-            if (ownerSearchModal) { 
-                ownerSearchModal.remove(); 
-            }
+            if (ownerSearchModal) { ownerSearchModal.remove(); }
             
             // ✅ สร้าง Modal ใหม่
             ownerSearchModal = document.createElement('div');
             ownerSearchModal.className = 'fixed inset-0 z-[4000] p-4 pointer-events-none';
-            // ✅ ✅ ✅ แก้: top: 25% + transform: translateX(-50%) เฉพาะแนวนอน ✅ ✅ ✅
+            
+            // ✅ ตำแหน่งหน้าต่าง 25% จากขอบบน
             ownerSearchModal.innerHTML = `
             <div id="owner-search-window" class="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-lg animate-scale-in pointer-events-auto" 
-                 style="position: absolute; left: 50%; top: 25%; transform: translateX(-50%);">
-                <!-- เนื้อหาข้างในเหมือนเดิม -->
+                 style="position: absolute; left: 50%; top: 10%; transform: translateX(-50%);">
                 <div id="owner-search-header" class="p-3 border-b flex justify-between items-center bg-gray-800 cursor-move rounded-t-lg">
                     <h3 class="font-bold text-sm text-white">🔍 ค้นหาเจ้าของ</h3>
                     <button onclick="closeOwnerSearchModal()" class="p-1 hover:bg-gray-700 rounded-full transition">
@@ -2422,7 +2420,7 @@
                     
                     <!-- ผลการค้นหา -->
                     <div id="owner-search-results" class="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-2 bg-gray-50">
-                        <p class="text-sm text-gray-500 text-center">พิมพ์ชื่อเพื่อค้นหา...</p>
+                        <p class="text-sm text-gray-500 text-center">กำลังค้นหา...</p>
                     </div>
                     
                     <!-- ปุ่มเพิ่มเจ้าของใหม่ -->
@@ -2452,6 +2450,9 @@
                 searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchOwners(); });
                 searchInput.focus();
             }
+            
+            // ✅ ✅ ✅ ข้อ 1: ค้นหาอัตโนมัติเมื่อเปิดหน้าต่าง ✅ ✅ ✅
+            setTimeout(() => { searchOwners(); }, 200);
         }
 
         function closeOwnerSearchModal() {
@@ -2461,6 +2462,71 @@
             }
         }
 
+        // ✅ ✅ ✅ ฟังก์ชันคำนวณคะแนนความเกี่ยวข้อง (0-100) ✅ ✅ ✅
+        function calculateRelevanceScore(text, query) {
+            if (!query || !text) return 0;
+            
+            const textLower = text.toLowerCase().trim();
+            const queryLower = query.toLowerCase().trim();
+            
+            // ✅ 100%: ตรงกันเป๊ะ
+            if (textLower === queryLower) return 100;
+            
+            // ✅ 95%: ขึ้นต้นด้วยคำค้นหา
+            if (textLower.startsWith(queryLower)) return 95;
+            
+            // ✅ 90%: มีคำค้นหาเป็นคำแยก (เช่น "สมชาย" ใน "นายสมชาย ใจดี")
+            const textWords = textLower.split(/[\s|]+/);
+            const queryWords = queryLower.split(/[\s|]+/);
+            if (queryWords.some(qw => textWords.includes(qw))) return 90;
+            
+            // ✅ 85%: มีคำค้นหาแบบติดกัน (contains)
+            if (textLower.includes(queryLower)) return 85;
+            
+            // ✅ 70-80%: มีคำค้นหาแบบแยกคำบางส่วน (ฟัซซี่)
+            let matchCount = 0;
+            for (const qw of queryWords) {
+                if (textWords.some(tw => tw.includes(qw) || qw.includes(tw))) {
+                    matchCount++;
+                }
+            }
+            if (matchCount > 0) {
+                return Math.min(80, 70 + (matchCount / queryWords.length) * 10);
+            }
+            
+            // ✅ 50-60%: ความคล้ายคลึงของตัวอักษร (Levenshtein แบบง่าย)
+            const distance = levenshteinDistance(textLower, queryLower);
+            const maxLength = Math.max(textLower.length, queryLower.length);
+            if (maxLength > 0 && distance / maxLength < 0.4) {
+                return Math.max(50, 60 - Math.floor((distance / maxLength) * 25));
+            }
+            
+            return 0;
+        }
+
+        // ✅ ✅ ✅ ฟังก์ชันคำนวณระยะห่างแบบเลเวนชไตน์ (สำหรับฟัซซี่แมตช์) ✅ ✅ ✅
+        function levenshteinDistance(a, b) {
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i-1) === a.charAt(j-1)) {
+                        matrix[i][j] = matrix[i-1][j-1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i-1][j-1] + 1,
+                            matrix[i][j-1] + 1,
+                            matrix[i-1][j] + 1
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        // ✅ ✅ ✅ แก้ฟังก์ชัน searchOwners() → ใช้คะแนนความเกี่ยวข้อง ✅ ✅ ✅
         async function searchOwners() {
             const query = document.getElementById('owner-search-input')?.value?.trim() || '';
             const resultsDiv = document.getElementById('owner-search-results');
@@ -2473,50 +2539,76 @@
                 const data = await response.json();
                 let owners = data.owners || [];
                 
-                // ✅ ✅ ✅ 1. เรียงตามวันที่อัปเดตล่าสุด (ใหม่สุดก่อน) ✅ ✅ ✅
+                // ✅ เรียงตามวันที่อัปเดตล่าสุด (สำหรับกรณีไม่ค้นหา)
                 owners.sort((a, b) => {
-                    // แปลงค่าอัปเดตเป็น timestamp สำหรับเปรียบเทียบ
                     const timeA = a.update ? new Date(a.update).getTime() : 0;
                     const timeB = b.update ? new Date(b.update).getTime() : 0;
-                    return timeB - timeA;  // Descending: ใหม่สุดก่อน
+                    return timeB - timeA;
                 });
                 
-                // ✅ ✅ ✅ 2. ถ้าไม่มีการค้นหา → แสดงแค่ 50 รายการแรก ✅ ✅ ✅
+                // ✅ ถ้าไม่มีการค้นหา → แสดงแค่ 50 รายการแรก (เรียงตามอัปเดต)
                 if (!query) {
-                    owners = owners.slice(0, 50);
+                    ownerSearchResults = owners.slice(0, 50);
+                } else {
+                    // ✅ ✅ ✅ มีการค้นหา → คำนวณคะแนนความเกี่ยวข้อง ✅ ✅ ✅
+                    const scored = owners.map(owner => {
+                        const fullName = `${owner.title||''} ${owner.fname||''} ${owner.lname||''}`.trim();
+                        const pop = String(owner.pop || '');
+                        const tel = String(owner.tel || '');
+                        
+                        // ✅ คำนวณคะแนนจากหลายฟิลด์
+                        const nameScore = calculateRelevanceScore(fullName, query);
+                        const popScore = calculateRelevanceScore(pop, query);
+                        const telScore = calculateRelevanceScore(tel, query);
+                        
+                        // ✅ ใช้คะแนนสูงสุดจากทุกฟิลด์
+                        const finalScore = Math.max(nameScore, popScore, telScore);
+                        
+                        return { owner, score: finalScore };
+                    })
+                    // ✅ กรองเอาเฉพาะที่มีคะแนน > 0
+                    .filter(item => item.score > 0)
+                    // ✅ เรียงตามคะแนนจากมากไปน้อย
+                    .sort((a, b) => b.score - a.score)
+                    // ✅ เอาเฉพาะ 50 รายการแรก
+                    .slice(0, 50)
+                    .map(item => item.owner);
+                    
+                    ownerSearchResults = scored;
                 }
                 
-                // ✅ กรองตามคำค้นหา (ถ้ามี)
-                const filtered = query ? owners.filter(o => {
-                    const fullName = `${o.title||''} ${o.fname||''} ${o.lname||''}`.toString().toLowerCase();
-                    const pop = String(o.pop || '').toLowerCase();
-                    const searchLower = query.toLowerCase();
-                    return fullName.includes(searchLower) || pop.includes(searchLower);
-                }) : owners;  // ถ้าไม่ค้นหา → ใช้รายการที่เรียงและตัดแล้ว
-                
-                ownerSearchResults = filtered;
+                // ✅ แสดงผลลัพธ์
+                const filtered = ownerSearchResults;
                 
                 if (filtered.length === 0) {
                     resultsDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">ไม่พบเจ้าของที่ค้นหา</p>';
                 } else {
-                    // ✅ แสดงผลลัพธ์ (มีปุ่มแก้ไข)
-                    resultsDiv.innerHTML = filtered.map((owner, index) => `
-                    <div class="p-2 bg-white border rounded-lg hover:bg-gray-100 transition">
-                        <div class="flex justify-between items-start gap-2">
-                            <div class="flex-1 cursor-pointer" onclick="selectOwner(${index})">
-                                <p class="font-bold text-sm text-gray-900">${owner.title||''} ${owner.fname||''} ${owner.lname||''}</p>
-                                <p class="text-xs text-gray-500">บัตร ปชช: ${owner.pop||'-'}</p>
-                                <p class="text-xs text-gray-500">โทร: ${owner.tel||'-'}</p>
-                                ${owner.update ? `<p class="text-[10px] text-gray-400 mt-1">อัปเดต: ${formatDisplayDate(owner.update)}</p>` : ''}
+                    resultsDiv.innerHTML = filtered.map((owner, index) => {
+                        // ✅ แสดงคะแนนความเกี่ยวข้อง (สำหรับดีบัก/ให้ผู้ใช้รู้)
+                        const relevanceBadge = query ? 
+                            `<span class="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded ml-1">${calculateRelevanceScore(`${owner.fname||''} ${owner.lname||''}`, query)}%</span>` 
+                            : '';
+                        
+                        return `
+                        <div class="p-2 bg-white border rounded-lg hover:bg-gray-100 transition">
+                            <div class="flex justify-between items-start gap-2">
+                                <div class="flex-1 cursor-pointer" onclick="selectOwner(${index})">
+                                    <p class="font-bold text-sm text-gray-900">
+                                        ${owner.title||''} ${owner.fname||''} ${owner.lname||''}${relevanceBadge}
+                                    </p>
+                                    <p class="text-xs text-gray-500">บัตร ปชช: ${owner.pop||'-'}</p>
+                                    <p class="text-xs text-gray-500">โทร: ${owner.tel||'-'}</p>
+                                    ${owner.update ? `<p class="text-[10px] text-gray-400 mt-1">อัปเดต: ${formatDisplayDate(owner.update)}</p>` : ''}
+                                </div>
+                                <button type="button" onclick="editOwner(${index})" 
+                                        class="px-2 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 transition whitespace-nowrap"
+                                        title="แก้ไขข้อมูลเจ้าของ">
+                                    ✏️ แก้ไข
+                                </button>
                             </div>
-                            <button type="button" onclick="editOwner(${index})" 
-                                    class="px-2 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 transition whitespace-nowrap"
-                                    title="แก้ไขข้อมูลเจ้าของ">
-                                ✏️ แก้ไข
-                            </button>
                         </div>
-                    </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 }
             } catch (err) {
                 console.error('❌ ค้นหาเจ้าของล้มเหลว:', err);
