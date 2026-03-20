@@ -367,8 +367,8 @@
         @media (max-width: 768px) and (orientation: portrait) {
             /* ปรับความสูงปุ่ม W ให้เท่ากับช่อง */
             .owner-search-btn {
-                height: 38px !important;  /* ✅ เท่ากับ .form-input ในมือถือ */
-                width: 40px !important;
+                height: 34px !important;  /* ✅ เท่ากับ .form-input ในมือถือ */
+                width: 34px !important;
                 font-size: 14px !important;
                 padding: 0 !important;
                 line-height: 1 !important;
@@ -376,15 +376,15 @@
             
             /* ปรับ padding-right ของ input ให้พอดีกับปุ่ม */
             .input-owner-wrapper {
-                padding-right: 3.2rem !important;
+                padding-right: 2.75rem !important;
             }
         }
 
         /* ✅ รองรับทุก orientation */
         @media (max-width: 768px) {
             .owner-search-btn {
-                height: 38px !important;
-                width: 40px !important;
+                height: 34px !important;
+                width: 34px !important;
                 flex-shrink: 0 !important;  /* ✅ ป้องกันการบีบอัด */
             }
         }
@@ -4489,7 +4489,7 @@
                                    value="${fieldValue || ''}" placeholder="${f.placeholder || ''}"${isDisabled}
                                    style="padding-right: 3rem;">
                             <button type="button" onclick="${btnOnclick}"
-                                    class="owner-search-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-7 md:h-7 ${btnClass} rounded-md font-bold text-sm hover:opacity-90 active:opacity-80 transition-all flex items-center justify-center shadow-sm"
+                                    class="owner-search-btn absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 md:w-7 md:h-7 ${btnClass} rounded-md font-bold text-sm hover:opacity-90 active:opacity-80 transition-all flex items-center justify-center shadow-sm"
                                     title="ค้นหาเจ้าของ">
                                 ${btnLabel}
                             </button>
