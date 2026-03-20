@@ -2676,7 +2676,7 @@
         // ✅ ✅ ✅ ฟังก์ชันบันทึกข้อมูลเจ้าของที่แก้ไข (แก้ใหม่) ✅ ✅ ✅
         async function saveEditedOwner() {
             const editedOwner = {
-                id: document.getElementById('owner-edit-id')?.value || '',
+                id: document.getElementById('owner-edit-id')?.value || '',  // ✅ มี id
                 pop: document.getElementById('owner-pop')?.value?.trim() || '',
                 title: document.getElementById('owner-title')?.value?.trim() || '',
                 fname: document.getElementById('owner-fname')?.value?.trim() || '',
@@ -2713,7 +2713,7 @@
             
             // ✅ 2. ✅ ✅ ✅ สร้างคิวสำหรับอัปโหลด (เหมือนเพิ่มเจ้าของใหม่) ✅ ✅ ✅
             try {
-                const queueId = addToSyncQueue('update', 'owner', editedOwner, null, null, null);
+                const queueId = addToSyncQueue('update', 'owner', editedOwner, editedOwner.id, null, null);
                 console.log(`✅ สร้างคิวแก้ไขเจ้าของสำเร็จ: ${queueId}`);
                 
                 // ✅ 3. ถ้าออนไลน์ → ประมวลผลทันที
