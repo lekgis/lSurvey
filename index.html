@@ -2477,23 +2477,15 @@
             resultsDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">กำลังค้นหา...</p>';
             
             try {
-                // ✅ ดึงข้อมูลจาก Google Sheets (ชีท owner)
                 const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getData&type=owner`);
                 const data = await response.json();
                 const owners = data.owners || [];
                 
-                // ✅ ✅ ✅ แก้: แปลงทุกค่าเป็น String ก่อนใช้ toLowerCase() ✅ ✅ ✅
+                // ✅ กรองตามคำค้นหา
                 const filtered = owners.filter(o => {
-                    // ✅ แปลงชื่อเป็น string + toLowerCase
-                    const fullName = `${o.title || ''} ${o.fname || ''} ${o.lname || ''}`
-                        .toString()
-                        .toLowerCase();
-                    
-                    // ✅ ✅ ✅ แก้: แปลง pop เป็น string ก่อน (สำคัญ!) ✅ ✅ ✅
+                    const fullName = `${o.title || ''} ${o.fname || ''} ${o.lname || ''}`.toString().toLowerCase();
                     const pop = String(o.pop || '').toLowerCase();
-                    
                     const searchLower = query.toLowerCase();
-                    
                     return fullName.includes(searchLower) || pop.includes(searchLower);
                 });
                 
@@ -2503,12 +2495,22 @@
                 if (filtered.length === 0) {
                     resultsDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">ไม่พบเจ้าของที่ค้นหา</p>';
                 } else {
+                    // ✅ ✅ ✅ เพิ่มปุ่มแก้ไขท้ายแต่ละรายการ ✅ ✅ ✅
                     resultsDiv.innerHTML = filtered.map((owner, index) => `
-                    <div class="p-2 bg-white border rounded-lg hover:bg-gray-100 cursor-pointer transition" 
-                         onclick="selectOwner(${index})">
-                        <p class="font-bold text-sm text-gray-900">${owner.title || ''} ${owner.fname || ''} ${owner.lname || ''}</p>
-                        <p class="text-xs text-gray-500">บัตร ปชช: ${owner.pop || '-'}</p>
-                        <p class="text-xs text-gray-500">โทร: ${owner.tel || '-'}</p>
+                    <div class="p-2 bg-white border rounded-lg hover:bg-gray-100 transition">
+                        <div class="flex justify-between items-start gap-2">
+                            <div class="flex-1 cursor-pointer" onclick="selectOwner(${index})">
+                                <p class="font-bold text-sm text-gray-900">${owner.title || ''} ${owner.fname || ''} ${owner.lname || ''}</p>
+                                <p class="text-xs text-gray-500">บัตร ปชช: ${owner.pop || '-'}</p>
+                                <p class="text-xs text-gray-500">โทร: ${owner.tel || '-'}</p>
+                            </div>
+                            <!-- ✅ ปุ่มแก้ไข -->
+                            <button type="button" onclick="editOwner(${index})" 
+                                    class="px-2 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 transition whitespace-nowrap"
+                                    title="แก้ไขข้อมูลเจ้าของ">
+                                ✏️ แก้ไข
+                            </button>
+                        </div>
                     </div>
                     `).join('');
                 }
@@ -2599,6 +2601,153 @@
                 addModal.querySelector('#owner-add-window'),
                 addModal.querySelector('#owner-add-header')
             );
+        }
+
+        // ✅ ✅ ✅ ฟังก์ชันแก้ไขเจ้าของ (ใช้ฟอร์มเดียวกับเพิ่มใหม่) ✅ ✅ ✅
+        function editOwner(index) {
+            const owner = ownerSearchResults[index];
+            if (!owner) return;
+            
+            // ✅ ปิด Modal ค้นหา
+            closeOwnerSearchModal();
+            
+            // ✅ สร้างฟอร์มแก้ไข (ใช้โครงสร้างเดียวกับ openOwnerAddForm)
+            const editModal = document.createElement('div');
+            editModal.className = 'fixed inset-0 z-[4100] p-4 pointer-events-none';
+            editModal.innerHTML = `
+            <div id="owner-edit-window" class="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-lg animate-scale-in pointer-events-auto" 
+                 style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">
+                <div id="owner-edit-header" class="p-3 border-b flex justify-between items-center bg-blue-800 cursor-move rounded-t-lg">
+                    <h3 class="font-bold text-sm text-white">✏️ แก้ไขเจ้าของ</h3>
+                    <button onclick="this.closest('.fixed').remove()" class="p-1 hover:bg-blue-700 rounded-full transition">
+                        <i data-lucide="x" class="w-4 h-4 text-white"></i>
+                    </button>
+                </div>
+                <div class="p-4 space-y-3">
+                    <input type="hidden" id="owner-edit-id" value="${owner.id || ''}">
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="owner-title" class="form-input" placeholder="คำนำหน้า" value="${owner.title || ''}">
+                        <input type="text" id="owner-fname" class="form-input" placeholder="ชื่อ" value="${owner.fname || ''}">
+                        <input type="text" id="owner-lname" class="form-input" placeholder="นามสกุล" value="${owner.lname || ''}">
+                    </div>
+                    <input type="text" id="owner-pop" class="form-input" placeholder="เลขบัตร ปชช. (13 หลัก)" value="${owner.pop || ''}">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="owner-h_no" class="form-input" placeholder="บ้านเลขที่" value="${owner.h_no || ''}">
+                        <input type="text" id="owner-moo" class="form-input" placeholder="หมู่" value="${owner.moo || ''}">
+                    </div>
+                    <input type="text" id="owner-village" class="form-input" placeholder="หมู่บ้าน" value="${owner.village || ''}">
+                    <input type="text" id="owner-soi" class="form-input" placeholder="ซอย" value="${owner.soi || ''}">
+                    <input type="text" id="owner-road" class="form-input" placeholder="ถนน" value="${owner.road || ''}">
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="owner-tambol" class="form-input" placeholder="ตำบล" value="${owner.tambol || ''}">
+                        <input type="text" id="owner-amphoe" class="form-input" placeholder="อำเภอ" value="${owner.amphoe || ''}">
+                        <input type="text" id="owner-changwat" class="form-input" placeholder="จังหวัด" value="${owner.changwat || ''}">
+                    </div>
+                    <input type="tel" id="owner-tel" class="form-input" placeholder="เบอร์โทร" value="${owner.tel || ''}">
+                    
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" onclick="saveEditedOwner()" 
+                                class="flex-1 py-2 bg-blue-600 text-white rounded font-bold text-sm hover:bg-blue-700 transition">
+                            💾 บันทึก
+                        </button>
+                        <button type="button" onclick="this.closest('.fixed').remove()" 
+                                class="flex-1 py-2 bg-gray-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition">
+                            ยกเลิก
+                        </button>
+                    </div>
+                </div>
+            </div>
+            `;
+            
+            document.body.appendChild(editModal);
+            
+            // ✅ สร้าง icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            
+            // ✅ ทำให้ลากได้
+            makeDraggable(
+                editModal.querySelector('#owner-edit-window'),
+                editModal.querySelector('#owner-edit-header')
+            );
+        }
+
+        // ✅ ✅ ✅ ฟังก์ชันบันทึกข้อมูลเจ้าของที่แก้ไข (แก้ใหม่) ✅ ✅ ✅
+        async function saveEditedOwner() {
+            const editedOwner = {
+                id: document.getElementById('owner-edit-id')?.value || '',
+                pop: document.getElementById('owner-pop')?.value?.trim() || '',
+                title: document.getElementById('owner-title')?.value?.trim() || '',
+                fname: document.getElementById('owner-fname')?.value?.trim() || '',
+                lname: document.getElementById('owner-lname')?.value?.trim() || '',
+                h_no: document.getElementById('owner-h_no')?.value?.trim() || '',
+                moo: document.getElementById('owner-moo')?.value?.trim() || '',
+                village: document.getElementById('owner-village')?.value?.trim() || '',
+                soi: document.getElementById('owner-soi')?.value?.trim() || '',
+                road: document.getElementById('owner-road')?.value?.trim() || '',
+                tambol: document.getElementById('owner-tambol')?.value?.trim() || '',
+                amphoe: document.getElementById('owner-amphoe')?.value?.trim() || '',
+                changwat: document.getElementById('owner-changwat')?.value?.trim() || '',
+                tel: document.getElementById('owner-tel')?.value?.trim() || '',
+                update: formatThaiDateTimeBE(new Date())
+                // ❌ ไม่มี date_added (คงค่าเดิม)
+                // ❌ ไม่มี image/picture
+            };
+            
+            // ✅ ตรวจสอบบัตร ปชช. (ต้อง 13 หลัก)
+            if (editedOwner.pop && !/^\d{13}$/.test(editedOwner.pop)) {
+                showNotificationLeft('⚠️ เลขบัตร ปชช. ต้อง 13 หลัก', 'warning');
+                return;
+            }
+            
+            // ✅ ตรวจสอบว่ามี id หรือไม่
+            if (!editedOwner.id) {
+                showNotificationLeft('❌ ไม่พบ ID เจ้าของ', 'error');
+                return;
+            }
+            
+            // ✅ 1. ✅ ✅ ✅ ปิดหน้าต่างแก้ไขทันที (ก่อนส่งข้อมูล) ✅ ✅ ✅
+            document.querySelectorAll('.fixed.z-\\[4100\\]').forEach(m => m.remove());
+            showNotificationLeft('✅ กำลังบันทึกการแก้ไข...', 'info');
+            
+            // ✅ 2. ✅ ✅ ✅ สร้างคิวสำหรับอัปโหลด (เหมือนเพิ่มเจ้าของใหม่) ✅ ✅ ✅
+            try {
+                const queueId = addToSyncQueue('update', 'owner', editedOwner, null, null, null);
+                console.log(`✅ สร้างคิวแก้ไขเจ้าของสำเร็จ: ${queueId}`);
+                
+                // ✅ 3. ถ้าออนไลน์ → ประมวลผลทันที
+                if (isOnline && navigator.onLine) {
+                    setTimeout(() => {
+                        processSyncQueue();
+                    }, 300);
+                }
+                
+                // ✅ 4. ✅ ✅ ✅ รีเฟรชผลการค้นหา + เปิด Modal ค้นหาอีกครั้ง ✅ ✅ ✅
+                setTimeout(() => {
+                    // ถ้า Modal ค้นหายังไม่เปิด → เปิดใหม่
+                    if (!ownerSearchModal) {
+                        openOwnerSearchModal(currentMarkerType);
+                    }
+                    // รีเฟรชผลการค้นหา
+                    setTimeout(() => {
+                        searchOwners();
+                        showNotificationLeft('✅ แก้ไขเจ้าของเรียบร้อยแล้ว!', 'success');
+                    }, 300);
+                }, 400);
+                
+            } catch (err) {
+                console.error('❌ สร้างคิวแก้ไขเจ้าของล้มเหลว:', err);
+                showNotificationLeft('❌ บันทึกล้มเหลว: ' + err.message, 'error');
+                
+                // ถ้ามีข้อผิดพลาด → เปิด Modal ค้นหาให้ผู้ใช้ลองใหม่
+                setTimeout(() => {
+                    if (!ownerSearchModal) {
+                        openOwnerSearchModal(currentMarkerType);
+                    }
+                    searchOwners();
+                }, 500);
+            }
         }
 
         async function saveNewOwner() {
