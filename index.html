@@ -74,9 +74,17 @@
             border: 2px solid #dc2626 !important; /* เพิ่มขอบสีแดงให้เห็นชัด */
         }
 
-        /* ✅ ทับกฎ readonly สำหรับฟิลด์เจ้าของ */
+        /* ✅ ทับกฎ readonly สำหรับฟิลด์เจ้าของ - พื้นดำ ตัวหนังสือขาว */
         .form-input.owner-field[readonly] {
-            background-color: white !important;
+            background-color: #1f2937 !important;  /* ✅ สีเทาเข้มเกือบดำ */
+            color: #ffffff !important;              /* ✅ ข้อความสีขาว */
+            cursor: not-allowed !important;
+            opacity: 1 !important;                  /* ✅ อย่าให้จาง */
+        }
+
+        /* ✅ Placeholder สีเทาอ่อน (ถ้ามี) */
+        .form-input.owner-field[readonly]::placeholder {
+            color: #9ca3af !important;
         }
 
         /* ข้อ 1: ปรับแต่งเป้าเล็งใหม่ (ใหญ่ขึ้น 20%, หนาขึ้น, สูงขึ้น 15%) */
@@ -3494,7 +3502,7 @@
                     label: 'เจ้าของ', 
                     type: 'text',
                     readonly: true,
-                    placeholder: '-',
+                    placeholder: 'ไม่ทราบเจ้าของ',
                     defaultValue: ownerValue,
                     customClass: 'owner-field'  // ← ใช้คลาสเฉพาะ (ไม่ใช่ bg-white!important)
                 },
@@ -3595,9 +3603,9 @@
                     label: 'เจ้าของ', 
                     type: 'text',
                     readonly: true,
-                    placeholder: '-',
+                    placeholder: 'ไม่ทราบเจ้าของ',
                     defaultValue: ownerValue,
-                    customClass: 'bg-white!important'
+                    customClass: 'owner-field'  // ← ใช้คลาสเดียวกัน
                 },
                 { id: 'check', label: 'สถานะการตรวจสอบ', type: 'select', options: ['ยังไม่สำรวจ', 'ถ่ายรูปแล้ว', 'ตรวจสอบแล้ว'], customClass: 'bg-custom-check-status' }
             ];
