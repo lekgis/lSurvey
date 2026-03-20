@@ -361,6 +361,32 @@
             display: none;
         }
 
+        /* ✅ ✅ ✅ แก้ปุ่ม W ล้นในมือถือแนวตั้ง ✅ ✅ ✅ */
+        @media (max-width: 768px) and (orientation: portrait) {
+            /* ปรับความสูงปุ่ม W ให้เท่ากับช่อง */
+            .owner-search-btn {
+                height: 38px !important;  /* ✅ เท่ากับ .form-input ในมือถือ */
+                width: 40px !important;
+                font-size: 14px !important;
+                padding: 0 !important;
+                line-height: 1 !important;
+            }
+            
+            /* ปรับ padding-right ของ input ให้พอดีกับปุ่ม */
+            .input-owner-wrapper {
+                padding-right: 3.2rem !important;
+            }
+        }
+
+        /* ✅ รองรับทุก orientation */
+        @media (max-width: 768px) {
+            .owner-search-btn {
+                height: 38px !important;
+                width: 40px !important;
+                flex-shrink: 0 !important;  /* ✅ ป้องกันการบีบอัด */
+            }
+        }
+
         /* Responsive สำหรับมือถือ */
         @media (max-width: 768px) {
             #gemini-modal {
@@ -2352,6 +2378,280 @@
             }
         }
 
+        // ✅ ============================================
+        // ✅ Modal ค้นหาเจ้าของ (Owner Search Modal)
+        // ✅ ============================================
+        // ✅ ✅ ✅ ฟังก์ชันเปิด Modal ค้นหาเจ้าของ ✅ ✅ ✅
+        let ownerSearchModal = null;
+        let ownerSearchResults = [];
+        let currentMarkerType = 'building';
+
+        function openOwnerSearchModal(markerType) {
+            console.log('🔍 เปิด Modal ค้นหาเจ้าของ:', markerType);  // ✅ Debug log
+            currentMarkerType = markerType;
+            
+            // ✅ ซ่อน Modal เก่า (ถ้ามี)
+            if (ownerSearchModal) { 
+                ownerSearchModal.remove(); 
+            }
+            
+            // ✅ สร้าง Modal ใหม่
+            ownerSearchModal = document.createElement('div');
+            ownerSearchModal.className = 'fixed inset-0 z-[4000] p-4 pointer-events-none';
+            ownerSearchModal.innerHTML = `
+            <div id="owner-search-window" class="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-lg animate-scale-in pointer-events-auto" 
+                 style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">
+                <div id="owner-search-header" class="p-3 border-b flex justify-between items-center bg-gray-800 cursor-move rounded-t-lg">
+                    <h3 class="font-bold text-sm text-white">🔍 ค้นหาเจ้าของ</h3>
+                    <button onclick="closeOwnerSearchModal()" class="p-1 hover:bg-gray-700 rounded-full transition">
+                        <i data-lucide="x" class="w-4 h-4 text-white"></i>
+                    </button>
+                </div>
+                <div class="p-4 space-y-3">
+                    <!-- ช่องค้นหา -->
+                    <div class="flex gap-2">
+                        <input type="text" id="owner-search-input" class="form-input flex-1" 
+                               placeholder="ค้นหาชื่อ, นามสกุล, บัตร ปชช.">
+                        <button type="button" onclick="searchOwners()" 
+                                class="px-4 py-2 bg-gray-800 text-white rounded font-bold text-sm hover:bg-gray-700 transition">
+                            ค้นหา
+                        </button>
+                    </div>
+                    
+                    <!-- ผลการค้นหา -->
+                    <div id="owner-search-results" class="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-2 bg-gray-50">
+                        <p class="text-sm text-gray-500 text-center">พิมพ์ชื่อเพื่อค้นหา...</p>
+                    </div>
+                    
+                    <!-- ปุ่มเพิ่มเจ้าของใหม่ -->
+                    <div class="flex gap-2 pt-2 border-t">
+                        <button type="button" onclick="openOwnerAddForm()" 
+                                class="flex-1 py-2 bg-green-600 text-white rounded font-bold text-sm hover:bg-green-700 transition">
+                            ➕ เพิ่มเจ้าของใหม่
+                        </button>
+                        <button type="button" onclick="closeOwnerSearchModal()" 
+                                class="flex-1 py-2 bg-gray-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition">
+                            ปิด
+                        </button>
+                    </div>
+                </div>
+            </div>
+            `;
+            
+            document.body.appendChild(ownerSearchModal);
+            
+            // ✅ สร้าง icons (ถ้าใช้ lucide)
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            
+            // ✅ ทำให้ลากได้
+            makeDraggable(
+                ownerSearchModal.querySelector('#owner-search-window'),
+                ownerSearchModal.querySelector('#owner-search-header')
+            );
+            
+            // ✅ กด Enter เพื่อค้นหา
+            const searchInput = document.getElementById('owner-search-input');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') searchOwners();
+                });
+                searchInput.focus();
+            }
+        }
+
+        function closeOwnerSearchModal() {
+            if (ownerSearchModal) {
+                ownerSearchModal.remove();
+                ownerSearchModal = null;
+            }
+        }
+
+        async function searchOwners() {
+            const query = document.getElementById('owner-search-input')?.value?.trim() || '';
+            const resultsDiv = document.getElementById('owner-search-results');
+            
+            if (!resultsDiv) return;
+            
+            resultsDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">กำลังค้นหา...</p>';
+            
+            try {
+                // ✅ ดึงข้อมูลจาก Google Sheets (ชีท owner)
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getData&type=owner`);
+                const data = await response.json();
+                const owners = data.owners || [];
+                
+                // ✅ กรองตามคำค้นหา
+                const filtered = owners.filter(o => {
+                    const fullName = `${o.title || ''} ${o.fname || ''} ${o.lname || ''}`.toLowerCase();
+                    const pop = (o.pop || '').toLowerCase();
+                    const searchLower = query.toLowerCase();
+                    return fullName.includes(searchLower) || pop.includes(searchLower);
+                });
+                
+                ownerSearchResults = filtered;
+                
+                // ✅ แสดงผลลัพธ์
+                if (filtered.length === 0) {
+                    resultsDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">ไม่พบเจ้าของที่ค้นหา</p>';
+                } else {
+                    resultsDiv.innerHTML = filtered.map((owner, index) => `
+                    <div class="p-2 bg-white border rounded-lg hover:bg-gray-100 cursor-pointer transition" 
+                         onclick="selectOwner(${index})">
+                        <p class="font-bold text-sm text-gray-900">${owner.title || ''} ${owner.fname || ''} ${owner.lname || ''}</p>
+                        <p class="text-xs text-gray-500">บัตร ปชช: ${owner.pop || '-'}</p>
+                        <p class="text-xs text-gray-500">โทร: ${owner.tel || '-'}</p>
+                    </div>
+                    `).join('');
+                }
+                
+            } catch (err) {
+                console.error('❌ ค้นหาเจ้าของล้มเหลว:', err);
+                resultsDiv.innerHTML = '<p class="text-sm text-red-500 text-center">ค้นหาไม่สำเร็จ</p>';
+            }
+        }
+
+        function selectOwner(index) {
+            const owner = ownerSearchResults[index];
+            if (!owner) return;
+            
+            // ✅ รวมชื่อเป็นรูปแบบ "title | fname | lname"
+            const ownerParts = [owner.title, owner.fname, owner.lname].filter(v => v && v.trim());
+            const ownerValue = ownerParts.join(' | ');
+            
+            // ✅ กรอกลงช่อง full_name / fullname ตามประเภทมาร์กเกอร์
+            const fieldName = currentMarkerType === 'building' ? 'full_name' : 'fullname';
+            const input = document.querySelector(`input[name="${fieldName}"]`);
+            if (input) {
+                input.value = ownerValue;
+            }
+            
+            // ✅ เก็บข้อมูลเจ้าของไว้สำหรับบันทึก (ถ้ามีการแก้ไข)
+            window.selectedOwnerData = { ...owner };
+            
+            showNotificationLeft(`✅ เลือกเจ้าของ: ${owner.fname} ${owner.lname}`, 'success');
+            closeOwnerSearchModal();
+        }
+
+        function openOwnerAddForm() {
+            closeOwnerSearchModal();
+            
+            // ✅ สร้างฟอร์มเพิ่มเจ้าของใหม่
+            const addModal = document.createElement('div');
+            addModal.className = 'fixed inset-0 z-[4100] p-4 pointer-events-none';
+            addModal.innerHTML = `
+            <div id="owner-add-window" class="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-lg animate-scale-in pointer-events-auto" 
+                 style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">
+                <div id="owner-add-header" class="p-3 border-b flex justify-between items-center bg-green-800 cursor-move rounded-t-lg">
+                    <h3 class="font-bold text-sm text-white">➕ เพิ่มเจ้าของใหม่</h3>
+                    <button onclick="this.closest('.fixed').remove()" class="p-1 hover:bg-green-700 rounded-full transition">
+                        <i data-lucide="x" class="w-4 h-4 text-white"></i>
+                    </button>
+                </div>
+                <div class="p-4 space-y-3">
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="owner-title" class="form-input" placeholder="คำนำหน้า">
+                        <input type="text" id="owner-fname" class="form-input" placeholder="ชื่อ">
+                        <input type="text" id="owner-lname" class="form-input" placeholder="นามสกุล">
+                    </div>
+                    <input type="text" id="owner-pop" class="form-input" placeholder="เลขบัตร ปชช. (13 หลัก)">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="owner-h_no" class="form-input" placeholder="บ้านเลขที่">
+                        <input type="text" id="owner-moo" class="form-input" placeholder="หมู่">
+                    </div>
+                    <input type="text" id="owner-village" class="form-input" placeholder="หมู่บ้าน">
+                    <input type="text" id="owner-soi" class="form-input" placeholder="ซอย">
+                    <input type="text" id="owner-road" class="form-input" placeholder="ถนน">
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="owner-tambol" class="form-input" placeholder="ตำบล">
+                        <input type="text" id="owner-amphoe" class="form-input" placeholder="อำเภอ">
+                        <input type="text" id="owner-changwat" class="form-input" placeholder="จังหวัด">
+                    </div>
+                    <input type="tel" id="owner-tel" class="form-input" placeholder="เบอร์โทร">
+                    
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" onclick="saveNewOwner()" 
+                                class="flex-1 py-2 bg-green-600 text-white rounded font-bold text-sm hover:bg-green-700 transition">
+                            บันทึก
+                        </button>
+                        <button type="button" onclick="this.closest('.fixed').remove()" 
+                                class="flex-1 py-2 bg-gray-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition">
+                            ยกเลิก
+                        </button>
+                    </div>
+                </div>
+            </div>
+            `;
+            
+            document.body.appendChild(addModal);
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            makeDraggable(
+                addModal.querySelector('#owner-add-window'),
+                addModal.querySelector('#owner-add-header')
+            );
+        }
+
+        async function saveNewOwner() {
+            const newOwner = {
+                pop: document.getElementById('owner-pop')?.value?.trim() || '',
+                title: document.getElementById('owner-title')?.value?.trim() || '',
+                fname: document.getElementById('owner-fname')?.value?.trim() || '',
+                lname: document.getElementById('owner-lname')?.value?.trim() || '',
+                h_no: document.getElementById('owner-h_no')?.value?.trim() || '',
+                moo: document.getElementById('owner-moo')?.value?.trim() || '',
+                village: document.getElementById('owner-village')?.value?.trim() || '',
+                soi: document.getElementById('owner-soi')?.value?.trim() || '',
+                road: document.getElementById('owner-road')?.value?.trim() || '',
+                tambol: document.getElementById('owner-tambol')?.value?.trim() || '',
+                amphoe: document.getElementById('owner-amphoe')?.value?.trim() || '',
+                changwat: document.getElementById('owner-changwat')?.value?.trim() || '',
+                tel: document.getElementById('owner-tel')?.value?.trim() || '',
+                date_added: formatThaiDateTimeBE(new Date()),
+                update: formatThaiDateTimeBE(new Date()),
+                id: `owner_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+            };
+            
+            // ✅ ตรวจสอบบัตร ปชช. (ต้อง 13 หลัก)
+            if (newOwner.pop && !/^\d{13}$/.test(newOwner.pop)) {
+                showNotificationLeft('⚠️ เลขบัตร ปชช. ต้อง 13 หลัก', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=quickAdd&type=owner`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `payload=${encodeURIComponent(JSON.stringify(newOwner))}`
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 200) {
+                    showNotificationLeft('✅ เพิ่มเจ้าของสำเร็จ', 'success');
+                    
+                    // ✅ เลือกเจ้าของที่เพิ่มทันที
+                    const ownerParts = [newOwner.title, newOwner.fname, newOwner.lname].filter(v => v && v.trim());
+                    const ownerValue = ownerParts.join(' | ');
+                    const fieldName = currentMarkerType === 'building' ? 'full_name' : 'fullname';
+                    const input = document.querySelector(`input[name="${fieldName}"]`);
+                    if (input) input.value = ownerValue;
+                    
+                    window.selectedOwnerData = { ...newOwner };
+                    
+                    // ✅ ปิด modal
+                    document.querySelectorAll('.fixed.z-\\[4100\\]').forEach(m => m.remove());
+                } else {
+                    showNotificationLeft('❌ เพิ่มเจ้าของล้มเหลว: ' + result.message, 'error');
+                }
+            } catch (err) {
+                console.error('❌ เพิ่มเจ้าของล้มเหลว:', err);
+                showNotificationLeft('❌ เพิ่มเจ้าของล้มเหลว: ' + err.message, 'error');
+            }
+        }
+
         // ✅ ✅ ✅ แก้ฟังก์ชันคำนวณพื้นที่ ✅ ✅ ✅
         function calculateAreaFromAreaCrosshair() {
             console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าเล็ง...');
@@ -3784,16 +4084,15 @@
                         html += `
                         <div class="relative">
                             <input type="text" name="${f.id}"
-                                   class="form-input ${customClass} w-full pr-12 md:pr-10"
+                                   class="form-input ${customClass} w-full pr-12 md:pr-10 input-owner-wrapper"
                                    value="${fieldValue || ''}" placeholder="${f.placeholder || ''}"${isDisabled}
                                    style="padding-right: 3rem;">
                             <button type="button" onclick="${btnOnclick}"
-                                    class="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-7 md:h-7 ${btnClass} rounded-md font-bold text-sm hover:opacity-90 active:opacity-80 transition-all flex items-center justify-center shadow-sm"
+                                    class="owner-search-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-7 md:h-7 ${btnClass} rounded-md font-bold text-sm hover:opacity-90 active:opacity-80 transition-all flex items-center justify-center shadow-sm"
                                     title="ค้นหาเจ้าของ">
                                 ${btnLabel}
                             </button>
-                        </div>`;
-                        
+                        </div>`;                        
                     } else {
                         // ✅ กรณีปกติ: input ข้อความไม่มีปุ่ม
                         let fieldValue = data[f.id];
