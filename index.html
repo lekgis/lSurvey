@@ -2699,7 +2699,7 @@
 
 
 
-        // ✅ ✅ ✅ ฟังก์ชันแก้ไขเจ้าของ (ใช้ฟอร์มเดียวกับเพิ่มใหม่) ✅ ✅ ✅
+        // ✅ ✅ ✅ ฟังก์ชันแก้ไขเจ้าของ (แก้แล้ว) ✅ ✅ ✅
         function editOwner(index) {
             const owner = ownerSearchResults[index];
             if (!owner) return;
@@ -2707,9 +2707,11 @@
             // ✅ ปิด Modal ค้นหา
             closeOwnerSearchModal();
             
-            // ✅ สร้างฟอร์มแก้ไข (ใช้โครงสร้างเดียวกับ openOwnerAddForm)
+            // ✅ สร้างฟอร์มแก้ไข
             const editModal = document.createElement('div');
             editModal.className = 'fixed inset-0 z-[4100] p-4 pointer-events-none';
+            
+            // ✅ ตำแหน่งหน้าต่าง 5% จากขอบบน
             editModal.innerHTML = `
             <div id="owner-edit-window" class="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-lg animate-scale-in pointer-events-auto" 
                  style="position: absolute; left: 50%; top: 5%; transform: translateX(-50%);">
@@ -2721,34 +2723,56 @@
                 </div>
                 <div class="p-4 space-y-3">
                     <input type="hidden" id="owner-edit-id" value="${owner.id || ''}">
-                    <div class="grid grid-cols-3 gap-2">
-                        <input type="text" id="owner-title" class="form-input" placeholder="คำนำหน้า" value="${owner.title || ''}">
-                        <input type="text" id="owner-fname" class="form-input" placeholder="ชื่อ" value="${owner.fname || ''}">
-                        <input type="text" id="owner-lname" class="form-input" placeholder="นามสกุล" value="${owner.lname || ''}">
-                    </div>
-                    <input type="text" id="owner-pop" class="form-input" 
-                           placeholder="เลขบัตร ปชช. (13 หลัก)" 
-                           maxlength="13"
-                           value="${owner.pop || ''}"
-                           oninput="this.value = this.value.replace(/[^0-9]/g, ''); updatePopCounter()">
-                    <div id="owner-pop-counter" class="text-xs text-gray-400 mt-1 text-right">${owner.pop ? owner.pop.length : 0}/13 หลัก</div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="owner-h_no" class="form-input" placeholder="บ้านเลขที่" value="${owner.h_no || ''}">
-                        <input type="text" id="owner-moo" class="form-input" placeholder="หมู่" value="${owner.moo || ''}">
-                    </div>
-                    <input type="text" id="owner-village" class="form-input" placeholder="หมู่บ้าน" value="${owner.village || ''}">
-                    <input type="text" id="owner-soi" class="form-input" placeholder="ซอย" value="${owner.soi || ''}">
-                    <input type="text" id="owner-road" class="form-input" placeholder="ถนน" value="${owner.road || ''}">
-                    <div class="grid grid-cols-3 gap-2">
-                        <input type="text" id="owner-tambol" class="form-input" placeholder="ตำบล" value="${owner.tambol || ''}">
-                        <input type="text" id="owner-amphoe" class="form-input" placeholder="อำเภอ" value="${owner.amphoe || ''}">
-                        <input type="text" id="owner-changwat" class="form-input" placeholder="จังหวัด" value="${owner.changwat || ''}">
-                    </div>
-                    <input type="tel" id="owner-tel" class="form-input" placeholder="เบอร์โทร" value="${owner.tel || ''}">
                     
+                    <!-- คำนำหน้า + ชื่อ + นามสกุล -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="owner-title" class="form-input" placeholder="คำนำหน้า" value="${owner.title || ''}" oninput="checkOwnerFormValidity()">
+                        <input type="text" id="owner-fname" class="form-input" placeholder="ชื่อ" value="${owner.fname || ''}" oninput="checkOwnerFormValidity()">
+                        <input type="text" id="owner-lname" class="form-input" placeholder="นามสกุล" value="${owner.lname || ''}" oninput="checkOwnerFormValidity()">
+                    </div>
+                    
+                    <!-- บัตร ปชช. + ตัวนับ -->
+                    <div>
+                        <input type="text" id="owner-pop" class="form-input" 
+                               placeholder="เลขบัตร ปชช. (13 หลัก)" 
+                               maxlength="13"
+                               value="${owner.pop || ''}"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, ''); updatePopCounter(); checkOwnerFormValidity()">
+                        <div id="owner-pop-counter" class="text-xs text-gray-400 mt-1 text-right">${owner.pop ? owner.pop.length : 0}/13 หลัก</div>
+                    </div>
+                    
+                    <!-- ✅ ข้อ 1: บ้านเลขที่ + หมู่ + หมู่บ้าน แถวเดียวกัน + หมู่เป็นเมนู 1-25 -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="owner-h_no" class="form-input" placeholder="บ้านเลขที่" value="${owner.h_no || ''}" oninput="checkOwnerFormValidity()">
+                        
+                        <!-- ✅ หมู่ เป็นเมนูเลือก 1-25 -->
+                        <select id="owner-moo" class="form-input" onchange="checkOwnerFormValidity()">
+                            <option value="">หมู่</option>
+                            ${Array.from({length: 25}, (_, i) => `<option value="${i+1}" ${owner.moo == i+1 ? 'selected' : ''}>${i+1}</option>`).join('')}
+                        </select>
+                        
+                        <input type="text" id="owner-village" class="form-input" placeholder="หมู่บ้าน" value="${owner.village || ''}" oninput="checkOwnerFormValidity()">
+                    </div>
+                    
+                    <!-- ✅ ข้อ 2: ซอย + ถนน แถวเดียวกันในแนวนอน -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="owner-soi" class="form-input" placeholder="ซอย" value="${owner.soi || ''}" oninput="checkOwnerFormValidity()">
+                        <input type="text" id="owner-road" class="form-input" placeholder="ถนน" value="${owner.road || ''}" oninput="checkOwnerFormValidity()">
+                    </div>
+                    
+                    <!-- ตำบล + อำเภอ + จังหวัด -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="owner-tambol" class="form-input" placeholder="ตำบล" value="${owner.tambol || ''}" oninput="checkOwnerFormValidity()">
+                        <input type="text" id="owner-amphoe" class="form-input" placeholder="อำเภอ" value="${owner.amphoe || ''}" oninput="checkOwnerFormValidity()">
+                        <input type="text" id="owner-changwat" class="form-input" placeholder="จังหวัด" value="${owner.changwat || ''}" oninput="checkOwnerFormValidity()">
+                    </div>
+                    
+                    <!-- เบอร์โทร -->
+                    <input type="tel" id="owner-tel" class="form-input" placeholder="เบอร์โทร" value="${owner.tel || ''}" oninput="checkOwnerFormValidity()">
+                    
+                    <!-- ปุ่มบันทึก + ยกเลิก -->
                     <div class="flex gap-2 pt-2">
-                        <button type="button" onclick="saveEditedOwner()" 
+                        <button type="button" id="owner-save-btn" onclick="saveEditedOwner()" 
                                 class="flex-1 py-2 bg-blue-600 text-white rounded font-bold text-sm hover:bg-blue-700 transition">
                             💾 บันทึก
                         </button>
@@ -2773,6 +2797,12 @@
                 editModal.querySelector('#owner-edit-window'),
                 editModal.querySelector('#owner-edit-header')
             );
+            
+            // ✅ ✅ ✅ เรียกตรวจสอบฟอร์ม + ตัวนับบัตร ปชช. เมื่อเปิดฟอร์ม ✅ ✅ ✅
+            setTimeout(() => { 
+                checkOwnerFormValidity(); 
+                updatePopCounter(); 
+            }, 100);
         }
 
         // ✅ ✅ ✅ ฟังก์ชันบันทึกข้อมูลเจ้าของที่แก้ไข (แก้ใหม่) ✅ ✅ ✅
