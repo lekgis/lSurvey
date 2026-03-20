@@ -20,6 +20,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- ✅ เพิ่มใน <head> ของไฟล์หลัก (ก่อน </head>) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <!-- เพิ่มในส่วน <head> ของไฟล์ HTML -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -11317,6 +11319,259 @@
                 closeSettingsMenu();
             }
         }
+
+        // ✅ ============================================
+        // ✅ ระบบนำเข้าเจ้าของจาก Excel/CSV
+        // ✅ ============================================
+
+        let ownerImportData = [];
+        let ownerImportStats = { success: 0, skipped: 0, failed: 0, total: 0 };
+        let existingOwners = new Set(); // เก็บคู่ fname|lname ที่มีแล้ว
+
+        // ✅ อ่านไฟล์และเตรียมข้อมูล
+        async function readOwnerImportFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        let rows = [];
+                        
+                        if (file.name.endsWith('.csv')) {
+                            // ✅ อ่าน CSV
+                            const text = new TextDecoder().decode(data);
+                            rows = text.split('\n').map(line => {
+                                const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                                return cols;
+                            }).filter(row => row.length > 1 && row.some(c => c));
+                        } else {
+                            // ✅ อ่าน Excel (ใช้ SheetJS)
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                        }
+                        
+                        // ✅ แปลงเป็น object ตามคอลัมน์ owner
+                        const headers = rows[0].map(h => String(h).trim().toLowerCase());
+                        const requiredCols = ['fname', 'lname'];
+                        
+                        // ✅ ตรวจสอบคอลัมน์จำเป็น
+                        const missingCols = requiredCols.filter(col => !headers.includes(col));
+                        if (missingCols.length > 0) {
+                            throw new Error(`ขาดคอลัมน์จำเป็น: ${missingCols.join(', ')}`);
+                        }
+                        
+                        const result = [];
+                        for (let i = 1; i < rows.length; i++) {
+                            const row = rows[i];
+                            if (!row || row.every(c => !c)) continue;
+                            
+                            const obj = {};
+                            headers.forEach((h, idx) => {
+                                // ✅ แมปชื่อคอลัมน์ที่อาจเขียนต่างกัน
+                                const keyMap = {
+                                    'pop': ['pop', 'id_card', 'citizen_id', 'บัตรประชาชน'],
+                                    'title': ['title', 'prefix', 'คำนำหน้า'],
+                                    'fname': ['fname', 'first_name', 'firstname', 'ชื่อ'],
+                                    'lname': ['lname', 'last_name', 'lastname', 'นามสกุล'],
+                                    'h_no': ['h_no', 'house_no', 'บ้านเลขที่'],
+                                    'moo': ['moo', 'หมู่'],
+                                    'village': ['village', 'หมู่บ้าน'],
+                                    'soi': ['soi', 'ซอย'],
+                                    'road': ['road', 'ถนน'],
+                                    'tambol': ['tambol', 'ตำบล'],
+                                    'amphoe': ['amphoe', 'อำเภอ'],
+                                    'changwat': ['changwat', 'จังหวัด'],
+                                    'tel': ['tel', 'phone', 'เบอร์โทร']
+                                };
+                                
+                                // ✅ หาคีย์ที่ตรง
+                                let foundKey = null;
+                                for (const [stdKey, aliases] of Object.entries(keyMap)) {
+                                    if (aliases.includes(h)) {
+                                        foundKey = stdKey;
+                                        break;
+                                    }
+                                }
+                                if (foundKey) {
+                                    obj[foundKey] = String(row[idx] || '').trim();
+                                }
+                            });
+                            
+                            // ✅ ต้องมี fname + lname
+                            if (obj.fname && obj.lname) {
+                                result.push(obj);
+                            }
+                        }
+                        
+                        resolve(result);
+                        
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = () => reject(new Error('อ่านไฟล์ล้มเหลว'));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // ✅ ดึงรายชื่อเจ้าของที่มีแล้วในระบบ (เช็คซ้ำ)
+        async function fetchExistingOwners() {
+            try {
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getData&type=owner`);
+                const data = await response.json();
+                const owners = data.owners || [];
+                
+                // ✅ สร้าง Set ของคู่ fname|lname
+                existingOwners = new Set(
+                    owners.map(o => `${(o.fname||'').toLowerCase()}|${(o.lname||'').toLowerCase()}`)
+                );
+                
+                console.log(`✅ โหลดรายชื่อเจ้าของที่มีแล้ว: ${existingOwners.size} รายชื่อ`);
+                return true;
+            } catch (err) {
+                console.error('❌ โหลดรายชื่อเจ้าของล้มเหลว:', err);
+                return false;
+            }
+        }
+
+        // ✅ เริ่มกระบวนการนำเข้า
+        async function startOwnerImport() {
+            const fileInput = document.getElementById('owner-import-file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showNotificationLeft('⚠️ กรุณาเลือกไฟล์ก่อน', 'warning');
+                return;
+            }
+            
+            // ✅ UI: แสดงความคืบหน้า
+            document.getElementById('owner-import-progress').classList.remove('hidden');
+            document.getElementById('btn-owner-import-start').disabled = true;
+            
+            try {
+                // ✅ 1. อ่านไฟล์
+                showNotificationLeft('📖 กำลังอ่านไฟล์...', 'info');
+                ownerImportData = await readOwnerImportFile(file);
+                
+                if (ownerImportData.length === 0) {
+                    throw new Error('ไม่พบข้อมูลในไฟล์');
+                }
+                
+                ownerImportStats = { 
+                    success: 0, 
+                    skipped: 0, 
+                    failed: 0, 
+                    total: ownerImportData.length 
+                };
+                
+                // ✅ 2. ดึงรายชื่อที่มีแล้วในระบบ
+                showNotificationLeft('🔍 ตรวจสอบรายชื่อที่มีในระบบ...', 'info');
+                await fetchExistingOwners();
+                
+                // ✅ 3. ประมวลผลทีละรายการ (ใช้คิว)
+                for (let i = 0; i < ownerImportData.length; i++) {
+                    const item = ownerImportData[i];
+                    const key = `${item.fname.toLowerCase()}|${item.lname.toLowerCase()}`;
+                    
+                    // ✅ เช็คซ้ำ: ถ้ามีแล้ว → ข้าม
+                    if (existingOwners.has(key)) {
+                        ownerImportStats.skipped++;
+                        updateOwnerImportProgress();
+                        continue;
+                    }
+                    
+                    // ✅ เตรียมข้อมูลสำหรับบันทึก
+                    const newOwner = {
+                        pop: item.pop || '',
+                        title: item.title || '',
+                        fname: item.fname,
+                        lname: item.lname,
+                        h_no: item.h_no || '',
+                        moo: item.moo || '',
+                        village: item.village || '',
+                        soi: item.soi || '',
+                        road: item.road || '',
+                        tambol: item.tambol || '',
+                        amphoe: item.amphoe || '',
+                        changwat: item.changwat || '',
+                        tel: item.tel || '',
+                        date_added: formatThaiDateTimeBE(new Date()),
+                        update: formatThaiDateTimeBE(new Date()),
+                        id: `owner_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+                    };
+                    
+                    // ✅ สร้างคิวอัปโหลด
+                    try {
+                        const queueId = addToSyncQueue('quickAdd', 'owner', newOwner, null, null, null);
+                        
+                        // ✅ ถ้าออนไลน์ → ประมวลผลทันที (แต่รอเล็กน้อยเพื่อไม่ให้เร็วเกิน)
+                        if (isOnline && navigator.onLine) {
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                            await processSyncQueue();
+                        }
+                        
+                        ownerImportStats.success++;
+                        
+                    } catch (err) {
+                        console.error('❌ บันทึกเจ้าของล้มเหลว:', item.fname, item.lname, err);
+                        ownerImportStats.failed++;
+                    }
+                    
+                    // ✅ อัปเดตความคืบหน้า
+                    updateOwnerImportProgress();
+                    
+                    // ✅ หยุดพักเล็กน้อยเพื่อไม่ให้บล็อก UI
+                    if (i % 10 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                }
+                
+                // ✅ เสร็จสิ้น
+                showNotificationLeft(`✅ นำเข้าเสร็จสิ้น: สำเร็จ ${ownerImportStats.success}, ข้าม ${ownerImportStats.skipped}, ล้มเหลว ${ownerImportStats.failed}`, 'success');
+                
+            } catch (err) {
+                console.error('❌ นำเข้าเจ้าของล้มเหลว:', err);
+                showNotificationLeft('❌ นำเข้าล้มเหลว: ' + err.message, 'error');
+            } finally {
+                document.getElementById('btn-owner-import-start').disabled = false;
+            }
+        }
+
+        // ✅ อัปเดตแถบความคืบหน้า
+        function updateOwnerImportProgress() {
+            const { success, skipped, failed, total } = ownerImportStats;
+            const processed = success + skipped + failed;
+            const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+            
+            document.getElementById('owner-import-percent').textContent = `${percent}%`;
+            document.getElementById('owner-import-bar').style.width = `${percent}%`;
+            document.getElementById('owner-import-success').textContent = success;
+            document.getElementById('owner-import-skipped').textContent = skipped;
+            document.getElementById('owner-import-failed').textContent = failed;
+        }
+
+        // ✅ ล้างค่าพร้อมเริ่มใหม่
+        function resetOwnerImport() {
+            document.getElementById('owner-import-file').value = '';
+            document.getElementById('owner-import-progress').classList.add('hidden');
+            document.getElementById('owner-import-bar').style.width = '0%';
+            document.getElementById('owner-import-percent').textContent = '0%';
+            document.getElementById('owner-import-success').textContent = '0';
+            document.getElementById('owner-import-skipped').textContent = '0';
+            document.getElementById('owner-import-failed').textContent = '0';
+            ownerImportData = [];
+            ownerImportStats = { success: 0, skipped: 0, failed: 0, total: 0 };
+            existingOwners.clear();
+        }
+
+        // ✅ เปิดใช้งานปุ่ม "เริ่มนำเข้า" เมื่อเลือกไฟล์
+        document.getElementById('owner-import-file')?.addEventListener('change', function(e) {
+            const btn = document.getElementById('btn-owner-import-start');
+            if (btn) {
+                btn.disabled = !e.target.files[0];
+            }
+        });
 
         // ✅ แก้ฟังก์ชัน updateFileName เดิมของคุณ
         function updateFileName(input, fieldId) {
