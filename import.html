@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>นำเข้ารูปภาพเชื่อมตาราง - กูเกิ้ลไดร์</title>
+    <title>นำเข้าข้อมูลและรูปภาพ - กูเกิ้ลไดร์</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- ✅ เพิ่มใน <head> ของ import.html -->
@@ -26,7 +26,7 @@
     <div class="max-w-4xl mx-auto">
         <!-- Header -->
         <div class="bg-white rounded-xl shadow p-4 mb-4 flex items-center justify-between">
-            <h1 class="text-xl font-bold text-blue-900">📥 นำเข้ารูปภาพจากโฟลเดอร์</h1>
+            <h1 class="text-xl font-bold text-blue-900">📥 นำเข้าข้อมูล รูปภาพ</h1>
             <button onclick="window.close()" class="p-2 hover:bg-gray-100 rounded-full">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
@@ -53,14 +53,14 @@
                            accept=".xlsx,.xls,.csv" 
                            class="hidden">
                     <button type="button" onclick="document.getElementById('owner-import-file').click()"
-                            class="w-full py-2 bg-blue-600 text-white rounded font-bold text-sm hover:bg-blue-700 transition flex items-center justify-center gap-1">
+                            class="w-full py-2 bg-rose-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
                         <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-                        เลือกไฟล์
+                        เลือกไฟล์เจ้าของ
                     </button>
                     
                     <button type="button" id="btn-owner-import-start" 
                             onclick="startOwnerImport()"
-                            class="w-full py-2 bg-green-600 text-white rounded font-bold text-sm hover:bg-green-700 transition flex items-center justify-center gap-1"
+                            class="w-full py-2 bg-green-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1"
                             disabled>
                         ▶️ เริ่มนำเข้า
                     </button>
@@ -97,7 +97,7 @@
                 
                 <a href="https://gemini.google.com/share/8b926a6aaa7f" 
                    target="_blank"
-                   class="w-full py-2 bg-purple-600 text-white rounded font-bold text-sm hover:bg-purple-700 transition flex items-center justify-center gap-1">
+                   class="w-full py-2 bg-purple-600 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
                     <i data-lucide="external-link" class="w-4 h-4"></i>
                     เปิดเครื่องมือสแกน
                 </a>
@@ -109,16 +109,10 @@
             
         </div>
 
-        <!-- ปุ่มล้าง (อยู่ด้านล่างทั้ง 2 คอลัมน์) -->
-        <div class="mt-3 mb-3"">
-            <button type="button" onclick="resetOwnerImport()"
-                    class="w-full py-2 bg-gray-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition">
-                🗑️ ล้างพร้อมเริ่มใหม่
-            </button>
-        </div>
+
 
         <!-- Selection Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 mb-3">
             <!-- Building Import -->
             <div class="bg-white rounded-xl shadow p-5 border-2 border-orange-200 hover:border-orange-400 transition">
                 <div class="flex items-center gap-3 mb-3">
@@ -133,9 +127,17 @@
                 <input type="file" id="building-folder" webkitdirectory directory multiple 
                     class="hidden" accept="image/*" onchange="handleFolderSelect(this, 'building')">
                 <button onclick="document.getElementById('building-folder').click()"
-                    class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                    class="w-full bg-orange-500 hover:bg-gray-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
                     <i data-lucide="folder-open" class="w-5 h-5"></i>
                     เลือกโฟลเดอร์รูปสิ่งปลูกสร้าง
+                </button>
+                <!-- ✅ ในการ์ดสิ่งปลูกสร้าง → เพิ่มหลังปุ่ม "เลือกโฟลเดอร์รูปสิ่งปลูกสร้าง" -->
+                <!-- ปุ่มเลือกไฟล์ข้อมูลสิ่งปลูกสร้างจาก Excel/CSV -->
+                <input type="file" id="building-data-file" accept=".xlsx,.xls,.csv" class="hidden">
+                <button type="button" onclick="document.getElementById('building-data-file').click()"
+                        class="w-full mt-2 py-2 bg-blue-600 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                    เลือกไฟล์ข้อมูลสิ่งปลูกสร้าง
                 </button>
             </div>
 
@@ -153,9 +155,17 @@
                 <input type="file" id="sign-folder" webkitdirectory directory multiple 
                     class="hidden" accept="image/*" onchange="handleFolderSelect(this, 'sign')">
                 <button onclick="document.getElementById('sign-folder').click()"
-                    class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                    class="w-full bg-green-500 hover:bg-gray-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
                     <i data-lucide="folder-open" class="w-5 h-5"></i>
                     เลือกโฟลเดอร์รูปป้าย
+                </button>
+                <!-- ✅ ในการ์ดป้าย → เพิ่มหลังปุ่ม "เลือกโฟลเดอร์รูปป้าย" -->
+                <!-- ปุ่มเลือกไฟล์ข้อมูลป้ายจาก Excel/CSV -->
+                <input type="file" id="sign-data-file" accept=".xlsx,.xls,.csv" class="hidden">
+                <button type="button" onclick="document.getElementById('sign-data-file').click()"
+                        class="w-full mt-2 py-2 bg-blue-600 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                    เลือกไฟล์ข้อมูลป้าย
                 </button>
             </div>
         </div>
@@ -199,6 +209,210 @@
         let stats = { success: 0, skip: 0, error: 0, total: 0 };
         let existingCodes = { building: new Set(), sign: new Set() };
         
+        // ✅ ============================================
+        // ✅ ระบบนำเข้าเจ้าของจาก Excel/CSV
+        // ✅ ============================================
+
+        let ownerImportData = [];
+        let ownerImportStats = { success: 0, skipped: 0, failed: 0, total: 0 };
+        let existingOwners = new Set();
+
+        // ✅ อ่านไฟล์ Excel/CSV
+        async function readOwnerImportFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        let rows = [];
+                        
+                        if (file.name.endsWith('.csv')) {
+                            const text = new TextDecoder().decode(data);
+                            rows = text.split('\n').map(line => {
+                                const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                                return cols;
+                            }).filter(row => row.length > 1 && row.some(c => c));
+                        } else {
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                        }
+                        
+                        const headers = rows[0].map(h => String(h).trim().toLowerCase());
+                        const requiredCols = ['fname', 'lname'];
+                        const missingCols = requiredCols.filter(col => !headers.includes(col));
+                        
+                        if (missingCols.length > 0) {
+                            throw new Error(`ขาดคอลัมน์จำเป็น: ${missingCols.join(', ')}`);
+                        }
+                        
+                        const keyMap = {
+                            'pop': ['pop', 'id_card', 'citizen_id', 'บัตรประชาชน'],
+                            'title': ['title', 'prefix', 'คำนำหน้า'],
+                            'fname': ['fname', 'first_name', 'firstname', 'ชื่อ'],
+                            'lname': ['lname', 'last_name', 'lastname', 'นามสกุล'],
+                            'h_no': ['h_no', 'house_no', 'บ้านเลขที่'],
+                            'moo': ['moo', 'หมู่'],
+                            'village': ['village', 'หมู่บ้าน'],
+                            'soi': ['soi', 'ซอย'],
+                            'road': ['road', 'ถนน'],
+                            'tambol': ['tambol', 'ตำบล'],
+                            'amphoe': ['amphoe', 'อำเภอ'],
+                            'changwat': ['changwat', 'จังหวัด'],
+                            'tel': ['tel', 'phone', 'เบอร์โทร']
+                        };
+                        
+                        const result = [];
+                        for (let i = 1; i < rows.length; i++) {
+                            const row = rows[i];
+                            if (!row || row.every(c => !c)) continue;
+                            
+                            const obj = {};
+                            headers.forEach((h, idx) => {
+                                let foundKey = null;
+                                for (const [stdKey, aliases] of Object.entries(keyMap)) {
+                                    if (aliases.includes(h)) { foundKey = stdKey; break; }
+                                }
+                                if (foundKey) obj[foundKey] = String(row[idx] || '').trim();
+                            });
+                            
+                            if (obj.fname && obj.lname) result.push(obj);
+                        }
+                        resolve(result);
+                    } catch (err) { reject(err); }
+                };
+                reader.onerror = () => reject(new Error('อ่านไฟล์ล้มเหลว'));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // ✅ ดึงรายชื่อเจ้าของที่มีแล้วในระบบ
+        async function fetchExistingOwners() {
+            try {
+                const response = await fetch(`${SCRIPT_URL}?action=getData&type=owner`);
+                const data = await response.json();
+                const owners = data.owners || [];
+                existingOwners = new Set(
+                    owners.map(o => `${(o.fname||'').toLowerCase()}|${(o.lname||'').toLowerCase()}`)
+                );
+                addLog(`✅ โหลดรายชื่อเจ้าของที่มีแล้ว: ${existingOwners.size} รายชื่อ`, 'info');
+                return true;
+            } catch (err) {
+                addLog(`❌ โหลดรายชื่อเจ้าของล้มเหลว: ${err.message}`, 'error');
+                return false;
+            }
+        }
+
+        // ✅ เริ่มกระบวนการนำเข้า
+        async function startOwnerImport() {
+            const fileInput = document.getElementById('owner-import-file');
+            const file = fileInput.files[0];
+            
+            if (!file) { addLog('⚠️ กรุณาเลือกไฟล์ก่อน', 'warning'); return; }
+            
+            document.getElementById('owner-import-progress').classList.remove('hidden');
+            document.getElementById('btn-owner-import-start').disabled = true;
+            
+            try {
+                addLog('📖 กำลังอ่านไฟล์...', 'info');
+                ownerImportData = await readOwnerImportFile(file);
+                if (ownerImportData.length === 0) throw new Error('ไม่พบข้อมูลในไฟล์');
+                
+                ownerImportStats = { success: 0, skipped: 0, failed: 0, total: ownerImportData.length };
+                
+                addLog('🔍 ตรวจสอบรายชื่อที่มีในระบบ...', 'info');
+                await fetchExistingOwners();
+                
+                for (let i = 0; i < ownerImportData.length; i++) {
+                    const item = ownerImportData[i];
+                    const key = `${item.fname.toLowerCase()}|${item.lname.toLowerCase()}`;
+                    
+                    if (existingOwners.has(key)) {
+                        ownerImportStats.skipped++;
+                        updateOwnerImportProgress();
+                        continue;
+                    }
+                    
+                    const newOwner = {
+                        pop: item.pop || '', title: item.title || '', fname: item.fname, lname: item.lname,
+                        h_no: item.h_no || '', moo: item.moo || '', village: item.village || '',
+                        soi: item.soi || '', road: item.road || '', tambol: item.tambol || '',
+                        amphoe: item.amphoe || '', changwat: item.changwat || '', tel: item.tel || '',
+                        date_added: formatThaiDateTimeBE(new Date()),
+                        update: formatThaiDateTimeBE(new Date()),
+                        id: `owner_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+                    };
+                    
+                    try {
+                        const formData = new FormData();
+                        formData.append('action', 'quickAdd');
+                        formData.append('type', 'owner');
+                        formData.append('payload', JSON.stringify(newOwner));
+                        
+                        const res = await fetch(SCRIPT_URL, { method: 'POST', body: formData });
+                        const result = await res.json();
+                        
+                        if (result.status === 200) ownerImportStats.success++;
+                        else { ownerImportStats.failed++; addLog(`❌ "${item.fname} ${item.lname}": ${result.message}`, 'error'); }
+                    } catch (err) {
+                        ownerImportStats.failed++;
+                        addLog(`❌ "${item.fname} ${item.lname}": ${err.message}`, 'error');
+                    }
+                    
+                    updateOwnerImportProgress();
+                    if (i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                addLog(`✅ เสร็จสิ้น: สำเร็จ ${ownerImportStats.success}, ข้าม ${ownerImportStats.skipped}, ล้มเหลว ${ownerImportStats.failed}`, 'success');
+            } catch (err) {
+                addLog(`❌ นำเข้าล้มเหลว: ${err.message}`, 'error');
+            } finally {
+                document.getElementById('btn-owner-import-start').disabled = false;
+            }
+        }
+
+        // ✅ อัปเดตแถบความคืบหน้า
+        function updateOwnerImportProgress() {
+            const { success, skipped, failed, total } = ownerImportStats;
+            const processed = success + skipped + failed;
+            const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+            document.getElementById('owner-import-percent').textContent = `${percent}%`;
+            document.getElementById('owner-import-bar').style.width = `${percent}%`;
+            document.getElementById('owner-import-success').textContent = success;
+            document.getElementById('owner-import-skipped').textContent = skipped;
+            document.getElementById('owner-import-failed').textContent = failed;
+        }
+
+        // ✅ ล้างค่าพร้อมเริ่มใหม่
+        function resetOwnerImport() {
+            document.getElementById('owner-import-file').value = '';
+            document.getElementById('owner-import-progress').classList.add('hidden');
+            document.getElementById('owner-import-bar').style.width = '0%';
+            document.getElementById('owner-import-percent').textContent = '0%';
+            document.getElementById('owner-import-success').textContent = '0';
+            document.getElementById('owner-import-skipped').textContent = '0';
+            document.getElementById('owner-import-failed').textContent = '0';
+            ownerImportData = [];
+            ownerImportStats = { success: 0, skipped: 0, failed: 0, total: 0 };
+            existingOwners.clear();
+            document.getElementById('btn-owner-import-start').disabled = true;
+        }
+
+        // ✅ ฟังก์ชันจัดรูปแบบวันที่ไทย (ถ้ายังไม่มี)
+        function formatThaiDateTimeBE(dateValue) {
+            try {
+                const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+                if (isNaN(date.getTime())) return '';
+                const thaiTime = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+                const yearBE = thaiTime.getFullYear() + 543;
+                const month = String(thaiTime.getMonth() + 1).padStart(2, '0');
+                const day = String(thaiTime.getDate()).padStart(2, '0');
+                const hours = String(thaiTime.getHours()).padStart(2, '0');
+                const minutes = String(thaiTime.getMinutes()).padStart(2, '0');
+                const seconds = String(thaiTime.getSeconds()).padStart(2, '0');
+                return `${yearBE}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            } catch { return ''; }
+        }
+
         // ✅ โหลดข้อมูลรหัสที่มีอยู่แล้วจากเซิร์ฟเวอร์
         async function loadExistingCodes(type) {
             try {
@@ -225,7 +439,21 @@
         }
         
         // ✅ จัดการเมื่อเลือกโฟลเดอร์
+        // ✅ ✅ ✅ แก้: ล้างล็อก + รีเซ็ตเมื่อเลือกโฟลเดอร์ ✅ ✅ ✅
         async function handleFolderSelect(input, type) {
+            // ✅ ข้อ 1: ล้างล็อกอัตโนมัติ
+            clearLog();
+            
+            // ✅ ข้อ 2: รีเซ็ต progress bar ของรูปภาพ
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('progress-percent').textContent = '0%';
+            document.getElementById('count-success').textContent = '0';
+            document.getElementById('count-skip').textContent = '0';
+            document.getElementById('count-error').textContent = '0';
+
+            // ✅ ✅ ✅ เพิ่มบรรทัดนี้ตรงนี้ (ไม่จำเป็นแต่ดี) ✅ ✅ ✅
+            document.getElementById('progress-title').textContent = 'กำลังประมวลผล...';
+
             if (isProcessing) {
                 alert('กำลังประมวลผลอยู่ กรุณารอจนเสร็จสิ้น');
                 input.value = '';
@@ -578,11 +806,98 @@
                 '<div class="log-entry log-info">ล้างบันทึกแล้ว...</div>';
         }
         
+        // ✅ ✅ ✅ ข้อ 3+4: Event Listener สำหรับปุ่มเลือกไฟล์ข้อมูล ✅ ✅ ✅
+        // ✅ ข้อ 3: สิ่งปลูกสร้าง
+        document.getElementById('building-data-file')?.addEventListener('change', function(e) {
+            if (e.target.files[0]) {
+                addLog(`📄 เลือกไฟล์ข้อมูลสิ่งปลูกสร้าง: ${e.target.files[0].name}`, 'info');
+                // ✅ TODO: เพิ่มโค้ดประมวลผลไฟล์ข้อมูลสิ่งปลูกสร้างที่นี่
+                // ผู้ใช้จะแจ้งโค้ดผูกอีกครั้ง
+            }
+        });
+
+        // ✅ ข้อ 4: ป้าย
+        document.getElementById('sign-data-file')?.addEventListener('change', function(e) {
+            if (e.target.files[0]) {
+                addLog(`📄 เลือกไฟล์ข้อมูลป้าย: ${e.target.files[0].name}`, 'info');
+                // ✅ TODO: เพิ่มโค้ดประมวลผลไฟล์ข้อมูลป้ายที่นี่
+                // ผู้ใช้จะแจ้งโค้ดผูกอีกครั้ง
+            }
+        });
+
         // ✅ เริ่มต้น
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             addLog('🚀 หน้าจอพร้อมใช้งาน', 'info');
+            
+            // ✅ ✅ ✅ แก้: ล้างล็อก + รีเซ็ตเมื่อเลือกไฟล์เจ้าของ ✅ ✅ ✅
+            document.getElementById('owner-import-file')?.addEventListener('change', function(e) {
+                const btn = document.getElementById('btn-owner-import-start');
+                
+                if (e.target.files[0]) {
+                    if (btn) btn.disabled = false;
+                    addLog(`📄 เลือกไฟล์: ${e.target.files[0].name}`, 'info');
+                    
+                    // ✅ ข้อ 1: ล้างล็อกอัตโนมัติ
+                    clearLog();
+                    
+                    // ✅ ข้อ 2: รีเซ็ตแถบความคืบหน้าสีน้ำเงิน
+                    document.getElementById('owner-import-bar').style.width = '0%';
+                    document.getElementById('owner-import-percent').textContent = '0%';
+                    document.getElementById('owner-import-success').textContent = '0';
+                    document.getElementById('owner-import-skipped').textContent = '0';
+                    document.getElementById('owner-import-failed').textContent = '0';
+                    document.getElementById('owner-import-progress').classList.add('hidden');
+                } else {
+                    if (btn) btn.disabled = true;
+                }
+            });
         });
+
+        // ✅ ✅ ✅ ข้อ 3: สิ่งปลูกสร้าง - ล้างล็อก + รีเซ็ตเมื่อเลือกไฟล์ข้อมูล ✅ ✅ ✅
+        document.getElementById('building-data-file')?.addEventListener('change', function(e) {
+            if (e.target.files[0]) {
+                // ✅ ข้อ 1: ล้างล็อกอัตโนมัติ
+                clearLog();
+                
+                // ✅ ข้อ 2: รีเซ็ต progress bar ของเจ้าของ (ใช้ร่วมกัน)
+                document.getElementById('owner-import-bar').style.width = '0%';
+                document.getElementById('owner-import-percent').textContent = '0%';
+                document.getElementById('owner-import-success').textContent = '0';
+                document.getElementById('owner-import-skipped').textContent = '0';
+                document.getElementById('owner-import-failed').textContent = '0';
+                document.getElementById('owner-import-progress').classList.add('hidden');
+                
+                // ✅ แสดงชื่อไฟล์ในล็อก
+                addLog(`📄 เลือกไฟล์ข้อมูลสิ่งปลูกสร้าง: ${e.target.files[0].name}`, 'info');
+                
+                // ✅ TODO: เพิ่มโค้ดประมวลผลไฟล์ข้อมูลสิ่งปลูกสร้างที่นี่
+                // ผู้ใช้จะแจ้งโค้ดผูกอีกครั้ง
+            }
+        });
+
+        // ✅ ✅ ✅ ข้อ 4: ป้าย - ล้างล็อก + รีเซ็ตเมื่อเลือกไฟล์ข้อมูล ✅ ✅ ✅
+        document.getElementById('sign-data-file')?.addEventListener('change', function(e) {
+            if (e.target.files[0]) {
+                // ✅ ข้อ 1: ล้างล็อกอัตโนมัติ
+                clearLog();
+                
+                // ✅ ข้อ 2: รีเซ็ต progress bar ของเจ้าของ (ใช้ร่วมกัน)
+                document.getElementById('owner-import-bar').style.width = '0%';
+                document.getElementById('owner-import-percent').textContent = '0%';
+                document.getElementById('owner-import-success').textContent = '0';
+                document.getElementById('owner-import-skipped').textContent = '0';
+                document.getElementById('owner-import-failed').textContent = '0';
+                document.getElementById('owner-import-progress').classList.add('hidden');
+                
+                // ✅ แสดงชื่อไฟล์ในล็อก
+                addLog(`📄 เลือกไฟล์ข้อมูลป้าย: ${e.target.files[0].name}`, 'info');
+                
+                // ✅ TODO: เพิ่มโค้ดประมวลผลไฟล์ข้อมูลป้ายที่นี่
+                // ผู้ใช้จะแจ้งโค้ดผูกอีกครั้ง
+            }
+        });
+
     </script>
 </body>
 </html>
