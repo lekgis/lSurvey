@@ -2482,11 +2482,18 @@
                 const data = await response.json();
                 const owners = data.owners || [];
                 
-                // ✅ กรองตามคำค้นหา
+                // ✅ ✅ ✅ แก้: แปลงทุกค่าเป็น String ก่อนใช้ toLowerCase() ✅ ✅ ✅
                 const filtered = owners.filter(o => {
-                    const fullName = `${o.title || ''} ${o.fname || ''} ${o.lname || ''}`.toLowerCase();
-                    const pop = (o.pop || '').toLowerCase();
+                    // ✅ แปลงชื่อเป็น string + toLowerCase
+                    const fullName = `${o.title || ''} ${o.fname || ''} ${o.lname || ''}`
+                        .toString()
+                        .toLowerCase();
+                    
+                    // ✅ ✅ ✅ แก้: แปลง pop เป็น string ก่อน (สำคัญ!) ✅ ✅ ✅
+                    const pop = String(o.pop || '').toLowerCase();
+                    
                     const searchLower = query.toLowerCase();
+                    
                     return fullName.includes(searchLower) || pop.includes(searchLower);
                 });
                 
@@ -2595,6 +2602,7 @@
         }
 
         async function saveNewOwner() {
+            // ✅ 1. รวบรวมข้อมูลจากฟอร์ม
             const newOwner = {
                 pop: document.getElementById('owner-pop')?.value?.trim() || '',
                 title: document.getElementById('owner-title')?.value?.trim() || '',
@@ -2611,7 +2619,7 @@
                 tel: document.getElementById('owner-tel')?.value?.trim() || '',
                 date_added: formatThaiDateTimeBE(new Date()),
                 update: formatThaiDateTimeBE(new Date()),
-                id: `owner_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+                id: `owner_${Date.now()}_${Math.floor(Math.random() * 1000)}`  // ✅ ID ไม่ซ้ำ
             };
             
             // ✅ ตรวจสอบบัตร ปชช. (ต้อง 13 หลัก)
@@ -2620,35 +2628,40 @@
                 return;
             }
             
+            // ✅ 2. ✅ ✅ ✅ ปิดหน้าต่างทันที (ก่อนส่งข้อมูล) ✅ ✅ ✅
+            document.querySelectorAll('.fixed.z-\\[4100\\]').forEach(m => m.remove());
+            showNotificationLeft('✅ กำลังบันทึกเจ้าของ...', 'info');
+            
+            // ✅ 3. ✅ ✅ ✅ สร้างคิวสำหรับอัปโหลด (เหมือน building/sign) ✅ ✅ ✅
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=quickAdd&type=owner`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `payload=${encodeURIComponent(JSON.stringify(newOwner))}`
-                });
+                const queueId = addToSyncQueue('quickAdd', 'owner', newOwner, null, null, null);
+                console.log(`✅ สร้างคิวเจ้าของสำเร็จ: ${queueId}`);
                 
-                const result = await response.json();
+                // ✅ 4. ถ้าออนไลน์ → ประมวลผลทันที
+                if (isOnline && navigator.onLine) {
+                    setTimeout(() => {
+                        processSyncQueue();
+                    }, 300);
+                }
                 
-                if (result.status === 200) {
-                    showNotificationLeft('✅ เพิ่มเจ้าของสำเร็จ', 'success');
-                    
-                    // ✅ เลือกเจ้าของที่เพิ่มทันที
+                // ✅ 5. กรอกค่าลงฟอร์ม (ถ้ามีฟอร์มเปิดอยู่)
+                if (currentMarkerType) {
                     const ownerParts = [newOwner.title, newOwner.fname, newOwner.lname].filter(v => v && v.trim());
                     const ownerValue = ownerParts.join(' | ');
                     const fieldName = currentMarkerType === 'building' ? 'full_name' : 'fullname';
                     const input = document.querySelector(`input[name="${fieldName}"]`);
                     if (input) input.value = ownerValue;
-                    
                     window.selectedOwnerData = { ...newOwner };
-                    
-                    // ✅ ปิด modal
-                    document.querySelectorAll('.fixed.z-\\[4100\\]').forEach(m => m.remove());
-                } else {
-                    showNotificationLeft('❌ เพิ่มเจ้าของล้มเหลว: ' + result.message, 'error');
                 }
+                
+                // ✅ 6. แจ้งเตือนสำเร็จ
+                setTimeout(() => {
+                    showNotificationLeft('✅ บันทึกเจ้าของเรียบร้อยแล้ว!', 'success');
+                }, 500);
+                
             } catch (err) {
-                console.error('❌ เพิ่มเจ้าของล้มเหลว:', err);
-                showNotificationLeft('❌ เพิ่มเจ้าของล้มเหลว: ' + err.message, 'error');
+                console.error('❌ สร้างคิวเจ้าของล้มเหลว:', err);
+                showNotificationLeft('❌ บันทึกล้มเหลว: ' + err.message, 'error');
             }
         }
 
@@ -3808,7 +3821,7 @@
                     withButton: true,  // ✅ มีปุ่ม
                     buttonLabel: 'W',  // ✅ ปุ่ม W
                     buttonClass: 'bg-gray-300 hover:bg-gray-200 text-gray-800 border border-gray-400 w-10 h-10 md:w-7 md:h-7',
-                    buttonOnclick: 'openOwnerSearchModal("building")'  // ✅ เรียกฟังก์ชันค้นหา
+                    buttonOnclick: "openOwnerSearchModal('building')"  // ✅ เรียกฟังก์ชันค้นหา
                 },
 
                 { id: 'land_type', label: 'ประเภทที่ดิน', type: 'select', options: ['', 'โฉนด', 'โฉนดตราจอง', 'น.ส.2', 'น.ส.3', 'น.ส.3ก', 'น.ส.ล.', 'ที่ราชพัสดุ', 'ส.ธ.1', 'ส.ป.ก.4-01', 'ท.ค.', 'ทุ่งเลี้ยงสัตว์', 'อื่นๆ'], customClass: 'bg-custom-green' },
@@ -3913,7 +3926,7 @@
                     withButton: true,  // ✅ มีปุ่ม
                     buttonLabel: 'W',  // ✅ ปุ่ม W
                     buttonClass: 'bg-gray-300 hover:bg-gray-200 text-gray-800 border border-gray-400 w-10 h-10 md:w-7 md:h-7',
-                    buttonOnclick: 'openOwnerSearchModal("building")'  // ✅ เรียกฟังก์ชันค้นหา
+                    buttonOnclick: "openOwnerSearchModal('sign')"  // ✅ เรียกฟังก์ชันค้นหา
                 },
                 { id: 'check', label: 'สถานะการตรวจสอบ', type: 'select', options: ['ยังไม่สำรวจ', 'ถ่ายรูปแล้ว', 'ตรวจสอบแล้ว'], customClass: 'bg-custom-check-status' }
             ];
@@ -4062,6 +4075,14 @@
                         }
                     }
                 } else if (f.type === 'text') {
+                    let fieldValue = data[f.id];
+                    
+                    // กรณีพิเศษ: ฟิลด์เจ้าของ
+                    if ((f.id === 'full_name' || f.id === 'fullname') && (!fieldValue || fieldValue.trim() === '')) {
+                        const ownerParts = [data.title, data.fname, data.lname].filter(v => v && v.toString().trim());
+                        fieldValue = ownerParts.join(' | ');
+                    }
+
                     const customClass = f.customClass || '';
                     const isDisabled = (f.readonly || f.disabled) ? ' readonly' : '';
                     
