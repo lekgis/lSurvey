@@ -6,6 +6,8 @@
     <title>นำเข้ารูปภาพเชื่อมตาราง - กูเกิ้ลไดร์</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- ✅ เพิ่มใน <head> ของ import.html -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Sarabun', 'Tahoma', sans-serif; }
         .progress-bar { transition: width 0.3s ease; }
@@ -96,19 +98,90 @@
             </div>
         </div>
 
-        <!-- Help Section -->
-        <div class="mt-4 bg-blue-50 rounded-lg p-4 text-xs text-blue-800">
-            <p class="font-bold mb-2">📌 วิธีใช้งาน:</p>
-            <ol class="list-decimal list-inside space-y-1">
-                <li>คลิกปุ่มเลือกโฟลเดอร์ตามประเภทที่ต้องการ</li>
-                <li>เลือกรูปภาพที่ต้องการนำเข้า (รองรับหลายไฟล์)</li>
-                <li>ระบบจะตรวจสอบชื่อไฟล์ 11 อักษรแรกเพื่อจับคู่กับรหัส</li>
-                <li>รูปภาพที่มีอยู่แล้วในระบบจะถูกข้ามอัตโนมัติ</li>
-                <li>ติดตามความคืบหน้าในแถบด้านบน</li>
-            </ol>
-            <p class="mt-2 text-gray-600">
-                💡 ชื่อไฟล์ควรขึ้นต้นด้วยรหัส เช่น <code>14B001-B006.jpg</code> หรือ <code>14B007-S001.jpg</code>
-            </p>
+        <!-- ============================================ -->
+        <!-- ✅ ส่วนเครื่องมือจัดการเจ้าของ (2 คอลัมน์) ✅ -->
+        <!-- ============================================ -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- คอลัมน์ซ้าย: นำเข้าเจ้าของจาก Excel/CSV -->
+            <div class="p-4 bg-white rounded-lg shadow border border-gray-200">
+                <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="upload" class="w-4 h-4"></i>
+                    📥 นำเข้าเจ้าของ
+                </h3>
+                
+                <p class="text-xs text-gray-600 mb-3">
+                    จากไฟล์ Excel/CSV<br>
+                    <code>fname</code> + <code>lname</code>
+                </p>
+                
+                <div class="space-y-2">
+                    <input type="file" id="owner-import-file" 
+                           accept=".xlsx,.xls,.csv" 
+                           class="hidden">
+                    <button type="button" onclick="document.getElementById('owner-import-file').click()"
+                            class="w-full py-2 bg-blue-600 text-white rounded font-bold text-sm hover:bg-blue-700 transition flex items-center justify-center gap-1">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                        เลือกไฟล์
+                    </button>
+                    
+                    <button type="button" id="btn-owner-import-start" 
+                            onclick="startOwnerImport()"
+                            class="w-full py-2 bg-green-600 text-white rounded font-bold text-sm hover:bg-green-700 transition flex items-center justify-center gap-1"
+                            disabled>
+                        ▶️ เริ่มนำเข้า
+                    </button>
+                    
+                    <!-- แถบความคืบหน้า -->
+                    <div id="owner-import-progress" class="hidden">
+                        <div class="flex justify-between text-[10px] text-gray-600 mb-1">
+                            <span>ความคืบหน้า</span>
+                            <span id="owner-import-percent">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5">
+                            <div id="owner-import-bar" class="bg-blue-600 h-1.5 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                        <div class="flex gap-2 text-[10px] text-gray-500 mt-1">
+                            <span>✅ <span id="owner-import-success">0</span></span>
+                            <span>⏭️ <span id="owner-import-skipped">0</span></span>
+                            <span>❌ <span id="owner-import-failed">0</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- คอลัมน์ขวา: สแกนเอกสารเจ้าของ -->
+            <div class="p-4 bg-white rounded-lg shadow border border-gray-200">
+                <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="scan" class="w-4 h-4"></i>
+                    📄 สแกนเอกสารเจ้าของ
+                </h3>
+                
+                <p class="text-xs text-gray-600 mb-3">
+                    สแกนบัตร ปชช./เอกสาร<br>
+                    ด้วย Gemini AI
+                </p>
+                
+                <a href="https://gemini.google.com/share/8b926a6aaa7f" 
+                   target="_blank"
+                   class="w-full py-2 bg-purple-600 text-white rounded font-bold text-sm hover:bg-purple-700 transition flex items-center justify-center gap-1">
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    เปิดเครื่องมือสแกน
+                </a>
+                
+                <p class="text-[10px] text-gray-500 mt-2 text-center">
+                    เปิดในแท็บใหม่
+                </p>
+            </div>
+            
+        </div>
+
+        <!-- ปุ่มล้าง (อยู่ด้านล่างทั้ง 2 คอลัมน์) -->
+        <div class="mt-3">
+            <button type="button" onclick="resetOwnerImport()"
+                    class="w-full py-2 bg-gray-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition">
+                🗑️ ล้างพร้อมเริ่มใหม่
+            </button>
         </div>
     </div>
 
@@ -209,7 +282,7 @@
             }
         }
         
-        // ✅ ประมวลผลไฟล์รูปภาพแต่ละไฟล์
+        // ✅ ✅ ✅ แก้ฟังก์ชัน processImageFile ✅ ✅ ✅
         async function processImageFile(file, type, currentIndex, totalFiles) {
             const fileName = file.name;
             
@@ -219,24 +292,25 @@
             
             addLog(`🔍 [${currentIndex}/${totalFiles}] ${fileName} → รหัส: ${cleanCode}`, 'info');
             
-            // ✅ ข้อ 3: ตรวจสอบว่ามีรูปอยู่แล้วหรือไม่
+            // ✅ ข้อ 3: ตรวจสอบว่ามีรูปอยู่แล้วหรือไม่ (ตรวจเฉพาะคอลัมน์ picture)
             const hasImage = await checkImageExists(cleanCode, type);
             if (hasImage) {
-                addLog(`⏭️ ข้าม: ${fileName} (มีรูปภาพอยู่แล้ว)`, 'skip');
+                addLog(`⏭️ ข้าม: ${fileName} (มีรูปภาพอยู่แล้วในคอลัมน์ picture)`, 'skip');
                 stats.skip++;
                 updateCounters();
                 return;
             }
             
             try {
-                // อ่านไฟล์เป็น base64
-                const base64 = await fileToBase64(file);
+                // ✅ ✅ ✅ ปรับขนาดรูปถ้าจำเป็น (ป้าย 2000 / สิ่งปลูกสร้าง 1500) ✅ ✅ ✅
+                const processedFile = await resizeImageIfNeeded(file, type);
+                const base64 = await fileToBase64(processedFile);
                 
                 // อัปโหลดผ่าน Apps Script
                 const result = await uploadImageToDrive(base64, fileName, cleanCode, type);
                 
                 if (result.success) {
-                    // ✅ อัปเดตข้อมูลในชีท
+                    // ✅ อัปเดตข้อมูลในชีท (ใช้ฟังก์ชันที่แก้แล้ว)
                     const updateSuccess = await updateSheetRecord(cleanCode, type, result.imageUrl, result.fileName);
                     
                     if (updateSuccess) {
@@ -259,7 +333,7 @@
             updateCounters();
         }
         
-        // ✅ ตรวจสอบว่ามีรูปภาพสำหรับรหัสนี้แล้วหรือไม่
+        // ✅ ✅ ✅ แก้ฟังก์ชันตรวจสอบรูป (ตรวจเฉพาะคอลัมน์ picture) ✅ ✅ ✅
         async function checkImageExists(code, type) {
             try {
                 const response = await fetch(`${SCRIPT_URL}?action=getData`);
@@ -268,14 +342,40 @@
                 const records = type === 'building' ? data.buildings : data.signs;
                 const codeField = type === 'building' ? 'building_c' : 's_code';
                 
+                // ✅ หาเรคคอร์ดที่รหัสตรงกัน (เปรียบเทียบแบบ case-insensitive + trim)
                 const record = records.find(r => 
-                    r[codeField]?.trim() === code && 
-                    (r.picture?.trim() || r.image?.trim())
+                    String(r[codeField] || '').trim().toUpperCase() === String(code).trim().toUpperCase()
                 );
                 
-                return !!record;
-            } catch {
-                return false; // ถ้าเช็คไม่ได้ ให้ถือว่าไม่มี (เพื่อความปลอดภัย)
+                // ✅ ถ้าไม่พบเรคคอร์ด → กลับ false (ไม่มีรูป → ควรอัปโหลด)
+                if (!record) {
+                    console.log(`❌ ไม่พบเรคคอร์ดสำหรับรหัส: "${code}"`);
+                    return false;
+                }
+                
+                // ✅ ✅ ✅ ตรวจเฉพาะค่าในคอลัมน์ 'picture' เท่านั้น ✅ ✅ ✅
+                const pictureVal = record.picture || '';
+                
+                // ✅ ✅ ✅ เงื่อนไข: มีรูปอยู่แล้วถ้า... ✅ ✅ ✅
+                // 1. มีค่า (ไม่ใช่ null/undefined)
+                // 2. ไม่ใช่ช่องว่างล้วน
+                // 3. ไม่ใช่ค่าขยะเช่น 'image.jpg'
+                const hasPicture = pictureVal && 
+                                  String(pictureVal).trim() !== '' && 
+                                  pictureVal.toLowerCase() !== 'image.jpg';
+                
+                if (hasPicture) {
+                    console.log(`✅ มีรูปภาพอยู่แล้วใน picture: "${pictureVal}" → ข้าม`);
+                } else {
+                    console.log(`❌ ยังไม่มีรูปภาพที่ถูกต้องใน picture (ค่า: "${pictureVal}") → จะอัปโหลด`);
+                }
+                
+                // ✅ คืนค่า: true = มีรูปแล้ว (ข้าม), false = ยังไม่มี (อัปโหลด)
+                return hasPicture;
+                
+            } catch (err) {
+                console.error('❌ checkImageExists error:', err);
+                return false; // บนผิดพลาด → ถือว่าไม่มีรูป → ลองอัปโหลด
             }
         }
         
@@ -289,16 +389,14 @@
             });
         }
         
-        // ✅ อัปโหลดรูปภาพผ่าน Apps Script
+        // ✅ ✅ ✅ อัปโหลดรูปภาพผ่าน Apps Script (แก้แล้ว) ✅ ✅ ✅
         async function uploadImageToDrive(base64, originalFileName, code, type) {
             const formData = new FormData();
-            formData.append('action', 'quickAdd');
-            formData.append('type', type);
-            formData.append('payload', JSON.stringify({
-                id: `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                [type === 'building' ? 'building_c' : 's_code']: code,
-                // ฟิลด์อื่นๆ ว่างไว้ เพราะเราแค่ต้องการอัปโหลดรูป
-            }));
+            
+            // ✅ ✅ ✅ เปลี่ยนจาก quickAdd → batchImageUpload ✅ ✅ ✅
+            formData.append('action', 'batchImageUpload');  // ✅ อัปเดตรูปให้รายการที่มีอยู่
+            formData.append('type', type);                   // 'building' หรือ 'sign'
+            formData.append('code', code);                   // ✅ ✅ ✅ ส่งรหัสให้เซิร์ฟเวอร์หาแถว ✅ ✅ ✅
             formData.append('image', base64);
             formData.append('fileName', originalFileName);
             
@@ -314,7 +412,7 @@
                     return {
                         success: true,
                         imageUrl: result.data.imageUrl,
-                        fileName: result.data.pictureName
+                        fileName: result.data.fileName
                     };
                 }
                 
@@ -325,19 +423,83 @@
             }
         }
         
-        // ✅ อัปเดตข้อมูลในชีท (เชื่อมรูปกับรหัส)
+        // ✅ ✅ ✅ ฟังก์ชันปรับขนาดรูปก่อนอัปโหลด ✅ ✅ ✅
+        async function resizeImageIfNeeded(file, type) {
+            return new Promise((resolve) => {
+                const maxSize = type === 'sign' ? 2000 : 1500;  // ✅ ป้าย 2000, สิ่งปลูกสร้าง 1500
+                const img = new Image();
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    img.onload = () => {
+                        // ✅ ถ้ารูปเล็กกว่าหรือเท่ากับขนาดที่กำหนด → ไม่ต้องปรับ
+                        if (img.width <= maxSize && img.height <= maxSize) {
+                            resolve(file);
+                            return;
+                        }
+                        
+                        // ✅ คำนวณขนาดใหม่โดยรักษาอัตราส่วน
+                        let newWidth = img.width;
+                        let newHeight = img.height;
+                        
+                        if (img.width > img.height) {
+                            newWidth = maxSize;
+                            newHeight = (img.height / img.width) * maxSize;
+                        } else {
+                            newHeight = maxSize;
+                            newWidth = (img.width / img.height) * maxSize;
+                        }
+                        
+                        // ✅ วาดรูปใหม่บน canvas
+                        const canvas = document.createElement('canvas');
+                        canvas.width = newWidth;
+                        canvas.height = newHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+                        
+                        // ✅ แปลงกลับเป็น blob
+                        canvas.toBlob((blob) => {
+                            // ✅ สร้างไฟล์ใหม่จาก blob
+                            const resizedFile = new File([blob], file.name, {
+                                type: file.type,
+                                lastModified: Date.now()
+                            });
+                            resolve(resizedFile);
+                        }, file.type, 0.9);  // ✅ คุณภาพ 90%
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ✅ ✅ ✅ แก้: หาแถวด้วยรหัสโดยตรง (ไม่ต้องพึ่ง _row_num) ✅ ✅ ✅
         async function updateSheetRecord(code, type, imageUrl, pictureName) {
             try {
-                // ดึงข้อมูลทั้งหมดเพื่อหา rowKey
+                // ดึงข้อมูลทั้งหมดเพื่อหาแถวที่ตรงกัน
                 const response = await fetch(`${SCRIPT_URL}?action=getData`);
                 const data = await response.json();
                 
                 const records = type === 'building' ? data.buildings : data.signs;
                 const codeField = type === 'building' ? 'building_c' : 's_code';
                 
-                const record = records.find(r => r[codeField]?.trim() === code);
-                if (!record || !record._row_num) {
-                    addLog(`⚠️ ไม่พบข้อมูลสำหรับรหัส: ${code}`, 'error');
+                // ✅ ✅ ✅ หาแถวโดยจับคู่รหัสแบบเข้มงวด (trim + case-sensitive) ✅ ✅ ✅
+                const record = records.find(r => 
+                    String(r[codeField] || '').trim().toUpperCase() === String(code).trim().toUpperCase()
+                );
+                
+                if (!record) {
+                    addLog(`⚠️ ไม่พบข้อมูลสำหรับรหัส: ${code} (ในชีท ${type})`, 'error');
+                    // ✅ Debug: แสดงรหัสทั้งหมดที่มีในชีท
+                    const allCodes = records.map(r => r[codeField]).filter(c => c).slice(0, 10);
+                    addLog(`🔍 ตัวอย่างรหัสในชีท: ${allCodes.join(', ')}`, 'info');
+                    return false;
+                }
+                
+                // ✅ ใช้ _row_num ถ้ามี, ถ้าไม่มีให้ใช้ id
+                const rowKey = record._row_num || record.id;
+                if (!rowKey) {
+                    addLog(`⚠️ ไม่พบ _row_num หรือ id สำหรับรหัส: ${code}`, 'error');
                     return false;
                 }
                 
@@ -347,20 +509,27 @@
                     body: new URLSearchParams({
                         action: 'update',
                         type: type,
-                        rowKey: record._row_num,
+                        rowKey: rowKey,
                         payload: JSON.stringify({
                             image: imageUrl,
                             picture: pictureName,
-                            check: record.check || 'ถ่ายรูปแล้ว' // อัปเดตสถานะถ้าจำเป็น
+                            check: record.check || 'ถ่ายรูปแล้ว'
                         })
                     })
                 });
                 
                 const result = await updateResponse.json();
-                return result.status === 200;
+                
+                if (result.status === 200) {
+                    addLog(`✅ อัปเดตชีทสำเร็จ: ${pictureName}`, 'success');
+                    return true;
+                } else {
+                    addLog(`❌ อัปเดตชีทล้มเหลว: ${result.message}`, 'error');
+                    return false;
+                }
                 
             } catch (err) {
-                addLog(`❌ อัปเดตชีทล้มเหลว: ${err.message}`, 'error');
+                addLog(`❌ อัปเดตชีทผิดพลาด: ${err.message}`, 'error');
                 return false;
             }
         }
