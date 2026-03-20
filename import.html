@@ -314,25 +314,43 @@
             document.getElementById('btn-owner-import-start').disabled = true;
             
             try {
+                // ✅ 1. อ่านไฟล์
                 addLog('📖 กำลังอ่านไฟล์...', 'info');
                 ownerImportData = await readOwnerImportFile(file);
                 if (ownerImportData.length === 0) throw new Error('ไม่พบข้อมูลในไฟล์');
                 
+                // ✅ ✅ ✅ กรองข้อมูลซ้ำภายในไฟล์ ✅ ✅ ✅
+                addLog('🔍 กำลังคัดกรองข้อมูลซ้ำในไฟล์...', 'info');
+                const originalCount = ownerImportData.length;
+                ownerImportData = deduplicateOwnerData(ownerImportData);
+                const afterDedupCount = ownerImportData.length;
+                const removedCount = originalCount - afterDedupCount;
+                
+                if (removedCount > 0) {
+                    addLog(`✅ คัดกรองซ้ำในไฟล์: ลดจาก ${originalCount} → ${afterDedupCount} รายการ (ลบ ${removedCount} รายการที่ซ้ำ)`, 'info');
+                } else {
+                    addLog(`✅ ไม่พบข้อมูลซ้ำในไฟล์: ${afterDedupCount} รายการ`, 'info');
+                }
+                
                 ownerImportStats = { success: 0, skipped: 0, failed: 0, total: ownerImportData.length };
                 
+                // ✅ 2. ดึงรายชื่อที่มีแล้วในระบบ
                 addLog('🔍 ตรวจสอบรายชื่อที่มีในระบบ...', 'info');
                 await fetchExistingOwners();
                 
+                // ✅ 3. ประมวลผลทีละรายการ (ใช้คิว)
                 for (let i = 0; i < ownerImportData.length; i++) {
                     const item = ownerImportData[i];
                     const key = `${item.fname.toLowerCase()}|${item.lname.toLowerCase()}`;
                     
+                    // ✅ เช็คซ้ำกับฐานข้อมูล: ถ้ามีแล้ว → ข้าม
                     if (existingOwners.has(key)) {
                         ownerImportStats.skipped++;
                         updateOwnerImportProgress();
                         continue;
                     }
                     
+                    // ✅ เตรียมข้อมูลสำหรับบันทึก
                     const newOwner = {
                         pop: item.pop || '', title: item.title || '', fname: item.fname, lname: item.lname,
                         h_no: item.h_no || '', moo: item.moo || '', village: item.village || '',
@@ -853,6 +871,42 @@
                 }
             });
         });
+
+        // ✅ ✅ ✅ ฟังก์ชันกรองข้อมูลซ้ำภายในไฟล์ ✅ ✅ ✅
+        function deduplicateOwnerData(data) {
+            const seen = new Map(); // key: "fname|lname" (lowercase), value: owner object
+            
+            for (const item of data) {
+                // ✅ สร้าง key จาก fname+lname (case-insensitive)
+                const key = `${(item.fname||'').toLowerCase().trim()}|${(item.lname||'').toLowerCase().trim()}`;
+                
+                // ✅ ข้ามถ้าไม่มีชื่อ-นามสกุล
+                if (!item.fname || !item.lname) continue;
+                
+                if (!seen.has(key)) {
+                    // ✅ ยังไม่เคยเห็น → เพิ่มเลย
+                    seen.set(key, item);
+                } else {
+                    // ✅ มีซ้ำ → เลือกตามเงื่อนไข pop 13 หลัก
+                    const existing = seen.get(key);
+                    const existingPopValid = existing.pop && /^\d{13}$/.test(String(existing.pop).trim());
+                    const newPopValid = item.pop && /^\d{13}$/.test(String(item.pop).trim());
+                    
+                    // ✅ ถ้ารายการเดิมไม่มี pop 13 หลัก แต่รายการใหม่มี → แทนที่
+                    if (!existingPopValid && newPopValid) {
+                        seen.set(key, item);
+                        console.log(`🔄 แทนที่: ${key} (พบ pop 13 หลักในแถวใหม่)`);
+                    }
+                    // ✅ ถ้าทั้งคู่มีหรือทั้งคู่ไม่มี → เก็บรายการแรก (ไม่ทำอะไร)
+                    else {
+                        console.log(`⏭️ ข้ามแถวซ้ำ: ${key}`);
+                    }
+                }
+            }
+            
+            // ✅ แปลง Map กลับเป็น array
+            return Array.from(seen.values());
+        }
 
         // ✅ ✅ ✅ ข้อ 3: สิ่งปลูกสร้าง - ล้างล็อก + รีเซ็ตเมื่อเลือกไฟล์ข้อมูล ✅ ✅ ✅
         document.getElementById('building-data-file')?.addEventListener('change', function(e) {
