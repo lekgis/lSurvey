@@ -389,14 +389,13 @@
             });
         }
         
-        // ✅ ✅ ✅ อัปโหลดรูปภาพผ่าน Apps Script (แก้แล้ว) ✅ ✅ ✅
+        // ✅ ✅ ✅ อัปโหลดรูปภาพผ่าน Apps Script (แก้ข้อความแจ้งเตือน) ✅ ✅ ✅
         async function uploadImageToDrive(base64, originalFileName, code, type) {
             const formData = new FormData();
             
-            // ✅ ✅ ✅ เปลี่ยนจาก quickAdd → batchImageUpload ✅ ✅ ✅
-            formData.append('action', 'batchImageUpload');  // ✅ อัปเดตรูปให้รายการที่มีอยู่
-            formData.append('type', type);                   // 'building' หรือ 'sign'
-            formData.append('code', code);                   // ✅ ✅ ✅ ส่งรหัสให้เซิร์ฟเวอร์หาแถว ✅ ✅ ✅
+            formData.append('action', 'batchImageUpload');
+            formData.append('type', type);
+            formData.append('code', code);
             formData.append('image', base64);
             formData.append('fileName', originalFileName);
             
@@ -416,10 +415,22 @@
                     };
                 }
                 
-                return { success: false, error: result.message };
+                // ✅ ✅ ✅ แปลงข้อความผิดพลาดเป็นภาษาไทย ✅ ✅ ✅
+                let errorMessage = result.message || 'ไม่ทราบสาเหตุ';
+                
+                // ✅ ถ้าข้อความขึ้นต้นด้วย "Record with code" → แปลเป็นไทย
+                if (errorMessage.startsWith('Record with code')) {
+                    errorMessage = `ไม่พบรหัสในฐานข้อมูล: ${code}`;
+                }
+                // ✅ ถ้าข้อความเป็น "Image already exists" → แปลเป็นไทย
+                else if (errorMessage === 'Image already exists') {
+                    errorMessage = 'มีรูปภาพอยู่แล้วในคอลัมน์ picture';
+                }
+                
+                return { success: false, error: errorMessage };
                 
             } catch (err) {
-                return { success: false, error: err.message };
+                return { success: false, error: `การเชื่อมต่อล้มเหลว: ${err.message}` };
             }
         }
         
