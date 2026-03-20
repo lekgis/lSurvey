@@ -1283,8 +1283,7 @@
             <button onclick="clearMapData()" class="map-btn p-3 w-48 bg-gradient-to-r from-red-400 to-red-600 text-white hover:scale-105 transition-all shadow-lg flex items-center justify-start gap-2 text-left">
                 <i data-lucide="trash-2" class="w-5 h-5"></i>
                 <div>
-                    <div class="font-semibold text-xs">เคลียร์แผนที่</div>
-                    <div class="text-[10px] opacity-90">ลบข้อมูลแผนที่ทั้งหมด</div>
+                    <div class="font-semibold text-xs">เคลียร์แผนที่</div>              
                 </div>
             </button>
 
@@ -2402,7 +2401,7 @@
             // ✅ ตำแหน่งหน้าต่าง 25% จากขอบบน
             ownerSearchModal.innerHTML = `
             <div id="owner-search-window" class="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-lg animate-scale-in pointer-events-auto" 
-                 style="position: absolute; left: 50%; top: 10%; transform: translateX(-50%);">
+                 style="position: absolute; left: 50%; top: 5%; transform: translateX(-50%);">
                 <div id="owner-search-header" class="p-3 border-b flex justify-between items-center bg-gray-800 cursor-move rounded-t-lg">
                     <h3 class="font-bold text-sm text-white">🔍 ค้นหาเจ้าของ</h3>
                     <button onclick="closeOwnerSearchModal()" class="p-1 hover:bg-gray-700 rounded-full transition">
