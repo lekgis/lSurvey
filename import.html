@@ -16,6 +16,10 @@
         .log-error { color: #dc2626; }
         .log-skip { color: #6b7280; }
         .log-info { color: #2563eb; }
+        @media (max-width: 480px) {
+            .grid-cols-1 > div { margin-bottom: 1rem; }
+            #log-container { max-height: 48vh; } /* ลดความสูงล็อกบนมือถือ */
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4">
@@ -27,77 +31,6 @@
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
-
-        <!-- Selection Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <!-- Building Import -->
-            <div class="bg-white rounded-xl shadow p-5 border-2 border-orange-200 hover:border-orange-400 transition">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                        <i data-lucide="home" class="w-6 h-6 text-orange-600"></i>
-                    </div>
-                    <h2 class="font-bold text-lg">สิ่งปลูกสร้าง</h2>
-                </div>
-                <p class="text-sm text-gray-600 mb-4">
-                    นำเข้ารูปภาพโดยจับคู่กับ <code class="bg-gray-100 px-1 rounded">building_c</code>
-                </p>
-                <input type="file" id="building-folder" webkitdirectory directory multiple 
-                    class="hidden" accept="image/*" onchange="handleFolderSelect(this, 'building')">
-                <button onclick="document.getElementById('building-folder').click()"
-                    class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
-                    <i data-lucide="folder-open" class="w-5 h-5"></i>
-                    เลือกโฟลเดอร์รูปสิ่งปลูกสร้าง
-                </button>
-            </div>
-
-            <!-- Sign Import -->
-            <div class="bg-white rounded-xl shadow p-5 border-2 border-green-200 hover:border-green-400 transition">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <i data-lucide="map-pin" class="w-6 h-6 text-green-600"></i>
-                    </div>
-                    <h2 class="font-bold text-lg">ป้าย</h2>
-                </div>
-                <p class="text-sm text-gray-600 mb-4">
-                    นำเข้ารูปภาพโดยจับคู่กับ <code class="bg-gray-100 px-1 rounded">s_code</code>
-                </p>
-                <input type="file" id="sign-folder" webkitdirectory directory multiple 
-                    class="hidden" accept="image/*" onchange="handleFolderSelect(this, 'sign')">
-                <button onclick="document.getElementById('sign-folder').click()"
-                    class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
-                    <i data-lucide="folder-open" class="w-5 h-5"></i>
-                    เลือกโฟลเดอร์รูปป้าย
-                </button>
-            </div>
-        </div>
-
-        <!-- Progress Section -->
-        <div id="progress-section" class="bg-white rounded-xl shadow p-4 mb-4 hidden">
-            <div class="flex items-center justify-between mb-2">
-                <span class="font-bold text-sm" id="progress-title">กำลังประมวลผล...</span>
-                <span class="text-sm text-gray-600" id="progress-percent">0%</span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-3 mb-3">
-                <div id="progress-bar" class="progress-bar bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
-            </div>
-            <div class="flex gap-4 text-xs text-gray-600">
-                <span>✅ สำเร็จ: <b id="count-success" class="text-green-600">0</b></span>
-                <span>⏭️ ข้าม: <b id="count-skip" class="text-gray-500">0</b></span>
-                <span>❌ ล้มเหลว: <b id="count-error" class="text-red-600">0</b></span>
-            </div>
-        </div>
-
-        <!-- Log Section -->
-        <div class="bg-white rounded-xl shadow p-4">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="font-bold text-sm">📋 บันทึกการทำงาน</h3>
-                <button onclick="clearLog()" class="text-xs text-blue-600 hover:underline">ล้าง</button>
-            </div>
-            <div id="log-container" class="max-h-64 overflow-y-auto border rounded bg-gray-50 p-2 text-xs">
-                <div class="log-entry log-info">พร้อมเริ่มนำเข้ารูปภาพ...</div>
-            </div>
-        </div>
-
         <!-- ============================================ -->
         <!-- ✅ ส่วนเครื่องมือจัดการเจ้าของ (2 คอลัมน์) ✅ -->
         <!-- ============================================ -->
@@ -177,11 +110,81 @@
         </div>
 
         <!-- ปุ่มล้าง (อยู่ด้านล่างทั้ง 2 คอลัมน์) -->
-        <div class="mt-3">
+        <div class="mt-3 mb-3"">
             <button type="button" onclick="resetOwnerImport()"
                     class="w-full py-2 bg-gray-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition">
                 🗑️ ล้างพร้อมเริ่มใหม่
             </button>
+        </div>
+
+        <!-- Selection Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <!-- Building Import -->
+            <div class="bg-white rounded-xl shadow p-5 border-2 border-orange-200 hover:border-orange-400 transition">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                        <i data-lucide="home" class="w-6 h-6 text-orange-600"></i>
+                    </div>
+                    <h2 class="font-bold text-lg">สิ่งปลูกสร้าง</h2>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">
+                    นำเข้ารูปภาพโดยจับคู่กับ <code class="bg-gray-100 px-1 rounded">building_c</code>
+                </p>
+                <input type="file" id="building-folder" webkitdirectory directory multiple 
+                    class="hidden" accept="image/*" onchange="handleFolderSelect(this, 'building')">
+                <button onclick="document.getElementById('building-folder').click()"
+                    class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                    <i data-lucide="folder-open" class="w-5 h-5"></i>
+                    เลือกโฟลเดอร์รูปสิ่งปลูกสร้าง
+                </button>
+            </div>
+
+            <!-- Sign Import -->
+            <div class="bg-white rounded-xl shadow p-5 border-2 border-green-200 hover:border-green-400 transition">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <i data-lucide="map-pin" class="w-6 h-6 text-green-600"></i>
+                    </div>
+                    <h2 class="font-bold text-lg">ป้าย</h2>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">
+                    นำเข้ารูปภาพโดยจับคู่กับ <code class="bg-gray-100 px-1 rounded">s_code</code>
+                </p>
+                <input type="file" id="sign-folder" webkitdirectory directory multiple 
+                    class="hidden" accept="image/*" onchange="handleFolderSelect(this, 'sign')">
+                <button onclick="document.getElementById('sign-folder').click()"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                    <i data-lucide="folder-open" class="w-5 h-5"></i>
+                    เลือกโฟลเดอร์รูปป้าย
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div id="progress-section" class="bg-white rounded-xl shadow p-4 mb-4 hidden">
+            <div class="flex items-center justify-between mb-2">
+                <span class="font-bold text-sm" id="progress-title">กำลังประมวลผล...</span>
+                <span class="text-sm text-gray-600" id="progress-percent">0%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3 mb-3">
+                <div id="progress-bar" class="progress-bar bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
+            </div>
+            <div class="flex gap-4 text-xs text-gray-600">
+                <span>✅ สำเร็จ: <b id="count-success" class="text-green-600">0</b></span>
+                <span>⏭️ ข้าม: <b id="count-skip" class="text-gray-500">0</b></span>
+                <span>❌ ล้มเหลว: <b id="count-error" class="text-red-600">0</b></span>
+            </div>
+        </div>
+
+        <!-- Log Section -->
+        <div class="bg-white rounded-xl shadow p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-sm">📋 บันทึกการทำงาน</h3>
+                <button onclick="clearLog()" class="text-xs text-blue-600 hover:underline">ล้าง</button>
+            </div>
+            <div id="log-container" class="max-h-64 overflow-y-auto border rounded bg-gray-50 p-2 text-xs">
+                <div class="log-entry log-info">พร้อมเริ่มนำเข้ารูปภาพ...</div>
+            </div>
         </div>
     </div>
 
