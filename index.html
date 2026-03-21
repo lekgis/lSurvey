@@ -1648,6 +1648,7 @@
           return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         }
 
+        // ✅ แก้ไขฟังก์ชัน activateTool เพื่อตั้งค่า mouseAddType
         function activateTool(tool) {
             // ✅ 1. ถ้าเปิดเครื่องมือเพิ่มจุด ให้ปิดโหมดแก้ไขทันที
             if (isEditMode) {
@@ -1676,52 +1677,62 @@
                 document.getElementById('btn-sign').classList.add('active-tool');
             }
 
-            // ✅ ✅ ✅ 4. จัดการเป้า/+ ใหม่ตามโหมด (แก้ใหม่ทั้งหมด) ✅ ✅ ✅
+            // 4. แสดงเป้าเล็ง (เฉพาะเมื่อ NOT อยู่ในโหมดเพิ่มจุดด้วยเมาส์)
+            if (!mouseAddMode) {
+                const crosshair = document.getElementById('crosshair');
+                const addTrigger = document.getElementById('add-trigger-container');
+                crosshair.classList.remove('hidden');
+                addTrigger.classList.remove('hidden');
+                void crosshair.offsetWidth;
+                void addTrigger.offsetWidth;
+                crosshair.classList.add('visible');
+                addTrigger.classList.add('visible');
+            } else {
+                const crosshair = document.getElementById('crosshair');
+                const addTrigger = document.getElementById('add-trigger-container');
+                crosshair.classList.add('hidden');
+                addTrigger.classList.add('hidden');
+            }
+
+            // ✅ ✅ ✅ เพิ่มตรงนี้: ซ่อนเป้า/+ เดิมก่อนแสดงเป้า/+ ใหม่ ✅ ✅ ✅
+            const oldCrosshair = document.getElementById('crosshair');
+            const oldTrigger = document.getElementById('add-trigger-container');
+            if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
+            if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
+
+            // ✅ ✅ ✅ วางโค้ดใหม่ตรงนี้ ✅ ✅ ✅
             const newCrosshair = document.getElementById('add-point-crosshair');
             const newTrigger = document.getElementById('add-point-trigger');
             const newBtn = document.getElementById('add-point-confirm-btn');
             
-            if (!mouseAddMode) {
-                // ✅ โหมดมือถือ: แสดงเป้า/+ ใหม่
-                if (newCrosshair) { 
-                    newCrosshair.classList.remove('hidden'); 
-                    void newCrosshair.offsetWidth;  // บังคับ reflow สำหรับอนิเมชั่น
-                    newCrosshair.classList.add('visible'); 
-                }
-                if (newTrigger) { 
-                    newTrigger.classList.remove('hidden'); 
-                    newTrigger.classList.add('visible'); 
-                }
-                // ✅ ผูกคลิกปุ่ม + ใหม่
-                if (newBtn) {
-                    newBtn.onclick = function(e) {
-                        e.preventDefault(); e.stopPropagation();
-                        const containerPoint = L.point(map.getSize().x / 2, map.getSize().y / 2);
-                        const latlng = map.containerPointToLatLng(containerPoint);
-                        const overlay = document.getElementById('confirm-overlay');
-                        const btn = document.getElementById('btn-confirm-action');
-                        const text = document.getElementById('confirm-text');
-                        if (overlay && btn && text) {
-                            mouseClickLatLng = latlng;
-                            overlay.classList.remove('hidden');
-                            if (activeTool === 'building') {
-                                btn.style.backgroundColor = '#f97316';
-                                text.innerText = "เพิ่มสิ่งปลูกสร้าง";
-                            } else {
-                                btn.style.backgroundColor = '#22c55e';
-                                text.innerText = "ยืนยันเพิ่มป้าย";
-                            }
+            if (newCrosshair) { newCrosshair.classList.remove('hidden'); newCrosshair.classList.add('visible'); }
+            if (newTrigger) { newTrigger.classList.remove('hidden'); newTrigger.classList.add('visible'); }
+            if (newBtn) {
+                newBtn.onclick = function(e) {
+                    e.preventDefault(); e.stopPropagation();
+                    
+                    const containerPoint = L.point(map.getSize().x / 2, map.getSize().y / 2);
+                    const latlng = map.containerPointToLatLng(containerPoint);
+                    
+                    const overlay = document.getElementById('confirm-overlay');
+                    const btn = document.getElementById('btn-confirm-action');
+                    const text = document.getElementById('confirm-text');
+                    
+                    if (overlay && btn && text) {
+                        mouseClickLatLng = latlng;
+                        overlay.classList.remove('hidden');
+                        
+                        if (activeTool === 'building') {
+                            btn.style.backgroundColor = '#f97316';
+                            text.innerText = "เพิ่มสิ่งปลูกสร้าง";
+                        } else {
+                            btn.style.backgroundColor = '#22c55e';
+                            text.innerText = "ยืนยันเพิ่มป้าย";
                         }
-                    };
-                }
-            } else {
-                // ✅ โหมดเมาส์: ซ่อนเป้า/+ ใหม่ทั้งหมด + ล้าง onclick
-                if (newCrosshair) { newCrosshair.classList.add('hidden'); newCrosshair.classList.remove('visible'); }
-                if (newTrigger) { newTrigger.classList.add('hidden'); newTrigger.classList.remove('visible'); }
-                if (newBtn) { newBtn.onclick = null; }  // ✅ สำคัญ: ล้างฟังก์ชันเก่า
+                    }
+                };
             }
-
-            // ✅ ซ่อนปุ่มยืนยันเก่า (ป้องกันค้าง)
+            
             document.getElementById('confirm-overlay').classList.add('hidden');
         }
 
@@ -4486,14 +4497,24 @@
                                 <span>เปิดกล้อง</span>
                             </button>
                             
-                            <!-- ✅ ป้ายแสดงชื่อรูปภาพที่คลิกได้ -->
-                            <div id="filename-container-${f.id}" class="mt-1.5">
-                                <span id="filename-badge-${f.id}" 
+                            <!-- ✅ ป้ายแสดงชื่อรูปภาพที่คลิกได้ + ปุ่มลบรูป (แนวนอน) -->
+                            <div id="filename-container-${f.id}" class="mt-1.5 flex items-center gap-1">
+                                
+                                <!-- ป้ายชื่อรูป (คลิกเพื่อดู) -->
+                                <span id="filename-badge-${f.id}"
                                     class="text-[10px] text-blue-600 font-medium px-2 py-0.5 bg-blue-50 rounded-full inline-flex items-center gap-1 cursor-pointer hover:bg-blue-100 transition"
-                                    onclick="handleImageBadgeClick('${data.image || ''}', '${data.picture || 'ไม่มีชื่อรูปภาพ'}')">
+                                    onclick="handleImageBadgeClick('${data.image|| ''}', '${data.picture|| 'ไม่มีชื่อรูปภาพ'}')">
                                     <i data-lucide="image" class="w-3 h-3"></i>
                                     <span id="filename-text-${f.id}">${fileName}</span>
                                 </span>
+                                
+                                <!-- ✅ ปุ่มลบรูป (แสดงเฉพาะเมื่อมีรูปภาพ) -->
+                                <button type="button" id="delete-image-btn-${f.id}"
+                                    class="text-[10px] text-red-500 hover:text-red-700 px-1.5 py-0.5 bg-red-50 rounded hover:bg-red-100 transition ${!data.image || data.image.trim() === '' ? 'hidden' : ''}"
+                                    onclick="deleteImageField('${f.id}', event)">
+                                    ลบรูป
+                                </button>
+                                
                             </div>
                         </div>
                     </div>`;
