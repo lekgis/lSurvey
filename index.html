@@ -1896,83 +1896,79 @@
             }
         }
 
-        // 📱 PWA Support Logic
-        let deferredPrompt;
-        const installContainer = document.getElementById('pwa-install-container');
-        const installBtn = document.getElementById('pwa-install-btn');
-        const installCloseBtn = document.getElementById('pwa-install-close');
-        const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-        // ✅ ตรวจสอบและลงทะเบียน Service Worker
-        if ('serviceWorker' in navigator && isSecure) {
-          window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-              .then((reg) => console.log('✅ SW registered:', reg.scope))
-              .catch(err => console.warn('❌ SW failed:', err.message));
-          });
-
-          // ✅ จับเหตุการณ์ก่อนติดตั้ง (beforeinstallprompt)
-          window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault(); // ป้องกันการโชว์ prompt อัตโนมัติของเบราว์เซอร์
-            deferredPrompt = e;
+        // ✅ ✅ ✅ PWA Install Logic (เวอร์ชันแก้ไข) ✅ ✅ ✅
+        document.addEventListener('DOMContentLoaded', () => {
+            const installContainer = document.getElementById('pwa-install-container');
+            const installBtn = document.getElementById('pwa-install-btn');
             
-            // ✅ แสดงปุ่มติดตั้งแอปขนาดใหญ่
-            if (installContainer) {
-              installContainer.style.display = 'block';
-              // ✅ เพิ่ม animation ดึงดูดความสนใจ
-              installContainer.classList.add('animate-bounce');
-            }
-            console.log('✨ PWA install prompt available');
-          });
-
-          // ✅ เมื่อผู้ใช้คลิกปุ่มติดตั้ง
-          installBtn?.addEventListener('click', async () => {
-            if (deferredPrompt) {
-              // ซ่อนปุ่มขณะรอการติดตั้ง
-              installContainer.style.opacity = '0.7';
-              installBtn.disabled = true;
-              installBtn.innerHTML = '<span class="animate-spin">⏳</span> กำลังติดตั้ง...';
-              
-              try {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                console.log(`Install ${outcome}`);
+            if (!installContainer || !installBtn) return;
+            
+            let deferredPrompt = null;
+            let installPromptShown = false;
+            
+            // ✅ 1. Chrome/Android: ใช้ beforeinstallprompt
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                installPromptShown = true;
                 
-                if (outcome === 'accepted') {
-                  installContainer.style.display = 'none';
-                  showNotificationLeft('✅ ติดตั้งแอปสำเร็จ! สามารถใช้งานแบบออฟไลน์ได้', 'success');
-                } else {
-                  // ถ้าผู้ใช้ยกเลิก → แสดงปุ่มกลับคืน
-                  installContainer.style.opacity = '1';
-                  installBtn.disabled = false;
-                  installBtn.innerHTML = '<span class="text-2xl">📲</span> <span>ติดตั้งแอป "โนนไทย" เพื่อใช้งานแบบออฟไลน์</span>';
+                if (installContainer) {
+                    installContainer.style.display = 'flex';
+                    installContainer.classList.add('animate-bounce');
                 }
-                deferredPrompt = null;
-              } catch (err) {
-                console.error('Install error:', err);
-                installContainer.style.opacity = '1';
-                installBtn.disabled = false;
-              }
-            }
-          });
-
-          // ✅ เมื่อแอปติดตั้งสำเร็จ
-          window.addEventListener('appinstalled', () => {
-            console.log('🚀 PWA installed!');
-            if (installContainer) installContainer.style.display = 'none';
-            if (installCloseBtn) installCloseBtn.classList.add('hidden');
-            showNotificationLeft('🎉 แอป "โนนไทย" ติดตั้งเรียบร้อยแล้ว!', 'success');
-          });
-        }
-
-        // ✅ ปุ่มปิดคำแนะนำการติดตั้ง (สำหรับผู้ใช้ที่ต้องการซ่อน)
-        installCloseBtn?.addEventListener('click', () => {
-          if (installContainer) {
-            installContainer.style.display = 'none';
-            installCloseBtn.classList.add('hidden');
-            // ✅ บันทึกว่าผู้ใช้ปิดคำแนะนำแล้ว (ไม่แสดงอีกใน session นี้)
-            sessionStorage.setItem('pwa-install-dismissed', 'true');
-          }
+                console.log('✨ beforeinstallprompt triggered');
+            });
+            
+            // ✅ 2. สำรอง: ถ้าไม่เกิด event ใน 10 วินาที → แสดงปุ่มแบบ manual
+            setTimeout(() => {
+                if (!installPromptShown && !window.matchMedia('(display-mode: standalone)').matches) {
+                    console.log('⚠️ beforeinstallprompt ไม่เกิด → แสดงปุ่มสำรอง');
+                    
+                    installBtn.innerHTML = '📲 ติดตั้งแอป "โนนไทย"';
+                    installBtn.onclick = () => {
+                        if (deferredPrompt) {
+                            deferredPrompt.prompt();
+                        } else {
+                            alert('📱 วิธีติดตั้งบน Android Chrome:\n\n1. กดเมนู ⋮ มุมขวาบน\n2. เลือก "ติดตั้งแอป" หรือ "เพิ่มลงในหน้าจอหลัก"\n3. กด "ติดตั้ง" เพื่อยืนยัน');
+                        }
+                    };
+                    
+                    if (installContainer) {
+                        installContainer.style.display = 'flex';
+                    }
+                }
+            }, 10000);
+            
+            // ✅ 3. เมื่อติดตั้งสำเร็จ
+            window.addEventListener('appinstalled', () => {
+                console.log('🎉 PWA installed!');
+                if (installContainer) installContainer.style.display = 'none';
+                showNotificationLeft('✅ ติดตั้งแอปสำเร็จ!', 'success');
+            });
+            
+            // ✅ 4. คลิกปุ่มติดตั้ง
+            installBtn?.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    try {
+                        installBtn.disabled = true;
+                        installBtn.innerHTML = '⏳ กำลังติดตั้ง...';
+                        
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        
+                        if (outcome === 'accepted') {
+                            installContainer.style.display = 'none';
+                        } else {
+                            installBtn.disabled = false;
+                            installBtn.innerHTML = '📲 ติดตั้งแอป "โนนไทย"';
+                        }
+                        deferredPrompt = null;
+                    } catch (err) {
+                        console.error('Install error:', err);
+                        installBtn.disabled = false;
+                    }
+                }
+            });
         });
 
         // ✅ iOS Install Hint (แสดงคำแนะนำสำหรับ iPhone/iPad)
@@ -9729,14 +9725,13 @@
             closeAreaCalculatorA();
         }
 
-        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไข: ไม่ต้องแสดงเป้า/ปุ่มเดิมกลับ)
+        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไข: รีเซ็ตโหมดทั้งหมด)
         function closeAreaCalculatorA() {
             console.log('🔒 ปิดโหมดคำนวณพื้นที่ (ผู้ใช้กดปิด)');
             
             // ✅ ปิดโหมดคำนวณพื้นที่
-            isAreaCalculatorMode = false;           
-
-
+            isAreaCalculatorMode = false;
+            
             if (areaCalculatorModalA) {
                 areaCalculatorModalA.classList.add('animate-scale-out');
                 setTimeout(() => {
@@ -9752,7 +9747,7 @@
                         window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
                     }
                     
-                    // ✅ ✅ ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง ✅ ✅ ✅
+                    // ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง
                     const crosshair = document.getElementById('crosshair');
                     const addTrigger = document.getElementById('add-trigger-container');
                     if (crosshair) {
@@ -9768,20 +9763,29 @@
                     const input = document.getElementById('calc-input-a');
                     if (input) input.removeAttribute('readonly');
                     
-                    // ✅ ✅ ✅ เพิ่ม 3 บรรทัดนี้: รีเซ็ตโหมดเครื่องมือกลับเป็นปกติ ✅ ✅ ✅
-                    const mapContainer = document.getElementById('map');
-                    if (mapContainer) mapContainer.style.cursor = 'default';  // ✅ คืน Cursor ปกติ
-                    if (window.mouseAddMode) window.mouseAddMode = false;      // ✅ ปิดโหมดเพิ่มจุด
-                    if (window.activeTool) window.activeTool = null;           // ✅ รีเซ็ตเครื่องมือที่เลือก
-
+                    // ✅ ✅ ✅ เพิ่ม 3 บรรทัดนี้: รีเซ็ตโหมดเครื่องมือทั้งหมด ✅ ✅ ✅
+                    window.mouseAddMode = false;           // ✅ ปิดโหมดเพิ่มจุด (สำคัญ!)
+                    window.activeTool = null;              // ✅ รีเซ็ตเครื่องมือที่เลือก
+                    if (map) map.getContainer().style.cursor = '';  // ✅ คืนค่า Cursor ปกติ
+                    
                     // ✅ เปิด parcel/boundary กลับมา
                     disableAreaCalculatorMode();
+                    
+                    // ✅ ✅ ✅ เพิ่ม: ซ่อนปุ่มยืนยันชั่วคราวถ้ามี ✅ ✅ ✅
+                    const confirmOverlay = document.getElementById('add-point-overlay');
+                    const confirmBtn = document.getElementById('btn-confirm-action');
+                    if (confirmOverlay) confirmOverlay.classList.add('hidden');
+                    if (confirmBtn) confirmBtn.style.display = 'none';
                     
                 }, 200);
             } else {
                 isAreaCalculatorMode = false;
                 disableAreaCalculatorMode();
             }
+            
+            // ✅ ✅ ✅ แจ้งเตือนผู้ใช้ว่าพร้อมใช้งานแล้ว ✅ ✅ ✅
+            showNotificationLeft('✅ ปิดโหมดคำนวณพื้นที่ - พร้อมเพิ่มจุดแล้ว', 'success');
+            console.log('✅ ปิดหน้าต่างคำนวณพื้นที่ A เรียบร้อย - โหมดปกติแล้ว');
         }
 
 
