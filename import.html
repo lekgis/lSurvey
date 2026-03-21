@@ -64,6 +64,15 @@
                             disabled>
                         ▶️ เริ่มนำเข้า
                     </button>
+
+                    <!-- ✅ ปุ่มแสดงสถานะคิวนำเข้า -->
+                    <button id="btn-show-import-queue" onclick="showImportQueueModal()" 
+                            class="w-full mt-2 py-2 bg-gray-100 text-gray-700 rounded font-bold text-sm hover:bg-gray-200 transition flex items-center justify-center gap-1 relative">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                        คิวนำเข้ารอส่ง
+                        <span id="import-queue-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center">0</span>
+                    </button>
+
                     <!-- ✅ ✅ ✅ แสดงชื่อไฟล์ที่เลือก (ในกล่องเลย ไม่ต้องเลื่อน) ✅ ✅ ✅ -->
                     <div id="owner-selected-file" class="hidden mt-2 p-2 bg-blue-50 rounded border border-blue-200">
                         <div class="flex items-center justify-between gap-2">
@@ -120,7 +129,6 @@
             </div>
             
         </div>
-
 
 
         <!-- Selection Cards -->
@@ -182,33 +190,60 @@
             </div>
         </div>
 
-        <!-- Progress Section -->
-        <div id="progress-section" class="bg-white rounded-xl shadow p-4 mb-4 hidden">
-            <div class="flex items-center justify-between mb-2">
-                <span class="font-bold text-sm" id="progress-title">กำลังประมวลผล...</span>
-                <span class="text-sm text-gray-600" id="progress-percent">0%</span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-3 mb-3">
-                <div id="progress-bar" class="progress-bar bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
-            </div>
-            <div class="flex gap-4 text-xs text-gray-600">
-                <span>✅ สำเร็จ: <b id="count-success" class="text-green-600">0</b></span>
-                <span>⏭️ ข้าม: <b id="count-skip" class="text-gray-500">0</b></span>
-                <span>❌ ล้มเหลว: <b id="count-error" class="text-red-600">0</b></span>
-            </div>
-        </div>
+    </div>
 
-        <!-- Log Section -->
-        <div class="bg-white rounded-xl shadow p-4">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="font-bold text-sm">📋 บันทึกการทำงาน</h3>
-                <button onclick="clearLog()" class="text-xs text-blue-600 hover:underline">ล้าง</button>
+    <!-- ✅ Progress Section (อยู่นอก max-w-4xl) -->
+    <div id="progress-section" class="bg-white rounded-xl shadow p-4 mb-4 hidden">
+        <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-sm" id="progress-title">กำลังประมวลผล...</span>
+            <span class="text-sm text-gray-600" id="progress-percent">0%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-3 mb-3">
+            <div id="progress-bar" class="progress-bar bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
+        </div>
+        <div class="flex gap-4 text-xs text-gray-600">
+            <span>✅ สำเร็จ: <b id="count-success" class="text-green-600">0</b></span>
+            <span>⏭️ ข้าม: <b id="count-skip" class="text-gray-500">0</b></span>
+            <span>❌ ล้มเหลว: <b id="count-error" class="text-red-600">0</b></span>
+        </div>
+    </div>
+
+    <!-- ✅ Log Section (อยู่นอก max-w-4xl) -->
+    <div class="bg-white rounded-xl shadow p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-sm">📋 บันทึกการทำงาน</h3>
+            <button onclick="clearLog()" class="text-xs text-blue-600 hover:underline">ล้าง</button>
+        </div>
+        <div id="log-container" class="max-h-64 overflow-y-auto border rounded bg-gray-50 p-2 text-xs">
+            <div class="log-entry log-info">พร้อมเริ่มนำเข้ารูปภาพ...</div>
+        </div>
+    </div>
+    <!-- ✅ ✅ ✅ ลบ </div> เกินมา 2 ตัวตรงนี้ ✅ ✅ ✅ -->
+
+    <!-- ✅ Modal แสดงคิวนำเข้า (ท้ายสุด ก่อน </body>) -->
+    <div id="import-queue-modal" class="fixed inset-0 z-[5000] hidden">
+        <div class="absolute inset-0 bg-black/50" onclick="hideImportQueueModal()"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl p-4 w-80 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold text-sm">คิวนำเข้ารอส่ง</h3>
+                <button onclick="hideImportQueueModal()" class="p-1 hover:bg-gray-100 rounded">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
             </div>
-            <div id="log-container" class="max-h-64 overflow-y-auto border rounded bg-gray-50 p-2 text-xs">
-                <div class="log-entry log-info">พร้อมเริ่มนำเข้ารูปภาพ...</div>
+            <div id="import-queue-list" class="space-y-2 text-xs"></div>
+            <div class="mt-3 flex gap-2">
+                <button onclick="processImportQueue(); hideImportQueueModal();" 
+                        class="flex-1 py-2 bg-blue-600 text-white rounded text-xs font-bold">
+                    ส่งตอนนี้
+                </button>
+                <button onclick="clearImportQueue(); hideImportQueueModal();" 
+                        class="flex-1 py-2 bg-red-500 text-white rounded text-xs font-bold">
+                    ล้างคิว
+                </button>
             </div>
         </div>
     </div>
+
 
     <script>
         // ✅ ดึงพารามิเตอร์จาก URL
