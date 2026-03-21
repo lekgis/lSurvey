@@ -373,6 +373,17 @@
                         id: `owner_${Date.now()}_${Math.floor(Math.random() * 1000)}`
                     };
                     
+                    // ✅ ✅ ✅ เพิ่ม: เช็คออฟไลน์ก่อนส่ง ✅ ✅ ✅
+                    if (!navigator.onLine) {
+                        // เพิ่มเข้าคิวรอ
+                        addToImportQueue('owner', newOwner);
+                        ownerImportStats.success++; // นับว่า "คิวสำเร็จ"
+                        addLog(`📥 ออฟไลน์: บันทึกคิว "${item.fname} ${item.lname}"`, 'info');
+                        updateOwnerImportProgress();
+                        continue;
+                    }
+
+                    // ออนไลน์ → ส่งทันที (โค้ดเดิม)
                     try {
                         const formData = new FormData();
                         formData.append('action', 'quickAdd');
@@ -386,6 +397,11 @@
                         else { ownerImportStats.failed++; addLog(`❌ "${item.fname} ${item.lname}": ${result.message}`, 'error'); }
                     } catch (err) {
                         ownerImportStats.failed++;
+                        // ✅ ถ้าล้มเหลวเพราะออฟไลน์ → เพิ่มเข้าคิวสำรอง
+                        if (!navigator.onLine) {
+                            addToImportQueue('owner', newOwner);
+                            ownerImportStats.success++;
+                        }
                         addLog(`❌ "${item.fname} ${item.lname}": ${err.message}`, 'error');
                     }
                     
@@ -397,6 +413,49 @@
                 addLog(`❌ นำเข้าล้มเหลว: ${err.message}`, 'error');
             } finally {
                 document.getElementById('btn-owner-import-start').disabled = false;
+            }
+        }
+
+        // ✅ แสดง Modal คิว
+        function showImportQueueModal() {
+            const modal = document.getElementById('import-queue-modal');
+            const list = document.getElementById('import-queue-list');
+            
+            if (importQueue.length === 0) {
+                list.innerHTML = '<p class="text-gray-500 text-center">ไม่มีคิวรอส่ง</p>';
+            } else {
+                list.innerHTML = importQueue.map(item => `
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <div>
+                            <div class="font-medium">${item.type}</div>
+                            <div class="text-gray-500">${new Date(item.timestamp).toLocaleTimeString('th-TH')}</div>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] ${
+                            item.status === 'success' ? 'bg-green-100 text-green-700' :
+                            item.retryCount >= 3 ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-yellow-700'
+                        }">
+                            ${item.status === 'success' ? 'สำเร็จ' : 
+                              item.retryCount >= 3 ? 'ล้มเหลว' : 'รอส่ง'}
+                        </span>
+                    </div>
+                `).join('');
+            }
+            
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function hideImportQueueModal() {
+            document.getElementById('import-queue-modal').classList.add('hidden');
+        }
+
+        function clearImportQueue() {
+            if (confirm('ล้างคิวนำเข้าทั้งหมด?')) {
+                importQueue = [];
+                saveImportQueue();
+                updateImportQueueBadge();
+                showNotificationLeft('✅ ล้างคิวแล้ว', 'success');
             }
         }
 
@@ -521,12 +580,36 @@
             // ประมวลผลไฟล์ทีละไฟล์
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
+                
+                // ✅ ✅ ✅ เพิ่ม: เช็คออฟไลน์ก่อนประมวลผล ✅ ✅ ✅
+                if (!navigator.onLine) {
+                    // เตรียมข้อมูลสำหรับคิว
+                    const codePart = file.name.length >= 11 ? file.name.substring(0, 11).replace(/[^a-zA-Z0-9\-]/g, '') : '';
+                    const rowData = {
+                        [type === 'building' ? 'building_c' : 's_code']: codePart,
+                        check: 'ถ่ายรูปแล้ว',
+                        picture: file.name,
+                        date_added: formatThaiDateTimeBE(new Date()),
+                        update: formatThaiDateTimeBE(new Date())
+                    };
+                    
+                    // อ่านไฟล์เป็น base64
+                    const base64 = await fileToBase64(file);
+                    
+                    // เพิ่มเข้าคิว
+                    addToImportQueue(type, rowData, base64, file.name);
+                    
+                    stats.success++; // นับว่า "คิวสำเร็จ"
+                    addLog(`📥 ออฟไลน์: บันทึกคิว "${file.name}"`, 'info');
+                    updateProgress(i + 1, files.length);
+                    continue; // ข้ามการส่งทันที
+                }
+                
+                // ออนไลน์ → ประมวลผลปกติ
                 await processImageFile(file, type, i + 1, files.length);
                 
                 // อัปเดต UI
                 updateProgress(i + 1, files.length);
-                
-                // รอเล็กน้อยเพื่อไม่ให้เบราว์เซอร์ค้าง
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             
@@ -986,6 +1069,225 @@
                 // ✅ TODO: เพิ่มโค้ดประมวลผลไฟล์ข้อมูลป้ายที่นี่
                 // ผู้ใช้จะแจ้งโค้ดผูกอีกครั้ง
             }
+        });
+
+        // ============================================
+        // ✅ ระบบคิวนำเข้าแบบออฟไลน์ (รอได้ 60 นาที)
+        // ============================================
+        let importQueue = [];
+        const IMPORT_QUEUE_TIMEOUT = 60 * 60 * 1000; // 60 นาที
+
+        // ✅ โหลดคิวจาก localStorage เมื่อเริ่มแอป
+        function loadImportQueue() {
+            try {
+                const saved = localStorage.getItem('importQueue');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    // กรองรายการที่ยังไม่หมดอายุ
+                    importQueue = parsed.filter(item => 
+                        Date.now() - item.timestamp < IMPORT_QUEUE_TIMEOUT
+                    );
+                    console.log(`📥 โหลดคิวนำเข้า: ${importQueue.length} รายการ`);
+                }
+            } catch (err) {
+                console.error('❌ โหลดคิวนำเข้าล้มเหลว:', err);
+                importQueue = [];
+            }
+        }
+
+        // ✅ บันทึกคิวลง localStorage
+        function saveImportQueue() {
+            try {
+                localStorage.setItem('importQueue', JSON.stringify(importQueue));
+            } catch (err) {
+                console.error('❌ บันทึกคิวนำเข้าล้มเหลว:', err);
+            }
+        }
+
+        // ✅ เพิ่มรายการเข้าคิว
+        function addToImportQueue(type, data, imageBase64 = null, fileName = null) {
+            const queueItem = {
+                id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                timestamp: Date.now(),
+                type: type, // 'building', 'sign', 'owner'
+                data: data,
+                imageBase64: imageBase64,
+                fileName: fileName,
+                retryCount: 0,
+                status: 'pending'
+            };
+            
+            importQueue.push(queueItem);
+            saveImportQueue();
+            console.log(`📥 เพิ่มเข้าคิว: ${type} - ${queueItem.id}`);
+            
+            // ถ้าออนไลน์ → ลองประมวลผลทันที
+            if (navigator.onLine) {
+                setTimeout(processImportQueue, 500);
+            }
+            
+            return queueItem.id;
+        }
+
+        // ✅ ประมวลผลคิวนำเข้า
+        async function processImportQueue() {
+            if (!navigator.onLine || importQueue.length === 0) {
+                console.log('⏳ รอออนไลน์หรือไม่มีคิว');
+                return;
+            }
+            
+            console.log(`🔄 เริ่มประมวลผลคิวนำเข้า: ${importQueue.length} รายการ`);
+            
+            // กรองรายการที่ยังไม่หมดอายุ
+            const now = Date.now();
+            importQueue = importQueue.filter(item => 
+                now - item.timestamp < IMPORT_QUEUE_TIMEOUT
+            );
+            
+            for (let i = 0; i < importQueue.length; i++) {
+                const item = importQueue[i];
+                
+                // ข้ามรายการที่ประมวลผลแล้ว
+                if (item.status === 'success') continue;
+                
+                try {
+                    console.log(`📤 ส่งรายการ ${i+1}/${importQueue.length}: ${item.type}`);
+                    
+                    let result;
+                    if (item.type === 'owner') {
+                        // ✅ นำเข้าเจ้าของ
+                        const formData = new FormData();
+                        formData.append('action', 'quickAdd');
+                        formData.append('type', 'owner');
+                        formData.append('payload', JSON.stringify(item.data));
+                        
+                        const res = await fetch(CONFIG.SCRIPT_URL, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        result = await res.json();
+                        
+                    } else if (item.imageBase64) {
+                        // ✅ นำเข้ารูปภาพ (สิ่งปลูกสร้าง/ป้าย)
+                        const formData = new FormData();
+                        formData.append('action', 'quickAdd');
+                        formData.append('type', item.type);
+                        formData.append('payload', JSON.stringify(item.data));
+                        formData.append('image', item.imageBase64);
+                        if (item.fileName) formData.append('fileName', item.fileName);
+                        
+                        const res = await fetch(CONFIG.SCRIPT_URL, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        result = await res.json();
+                        
+                    } else {
+                        // ✅ นำเข้าข้อมูลอย่างเดียว
+                        const formData = new FormData();
+                        formData.append('action', 'quickAdd');
+                        formData.append('type', item.type);
+                        formData.append('payload', JSON.stringify(item.data));
+                        
+                        const res = await fetch(CONFIG.SCRIPT_URL, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        result = await res.json();
+                    }
+                    
+                    if (result.status === 200 || result.data?.success) {
+                        item.status = 'success';
+                        console.log(`✅ สำเร็จ: ${item.id}`);
+                    } else {
+                        throw new Error(result.message || 'Unknown error');
+                    }
+                    
+                } catch (err) {
+                    item.retryCount++;
+                    item.status = 'failed';
+                    console.warn(`❌ ล้มเหลว (${item.retryCount}/3): ${item.id} - ${err.message}`);
+                    
+                    // ลองใหม่สูงสุด 3 ครั้ง
+                    if (item.retryCount >= 3) {
+                        console.error(`🗑️ ทิ้งรายการ: ${item.id}`);
+                    }
+                }
+                
+                // บันทึกความคืบหน้า
+                saveImportQueue();
+                
+                // หยุดพักเล็กน้อย
+                if (i % 5 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+            
+            // ลบรายการที่สำเร็จหรือล้มเหลวเกิน 3 ครั้ง
+            importQueue = importQueue.filter(item => 
+                item.status !== 'success' && item.retryCount < 3
+            );
+            saveImportQueue();
+            
+            console.log(`✅ ประมวลผลคิวเสร็จสิ้น`);
+        }
+
+        // ✅ ฟังก์ชันล้างคิวที่หมดอายุ
+        function cleanupExpiredImportQueue() {
+            const now = Date.now();
+            const before = importQueue.length;
+            
+            importQueue = importQueue.filter(item => 
+                now - item.timestamp < IMPORT_QUEUE_TIMEOUT
+            );
+            
+            if (importQueue.length !== before) {
+                console.log(`🧹 ล้างคิวหมดอายุ: ${before} → ${importQueue.length} รายการ`);
+                saveImportQueue();
+            }
+        }
+
+        // ✅ อัปเดตสถานะคิวใน UI
+        function updateImportQueueBadge() {
+            const badge = document.getElementById('import-queue-badge');
+            if (badge) {
+                const pending = importQueue.filter(i => i.status === 'pending').length;
+                if (pending > 0) {
+                    badge.textContent = pending;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+
+        // ✅ ฟังเหตุการณ์ออนไลน์/ออฟไลน์
+        window.addEventListener('online', () => {
+            console.log('🌐 ออนไลน์แล้ว → เริ่มประมวลผลคิวนำเข้า');
+            cleanupExpiredImportQueue();
+            processImportQueue();
+            updateImportQueueBadge();
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('🔌 ออฟไลน์ → บันทึกคิวนำเข้ารอประมวลผล');
+            saveImportQueue();
+            updateImportQueueBadge();
+        });
+
+        // ✅ โหลดคิวเมื่อเริ่มแอป + ตั้งค่า interval
+        document.addEventListener('DOMContentLoaded', () => {
+            loadImportQueue();
+            updateImportQueueBadge();
+            
+            // เช็คทุก 30 วินาที
+            setInterval(() => {
+                if (navigator.onLine) {
+                    cleanupExpiredImportQueue();
+                    processImportQueue();
+                }
+                updateImportQueueBadge();
+            }, 30000);
         });
 
     </script>
