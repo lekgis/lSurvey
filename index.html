@@ -1182,6 +1182,26 @@
 
     <div id="map"></div>
 
+    <!-- ✅ ✅ ✅ เป้าเล็ง + ปุ่มยืนยัน สำหรับ "เพิ่มจุด" เท่านั้น (แยกจากคำนวณพื้นที่) ✅ ✅ ✅ -->
+
+    <!-- เป้าเล็งเพิ่มจุด -->
+    <div id="add-point-crosshair" class="fixed hidden pointer-events-none z-[2000]" 
+         style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <div class="w-10 h-10 border-4 border-orange-400 rounded-full relative animate-pulse">
+            <div class="absolute top-1/2 left-0 w-full h-0.5 bg-orange-400"></div>
+            <div class="absolute left-1/2 top-0 h-full w-0.5 bg-orange-400"></div>
+            <div class="absolute top-1/2 left-1/2 w-4 h-4 bg-orange-400 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+        </div>
+    </div>
+
+    <!-- ปุ่มยืนยันเพิ่มจุด -->
+    <div id="add-point-trigger" class="fixed hidden z-[2001] bottom-10 left-1/2 transform -translate-x-1/2">
+        <button type="button" id="add-point-confirm-btn"
+                class="w-16 h-16 bg-orange-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl font-bold hover:bg-orange-700 active:scale-95 transition">
+            +
+        </button>
+    </div>
+
     <!-- เป้าเล็ง -->
     <div id="crosshair" class="crosshair hidden">
         <div class="crosshair-circle">
@@ -1670,6 +1690,26 @@
                 addTrigger.classList.add('hidden');
             }
 
+            // ✅ ✅ ✅ เพิ่มตรงนี้: ซ่อนเป้า/+ เดิมก่อนแสดงเป้า/+ ใหม่ ✅ ✅ ✅
+            const oldCrosshair = document.getElementById('crosshair');
+            const oldTrigger = document.getElementById('add-trigger-container');
+            if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
+            if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
+
+            // ✅ ✅ ✅ วางโค้ดใหม่ตรงนี้ ✅ ✅ ✅
+            const newCrosshair = document.getElementById('add-point-crosshair');
+            const newTrigger = document.getElementById('add-point-trigger');
+            const newBtn = document.getElementById('add-point-confirm-btn');
+            
+            if (newCrosshair) { newCrosshair.classList.remove('hidden'); newCrosshair.classList.add('visible'); }
+            if (newTrigger) { newTrigger.classList.remove('hidden'); newTrigger.classList.add('visible'); }
+            if (newBtn) {
+                newBtn.onclick = function(e) {
+                    e.preventDefault(); e.stopPropagation();
+                    if (activeTool) confirmCapture();
+                };
+            }
+
             document.getElementById('confirm-overlay').classList.add('hidden');
             // ✅ กดรีโหลดอัตโนมัติ
             //triggerAutoRefresh();
@@ -1729,6 +1769,15 @@
           setTimeout(() => {
             crosshair.classList.add('hidden');
             addTrigger.classList.add('hidden');
+
+            const newCrosshair = document.getElementById('add-point-crosshair');
+            const newTrigger = document.getElementById('add-point-trigger');
+            const newBtn = document.getElementById('add-point-confirm-btn');
+                
+            if (newCrosshair) { newCrosshair.classList.add('hidden'); newCrosshair.classList.remove('visible'); }
+            if (newTrigger) { newTrigger.classList.add('hidden'); newTrigger.classList.remove('visible'); }
+            if (newBtn) { newBtn.onclick = null; }
+
             document.getElementById('confirm-overlay').classList.add('hidden');
           }, 400); // ตรงกับระยะเวลาแอนิเมชัน 0.4s
         }
@@ -9729,12 +9778,12 @@
             closeAreaCalculatorA();
         }
 
-        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไขสำหรับมือถือ)
+        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไข: ไม่ต้องแสดงเป้า/ปุ่มเดิมกลับ)
         function closeAreaCalculatorA() {
             console.log('🔒 ปิดโหมดคำนวณพื้นที่ (ผู้ใช้กดปิด)');
             
             // ✅ ปิดโหมดคำนวณพื้นที่
-            isAreaCalculatorMode = false;  // ← มีอยู่แล้ว ✅
+            isAreaCalculatorMode = false;
             
             if (areaCalculatorModalA) {
                 areaCalculatorModalA.classList.add('animate-scale-out');
@@ -9751,7 +9800,7 @@
                         window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
                     }
                     
-                    // ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง
+                    // ✅ ✅ ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง ✅ ✅ ✅
                     const crosshair = document.getElementById('crosshair');
                     const addTrigger = document.getElementById('add-trigger-container');
                     if (crosshair) {
@@ -9761,21 +9810,11 @@
                     if (addTrigger) {
                         addTrigger.classList.add('hidden');
                         addTrigger.classList.remove('visible');
-                        
-                        // ✅ ✅ ✅ สำคัญ: ล้าง onclick เดิมที่ผูกไว้ ✅ ✅ ✅
-                        const btn = addTrigger.querySelector('button');
-                        if (btn) {
-                            btn.onclick = null;  // ← ล้างฟังก์ชันคำนวณพื้นที่
-                        }
                     }
                     
                     // ✅ คืนค่า input
                     const input = document.getElementById('calc-input-a');
                     if (input) input.removeAttribute('readonly');
-                    
-                    // ✅ ✅ ✅ รีเซ็ตโหมดเครื่องมือทั้งหมด ✅ ✅ ✅
-                    window.mouseAddMode = false;   // ← ปิดโหมดเพิ่มจุด
-                    window.activeTool = null;      // ← รีเซ็ตเครื่องมือที่เลือก
                     
                     // ✅ เปิด parcel/boundary กลับมา
                     disableAreaCalculatorMode();
@@ -9785,10 +9824,6 @@
                 isAreaCalculatorMode = false;
                 disableAreaCalculatorMode();
             }
-            
-            // ✅ แจ้งเตือนผู้ใช้ว่าพร้อมใช้งานแล้ว
-            showNotificationLeft('✅ ปิดโหมดคำนวณพื้นที่ - พร้อมเพิ่มจุดแล้ว', 'success');
-            console.log('✅ ปิดหน้าต่างคำนวณพื้นที่ A เรียบร้อย - โหมดปกติแล้ว');
         }
 
 
