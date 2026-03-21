@@ -64,6 +64,18 @@
                             disabled>
                         ▶️ เริ่มนำเข้า
                     </button>
+                    <!-- ✅ ✅ ✅ แสดงชื่อไฟล์ที่เลือก (ในกล่องเลย ไม่ต้องเลื่อน) ✅ ✅ ✅ -->
+                    <div id="owner-selected-file" class="hidden mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs text-blue-800 font-medium truncate flex-1" id="owner-selected-filename"></span>
+                            <button type="button" onclick="clearSelectedFile()" 
+                                    class="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-100 rounded transition"
+                                    title="ล้างไฟล์ที่เลือก">
+                                <i data-lucide="x" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+
                     
                     <!-- แถบความคืบหน้า -->
                     <div id="owner-import-progress" class="hidden">
@@ -848,26 +860,36 @@
             lucide.createIcons();
             addLog('🚀 หน้าจอพร้อมใช้งาน', 'info');
             
-            // ✅ ✅ ✅ แก้: ล้างล็อก + รีเซ็ตเมื่อเลือกไฟล์เจ้าของ ✅ ✅ ✅
+            // ✅ ✅ ✅ แก้: แสดงชื่อไฟล์ในกล่องทันทีที่เลือก ✅ ✅ ✅
             document.getElementById('owner-import-file')?.addEventListener('change', function(e) {
                 const btn = document.getElementById('btn-owner-import-start');
+                const fileNameDisplay = document.getElementById('owner-selected-filename');
+                const fileContainer = document.getElementById('owner-selected-file');
                 
                 if (e.target.files[0]) {
+                    // ✅ เปิดใช้งานปุ่มเริ่มนำเข้า
                     if (btn) btn.disabled = false;
-                    addLog(`📄 เลือกไฟล์: ${e.target.files[0].name}`, 'info');
                     
-                    // ✅ ข้อ 1: ล้างล็อกอัตโนมัติ
+                    // ✅ ✅ ✅ แสดงชื่อไฟล์ในกล่อง (ไม่ต้องเลื่อนดูล็อก) ✅ ✅ ✅
+                    if (fileNameDisplay && fileContainer) {
+                        fileNameDisplay.textContent = e.target.files[0].name;
+                        fileContainer.classList.remove('hidden');
+                    }
+                    
+                    // ✅ ล้างล็อก + รีเซ็ต
                     clearLog();
-                    
-                    // ✅ ข้อ 2: รีเซ็ตแถบความคืบหน้าสีน้ำเงิน
                     document.getElementById('owner-import-bar').style.width = '0%';
                     document.getElementById('owner-import-percent').textContent = '0%';
                     document.getElementById('owner-import-success').textContent = '0';
                     document.getElementById('owner-import-skipped').textContent = '0';
                     document.getElementById('owner-import-failed').textContent = '0';
                     document.getElementById('owner-import-progress').classList.add('hidden');
+                    
+                    addLog(`📄 เลือกไฟล์: ${e.target.files[0].name}`, 'info');
                 } else {
+                    // ✅ ถ้ายกเลิกการเลือก
                     if (btn) btn.disabled = true;
+                    if (fileContainer) fileContainer.classList.add('hidden');
                 }
             });
         });
@@ -906,6 +928,20 @@
             
             // ✅ แปลง Map กลับเป็น array
             return Array.from(seen.values());
+        }
+
+        // ✅ ✅ ✅ ฟังก์ชันล้างไฟล์ที่เลือก ✅ ✅ ✅
+        function clearSelectedFile() {
+            const fileInput = document.getElementById('owner-import-file');
+            const fileNameDisplay = document.getElementById('owner-selected-filename');
+            const fileContainer = document.getElementById('owner-selected-file');
+            const btn = document.getElementById('btn-owner-import-start');
+            
+            if (fileInput) fileInput.value = '';
+            if (fileContainer) fileContainer.classList.add('hidden');
+            if (btn) btn.disabled = true;
+            
+            addLog('🗑️ ล้างไฟล์ที่เลือกแล้ว', 'info');
         }
 
         // ✅ ✅ ✅ ข้อ 3: สิ่งปลูกสร้าง - ล้างล็อก + รีเซ็ตเมื่อเลือกไฟล์ข้อมูล ✅ ✅ ✅
