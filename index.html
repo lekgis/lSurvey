@@ -1196,7 +1196,7 @@
         </div>
     </div>
 
-    <!-- ปุ่มยืนยันเพิ่มจุด (แก้ให้เหมือนปุ่มเดิม) -->
+    <!-- ปุ่ม  +  ยืนยันเพิ่มจุด (+ อันใหม่) -->
     <div id="add-point-trigger" class="fixed hidden z-[1001] bottom-10 left-1/2 transform -translate-x-1/2">
         <button type="button" id="add-point-confirm-btn"
                 class="p-4 bg-blue-600/50 text-white rounded-full shadow-xl border-[3px] border-white active:scale-90 transition-all"
@@ -2101,6 +2101,10 @@
             const btn = document.getElementById('btn-mouse-add-mode');
             const mapContainer = document.getElementById('map');
             
+            // ✅ ✅ ✅ เพิ่ม: ซ่อนเป้า/+ ใหม่เมื่อเปิดโหมดเมาส์ ✅ ✅ ✅
+            const newCrosshair = document.getElementById('add-point-crosshair');
+            const newTrigger = document.getElementById('add-point-trigger');
+
             // ✅ 1. ถ้าเปิดโหมดเพิ่มจุดด้วยเมาส์ ให้ปิดโหมดแก้ไข
             if (mouseAddMode && isEditMode) {
                 isEditMode = false;
@@ -2111,6 +2115,10 @@
             if (mouseAddMode) {
                 // ✅ เปิดโหมด
                 btn.classList.add('active-tool');
+                
+                // ✅ ซ่อนเป้า/+ ใหม่ (เพราะใช้ cursor แทน)
+                if (newCrosshair) { newCrosshair.classList.add('hidden'); newCrosshair.classList.remove('visible'); }
+                if (newTrigger) { newTrigger.classList.add('hidden'); newTrigger.classList.remove('visible'); }
                 
                 // ✅ 2. Default: ถ้ายังไม่ได้เลือกเครื่องมือ ให้เปิด 'เพิ่มสิ่งปลูกสร้าง' เป็นค่าเริ่มต้น
                 if (!activeTool) {
@@ -2188,6 +2196,12 @@
                 mapContainer.style.cursor = 'default !important';
                 mapContainer.classList.remove('cursor-crosshair-add');
                 
+                // ✅ แสดงเป้า/+ ใหม่กลับ (ถ้ามี activeTool)
+                if (activeTool) {
+                    if (newCrosshair) { newCrosshair.classList.remove('hidden'); newCrosshair.classList.add('visible'); }
+                    if (newTrigger) { newTrigger.classList.remove('hidden'); newTrigger.classList.add('visible'); }
+                }
+
                 // ✅ 10. เปิดการโต้ตอบกับ parcel layers กลับมา
                 if (window.parcelLayer) {
                     window.parcelLayer.eachLayer(function(layer) {
