@@ -1424,6 +1424,7 @@
                         <tr>
                             <th style="width: 30px"><i data-lucide="map-pin" class="w-4 h-4"></i></th>
                             <th class="sortable-header" data-sort="s_code">รหัส</th>
+                            <th class="sortable-header" data-sort="full_name">เจ้าของ</th>
                             <th class="sortable-header" data-sort="s_characte">ลักษณะ</th>
                             <th class="text-center sortable-header" data-sort="s_wide">กว้าง (ซ.ม.)</th>
                             <th class="text-center sortable-header" data-sort="s_length">ยาว (ซ.ม.)</th>
@@ -2645,7 +2646,7 @@
             const ownerValue = ownerParts.join(' | ');
             
             // ✅ กรอกลงช่อง full_name / fullname ตามประเภทมาร์กเกอร์
-            const fieldName = currentMarkerType === 'building' ? 'full_name' : 'fullname';
+            const fieldName = 'full_name';
             const input = document.querySelector(`input[name="${fieldName}"]`);
             if (input) {
                 input.value = ownerValue;
@@ -3034,7 +3035,7 @@
                 if (currentMarkerType) {
                     const ownerParts = [newOwner.title, newOwner.fname, newOwner.lname].filter(v => v && v.trim());
                     const ownerValue = ownerParts.join(' | ');
-                    const fieldName = currentMarkerType === 'building' ? 'full_name' : 'fullname';
+                    const fieldName = 'full_name';
                     const input = document.querySelector(`input[name="${fieldName}"]`);
                     if (input) input.value = ownerValue;
                     window.selectedOwnerData = { ...newOwner };
@@ -4302,7 +4303,7 @@
                 { id: 'comment', label: 'หมายเหตุ', type: 'text' },
                 // ✅ ฟิลด์เจ้าของ (ป้าย) - แสดงค่าจาก title+fname+lname ด้วย | คั่น
                 { 
-                    id: 'fullname', 
+                    id: 'full_name', 
                     label: 'เจ้าของ', 
                     type: 'text',
                     readonly: true,
