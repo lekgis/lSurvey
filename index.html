@@ -9734,12 +9734,8 @@
             console.log('🔒 ปิดโหมดคำนวณพื้นที่ (ผู้ใช้กดปิด)');
             
             // ✅ ปิดโหมดคำนวณพื้นที่
-            isAreaCalculatorMode = false;
-            
-            // ✅ 2. ✅ ✅ ✅ รีเซ็ตโหมดเครื่องมือกลับเป็นปกติ ✅ ✅ ✅
-            if (window.buildingAreaLayer) {
-                window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
-            }
+            isAreaCalculatorMode = false;           
+
 
             if (areaCalculatorModalA) {
                 areaCalculatorModalA.classList.add('animate-scale-out');
@@ -9772,6 +9768,12 @@
                     const input = document.getElementById('calc-input-a');
                     if (input) input.removeAttribute('readonly');
                     
+                    // ✅ ✅ ✅ เพิ่ม 3 บรรทัดนี้: รีเซ็ตโหมดเครื่องมือกลับเป็นปกติ ✅ ✅ ✅
+                    const mapContainer = document.getElementById('map');
+                    if (mapContainer) mapContainer.style.cursor = 'default';  // ✅ คืน Cursor ปกติ
+                    if (window.mouseAddMode) window.mouseAddMode = false;      // ✅ ปิดโหมดเพิ่มจุด
+                    if (window.activeTool) window.activeTool = null;           // ✅ รีเซ็ตเครื่องมือที่เลือก
+
                     // ✅ เปิด parcel/boundary กลับมา
                     disableAreaCalculatorMode();
                     
