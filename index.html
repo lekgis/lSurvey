@@ -9733,8 +9733,8 @@
         function closeAreaCalculatorA() {
             console.log('🔒 ปิดโหมดคำนวณพื้นที่ (ผู้ใช้กดปิด)');
             
-            // ✅ 1. ปิดโหมดคำนวณพื้นที่
-            isAreaCalculatorMode = false;
+            // ✅ ปิดโหมดคำนวณพื้นที่
+            isAreaCalculatorMode = false;  // ← มีอยู่แล้ว ✅
             
             if (areaCalculatorModalA) {
                 areaCalculatorModalA.classList.add('animate-scale-out');
@@ -9746,12 +9746,12 @@
                     areaAccumulatorA = 0;
                     areaHistoryA = [];
                     
-                    // ✅ 2. ย้าย building_area กลับลงล่าง
+                    // ✅ ย้าย building_area กลับลงล่าง
                     if (window.buildingAreaLayer) {
                         window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
                     }
                     
-                    // ✅ 3. ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง
+                    // ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง
                     const crosshair = document.getElementById('crosshair');
                     const addTrigger = document.getElementById('add-trigger-container');
                     if (crosshair) {
@@ -9762,28 +9762,22 @@
                         addTrigger.classList.add('hidden');
                         addTrigger.classList.remove('visible');
                         
-                        // ✅ ✅ ✅ สำคัญสำหรับมือถือ: ล้าง onclick เดิมที่ผูกไว้ ✅ ✅ ✅
+                        // ✅ ✅ ✅ สำคัญ: ล้าง onclick เดิมที่ผูกไว้ ✅ ✅ ✅
                         const btn = addTrigger.querySelector('button');
                         if (btn) {
-                            btn.onclick = null;  // ✅ ล้างฟังก์ชันคำนวณพื้นที่
+                            btn.onclick = null;  // ← ล้างฟังก์ชันคำนวณพื้นที่
                         }
                     }
                     
-                    // ✅ 4. คืนค่า input
+                    // ✅ คืนค่า input
                     const input = document.getElementById('calc-input-a');
                     if (input) input.removeAttribute('readonly');
                     
-                    // ✅ 5. รีเซ็ตโหมดเครื่องมือกลับเป็นปกติ (สำหรับมือถือ)
-                    window.mouseAddMode = false;
-                    window.activeTool = null;
+                    // ✅ ✅ ✅ รีเซ็ตโหมดเครื่องมือทั้งหมด ✅ ✅ ✅
+                    window.mouseAddMode = false;   // ← ปิดโหมดเพิ่มจุด
+                    window.activeTool = null;      // ← รีเซ็ตเครื่องมือที่เลือก
                     
-                    // ✅ 6. ซ่อนปุ่มยืนยันชั่วคราวถ้ามี
-                    const confirmOverlay = document.getElementById('add-point-overlay');
-                    const confirmBtn = document.getElementById('btn-confirm-action');
-                    if (confirmOverlay) confirmOverlay.classList.add('hidden');
-                    if (confirmBtn) confirmBtn.style.display = 'none';
-                    
-                    // ✅ 7. เปิด parcel/boundary กลับมา
+                    // ✅ เปิด parcel/boundary กลับมา
                     disableAreaCalculatorMode();
                     
                 }, 200);
@@ -9792,7 +9786,7 @@
                 disableAreaCalculatorMode();
             }
             
-            // ✅ 8. แจ้งเตือนผู้ใช้ว่าพร้อมใช้งานแล้ว
+            // ✅ แจ้งเตือนผู้ใช้ว่าพร้อมใช้งานแล้ว
             showNotificationLeft('✅ ปิดโหมดคำนวณพื้นที่ - พร้อมเพิ่มจุดแล้ว', 'success');
             console.log('✅ ปิดหน้าต่างคำนวณพื้นที่ A เรียบร้อย - โหมดปกติแล้ว');
         }
