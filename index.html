@@ -2605,7 +2605,7 @@
                                         ${owner.title||''} ${owner.fname||''} ${owner.lname||''}${relevanceBadge}
                                     </p>
                                     <p class="text-xs text-gray-500">บัตร ปชช: ${owner.pop||'-'}</p>
-                                    <p class="text-xs text-gray-500">โทร: ${owner.tel||'-'}</p>
+                                    <p class="text-xs text-gray-500">เลขที่: ${owner.h_no||'-'} หมู่: ${owner.moo||'-'}</p>
                                     ${owner.update ? `<p class="text-[10px] text-gray-400 mt-1">อัปเดต: ${formatDisplayDate(owner.update)}</p>` : ''}
                                 </div>
                                 <button type="button" onclick="editOwner(${index})" 
