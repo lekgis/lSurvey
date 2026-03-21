@@ -9729,7 +9729,7 @@
             closeAreaCalculatorA();
         }
 
-        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไข: รีเซ็ตโหมดทั้งหมด)
+        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไขสมบูรณ์)
         function closeAreaCalculatorA() {
             console.log('🔒 ปิดโหมดคำนวณพื้นที่ (ผู้ใช้กดปิด)');
             
@@ -9751,7 +9751,7 @@
                         window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
                     }
                     
-                    // ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง
+                    // ✅ ✅ ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง ✅ ✅ ✅
                     const crosshair = document.getElementById('crosshair');
                     const addTrigger = document.getElementById('add-trigger-container');
                     if (crosshair) {
@@ -9762,7 +9762,7 @@
                         addTrigger.classList.add('hidden');
                         addTrigger.classList.remove('visible');
                         
-                        // ✅ ✅ ✅ ล้าง onclick เดิมที่ผูกไว้ (สำคัญ!) ✅ ✅ ✅
+                        // ✅ ✅ ✅ ล้าง onclick เดิมที่ผูกไว้ (สำคัญมาก!) ✅ ✅ ✅
                         const btn = addTrigger.querySelector('button');
                         if (btn) {
                             btn.onclick = null;  // ✅ ล้างฟังก์ชันคำนวณพื้นที่
@@ -9773,8 +9773,8 @@
                     const input = document.getElementById('calc-input-a');
                     if (input) input.removeAttribute('readonly');
                     
-                    // ✅ ✅ ✅ เพิ่ม 4 บรรทัดนี้: รีเซ็ตโหมดเครื่องมือทั้งหมด ✅ ✅ ✅
-                    window.mouseAddMode = false;           // ✅ ปิดโหมดเพิ่มจุด (สำคัญ!)
+                    // ✅ ✅ ✅ รีเซ็ตโหมดเครื่องมือทั้งหมด ✅ ✅ ✅
+                    window.mouseAddMode = false;           // ✅ ปิดโหมดเพิ่มจุด
                     window.activeTool = null;              // ✅ รีเซ็ตเครื่องมือที่เลือก
                     if (map) map.getContainer().style.cursor = '';  // ✅ คืนค่า Cursor ปกติ
                     
