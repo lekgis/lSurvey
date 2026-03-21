@@ -1663,6 +1663,12 @@
                 void addTrigger.offsetWidth;
                 crosshair.classList.add('visible');
                 addTrigger.classList.add('visible');
+
+                // ✅ ✅ ✅ สำคัญที่สุด: ผูกปุ่ม + กลับเป็นฟังก์ชันเพิ่มจุดปกติ ✅ ✅ ✅
+                const btn = addTrigger.querySelector('button');
+                if (btn) {
+                    btn.onclick = showConfirmButton;  // ← ใส่ฟังก์ชันเพิ่มจุดกลับเข้าไป
+                }
             } else {
                 const crosshair = document.getElementById('crosshair');
                 const addTrigger = document.getElementById('add-trigger-container');
