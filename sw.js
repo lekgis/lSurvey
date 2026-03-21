@@ -6,6 +6,7 @@ const MAP_CACHE_NAME = 'map-tiles-v2';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/manifest.json',
   '/static/icons/lb.ico',
   '/static/icons/lb-192.png',
   '/static/icons/lb-512.png'
@@ -44,7 +45,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
   
-  if (TILE_URLS.some(tileUrl => url.startsWith(tileUrl))) {
+  if (TILE_URLS.some(tileUrl => url.startsWith(tileUrl.trim()))) {
     event.respondWith(handleMapTileRequest(event.request));
   } else {
     event.respondWith(handleAppRequest(event.request));
@@ -55,7 +56,7 @@ async function handleMapTileRequest(request) {
   const cache = await caches.open(MAP_CACHE_NAME);
   try {
     const cachedResponse = await cache.match(request);
-    const networkFetch = fetch(request).then(async (networkResponse) => {
+    const networkResponse = await fetch(request).catch(() => null);
       if (networkResponse && networkResponse.status === 200) {
         await cache.put(request, networkResponse.clone());
       }
