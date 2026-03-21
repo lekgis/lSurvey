@@ -9736,6 +9736,11 @@
             // ✅ ปิดโหมดคำนวณพื้นที่
             isAreaCalculatorMode = false;
             
+            // ✅ 2. ✅ ✅ ✅ รีเซ็ตโหมดเครื่องมือกลับเป็นปกติ ✅ ✅ ✅
+            if (window.buildingAreaLayer) {
+                window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
+            }
+
             if (areaCalculatorModalA) {
                 areaCalculatorModalA.classList.add('animate-scale-out');
                 setTimeout(() => {
