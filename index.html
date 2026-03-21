@@ -1182,25 +1182,6 @@
 
     <div id="map"></div>
 
-    <!-- ✅ ✅ ✅ เป้าเล็ง + ปุ่มยืนยัน สำหรับคำนวณพื้นที่ (แยกจากโหมดเพิ่มจุด) ✅ ✅ ✅ -->
-    <!-- เป้าเล็งคำนวณพื้นที่ -->
-    <div id="area-crosshair" class="fixed hidden pointer-events-none z-[2000]" 
-         style="top: 35%; left: 50%; transform: translate(-50%, -50%);">
-        <div class="w-8 h-8 border-4 border-blue-400 rounded-full relative animate-pulse">
-            <div class="absolute top-1/2 left-0 w-full h-0.5 bg-blue-400"></div>
-            <div class="absolute left-1/2 top-0 h-full w-0.5 bg-blue-400"></div>
-            <div class="absolute top-1/2 left-1/2 w-3 h-3 bg-blue-400 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
-        </div>
-    </div>
-
-    <!-- ปุ่มยืนยันคำนวณพื้นที่ -->
-    <div id="area-add-trigger" class="fixed hidden z-[2001] bottom-10 left-1/2 transform -translate-x-1/2">
-        <button type="button" id="area-calc-confirm-btn"
-                class="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-2xl font-bold hover:bg-blue-700 active:scale-95 transition">
-            +
-        </button>
-    </div>
-
     <!-- เป้าเล็ง -->
     <div id="crosshair" class="crosshair hidden">
         <div class="crosshair-circle">
@@ -3071,66 +3052,74 @@
             }
         }
 
-        // ✅ ✅ ✅ แก้ฟังก์ชันคำนวณพื้นที่จากเป้าเล็ง ✅ ✅ ✅
+        // ✅ ✅ ✅ แก้ฟังก์ชันคำนวณพื้นที่ ✅ ✅ ✅
         function calculateAreaFromAreaCrosshair() {
-            console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าเล็ง (ใหม่)...');
+            console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าเล็ง...');
             
-            if (!map || !window.buildingAreaLayer) {
+            if (!map || !window.buildingLayer) {
                 showNotificationLeft('⚠️ โหลดข้อมูลสิ่งปลูกสร้างก่อน', 'warning');
                 return;
             }
             
-            // ✅ คำนวณพิกัดจากตำแหน่งเป้าใหม่ (35%, 50%)
+            // ✅ คำนวณพิกัดจากตำแหน่งเป้าจริง (35%, 50%)
             const mapSize = map.getSize();
             const targetX = mapSize.x * 0.5;
-            const targetY = mapSize.y * 0.35;  // ✅ 35% จากด้านบน
+            const targetY = mapSize.y * 0.35;
+            const latlng = map.containerPointToLatLng(L.point(targetX, targetY));
+            const point = turf.point([latlng.lng, latlng.lat]);
             
-            const point = map.containerPointToLatLng([targetX, targetY]);
-            const turfPoint = turf.point([point.lng, point.lat]);
+            console.log(`📍 พิกัดเป้าเล็ง: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`);
             
-            let foundBuilding = false;
             let calculatedArea = 0;
+            let foundBuilding = false;
+            let checkedCount = 0;
             
-            // ✅ วนลูปหาสิ่งปลูกสร้างใต้เป้า
-            window.buildingAreaLayer.eachLayer(function(layer) {
-                if (foundBuilding) return;
-                
+            window.buildingLayer.eachLayer(function(layer) {
+                if (foundBuilding) return; 
+
                 try {
-                    const geojson = layer.toGeoJSON();
-                    if (turf.booleanPointInPolygon(turfPoint, geojson)) {
-                        calculatedArea = turf.area(geojson);
+                    // 1. แปลง Layer เป็น GeoJSON ก่อน (วิธีนี้ปลอดภัยที่สุดสำหรับ Turf)
+                    const feature = layer.toGeoJSON();
+                    
+                    // 2. เช็คว่าเป็น Polygon หรือ MultiPolygon ไหม (ป้องกัน Error จากพวกเส้นหรือจุด)
+                    if (!feature || !feature.geometry || 
+                        (feature.geometry.type !== 'Polygon' && feature.geometry.type !== 'MultiPolygon')) {
+                        return; // ข้ามไปตัวถัดไปเลย ไม่ต้อง Error
+                    }
+
+                    // 3. ใช้ turf เช็คว่าจุดอยู่ใน Polygon ไหม
+                    const isInside = turf.booleanPointInPolygon(point, feature);
+
+                    if (isInside) {
+                        // ถ้าใช่ ให้คำนวณพื้นที่จาก feature นั้นเลย
+                        calculatedArea = turf.area(feature); 
                         foundBuilding = true;
                         
-                        // ✅ ไฮไลต์สีฟ้าสว่าง
+                        // --- ส่วนการแสดงผล Highlight เดิมของคุณ ---
                         const originalStyle = {
                             color: layer.options.color || '#10b981',
                             weight: layer.options.weight || 1,
                             fillOpacity: layer.options.fillOpacity || 0.4
                         };
-                        
-                        layer.setStyle({ 
-                            color: '#3b82f6',  // ✅ ฟ้าสว่าง
-                            weight: 4, 
-                            fillOpacity: 0.6 
-                        });
-                        
+                        layer.setStyle({ color: '#fbbf24', weight: 4, fillOpacity: 0.6 });
                         setTimeout(() => layer.setStyle(originalStyle), 2000);
                     }
-                } catch (e) {
-                    console.error('Area calc error:', e);
+                } catch (err) {
+                    // ✅ จุดสำคัญ: ถ้าตัวไหนพัง (เช่น พิกัดไม่ครบ 4 จุดตาม Log) 
+                    // ให้มันข้ามไปเงียบๆ เพื่อไปตรวจตัวอื่นต่อ
+                    console.warn('⚠️ ข้ามข้อมูลที่ไม่สมบูรณ์:', err.message);
                 }
             });
             
-            // ✅ ถ้าเจอ → กรอกค่า + บวกอัตโนมัติ
+            console.log(`🔍 ตรวจไป ${checkedCount} layers, พบ building: ${foundBuilding}`);
+            
             if (foundBuilding && calculatedArea > 0) {
-                console.log(`📐 คำนวณพื้นที่ได้: ${calculatedArea.toFixed(2)} ตร.ม.`);
                 const input = document.getElementById('calc-input-a');
-                if (input) {
-                    input.value = calculatedArea.toFixed(2);
-                    // ✅ กดปุ่ม "+ บวก" อัตโนมัติ
-                    const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
-                    if (addBtn) setTimeout(() => addBtn.click(), 100);
-                }
+                if (input) input.value = calculatedArea.toFixed(2);
+                
+                const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
+                if (addBtn) setTimeout(() => addBtn.click(), 100);
+                
                 showNotificationLeft(`✅ +${calculatedArea.toFixed(2)} ตร.ม.`, 'success');
             } else {
                 console.warn('⚠️ ไม่พบสิ่งปลูกสร้างใต้เป้า');
@@ -9740,7 +9729,7 @@
             closeAreaCalculatorA();
         }
 
-        // ✅ ✅ ✅ แก้ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A ✅ ✅ ✅
+        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไข: ไม่ต้องแสดงเป้า/ปุ่มเดิมกลับ)
         function closeAreaCalculatorA() {
             console.log('🔒 ปิดโหมดคำนวณพื้นที่ (ผู้ใช้กดปิด)');
             
@@ -9762,45 +9751,30 @@
                         window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
                     }
                     
-                    // ✅ ✅ ✅ ซ่อนเป้า/+ ใหม่สำหรับคำนวณพื้นที่ (แยกจากโหมดเพิ่มจุด) ✅ ✅ ✅
-                    const areaCrosshair = document.getElementById('area-crosshair');
-                    const areaAddTrigger = document.getElementById('area-add-trigger');
-                    if (areaCrosshair) {
-                        areaCrosshair.classList.add('hidden');
-                        areaCrosshair.classList.remove('visible');
+                    // ✅ ✅ ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง ✅ ✅ ✅
+                    const crosshair = document.getElementById('crosshair');
+                    const addTrigger = document.getElementById('add-trigger-container');
+                    if (crosshair) {
+                        crosshair.classList.add('hidden');
+                        crosshair.classList.remove('visible');
                     }
-                    if (areaAddTrigger) {
-                        areaAddTrigger.classList.add('hidden');
-                        areaAddTrigger.classList.remove('visible');
+                    if (addTrigger) {
+                        addTrigger.classList.add('hidden');
+                        addTrigger.classList.remove('visible');
                     }
                     
                     // ✅ คืนค่า input
                     const input = document.getElementById('calc-input-a');
                     if (input) input.removeAttribute('readonly');
                     
-                    // ✅ ✅ ✅ รีเซ็ตโหมดเครื่องมือกลับเป็นปกติ ✅ ✅ ✅
-                    window.mouseAddMode = false;           // ✅ ปิดโหมดเพิ่มจุด
-                    window.activeTool = null;              // ✅ รีเซ็ตเครื่องมือที่เลือก
-                    if (map) map.getContainer().style.cursor = '';  // ✅ คืนค่า Cursor ปกติ
-                    
                     // ✅ เปิด parcel/boundary กลับมา
                     disableAreaCalculatorMode();
-                    
-                    // ✅ ซ่อนปุ่มยืนยันชั่วคราวถ้ามี
-                    const confirmOverlay = document.getElementById('add-point-overlay');
-                    const confirmBtn = document.getElementById('btn-confirm-action');
-                    if (confirmOverlay) confirmOverlay.classList.add('hidden');
-                    if (confirmBtn) confirmBtn.style.display = 'none';
                     
                 }, 200);
             } else {
                 isAreaCalculatorMode = false;
                 disableAreaCalculatorMode();
             }
-            
-            // ✅ แจ้งเตือนผู้ใช้ว่าพร้อมใช้งานแล้ว
-            showNotificationLeft('✅ ปิดโหมดคำนวณพื้นที่ - พร้อมเพิ่มจุดแล้ว', 'success');
-            console.log('✅ ปิดหน้าต่างคำนวณพื้นที่ A เรียบร้อย - โหมดปกติแล้ว');
         }
 
 
