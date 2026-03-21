@@ -10666,6 +10666,44 @@
         map.on('zoomend', loadVisibleMarkers);
 
 
+        // ============================================
+        // ฟังก์ชัน refreshData (ผู้ใช้คลิกเอง - ทำงานทันที)
+        // ============================================
+        async function refreshData() {
+            // ✅ ✅ ✅ เพิ่มบรรทัดนี้: ข้ามรีโหลดถ้าเปิดโหมดแก้ไขอยู่ ✅ ✅ ✅
+            if (isEditMode) {
+                console.log('⏭️ ข้ามรีโหลด: กำลังอยู่ในโหมดแก้ไขตำแหน่ง');
+                showNotificationLeft('⏸️ รอจบโหมดแก้ไขก่อนรีโหลด', 'info');
+                return;
+            }
+            
+            if (isRefreshing) {
+                console.log('⏳ กำลังรีโหลดอยู่ - ข้าม');
+                return;
+            }
+            
+            // ✅ 2. ตั้งสถานะกำลังรีโหลด
+            isRefreshing = true;
+            
+            // ✅ 3. รีเซ็ต cooldown สำหรับการอัตโนมัติครั้งต่อไป
+            lastAutoRefreshTime = Date.now();
+            console.log('🖱️ ผู้ใช้คลิกปุ่มรีโหลดด้วยตนเอง - รีเซ็ต cooldown');
+            
+            disableRefreshButton();
+            const refreshIcon = document.getElementById('refresh-icon');
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+            
+            await loadExistingData().finally(() => {
+                setTimeout(() => {
+                    if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+                    enableRefreshButton();
+                    
+                    // ✅ 4. รีเซ็ตสถานะหลังรีโหลดเสร็จ
+                    isRefreshing = false;
+                    console.log('✅ รีโหลดเสร็จสิ้น');
+                }, 500);
+            });
+        }
 
         // ============================================
         // เลือกไฟล์แผนที่จากเครื่อง
