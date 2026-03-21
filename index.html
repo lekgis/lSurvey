@@ -5729,6 +5729,13 @@
                 const duplicateClass = isDuplicate ? 'duplicate-code-row' : '';
                 const duplicateBadge = isDuplicate ? '<span class="duplicate-code-badge">ซ้ำ</span>' : '';
                 
+                // ✅ ✅ ✅ สร้างค่าเจ้าของจาก full_name (สำหรับป้าย) ✅ ✅ ✅
+                let ownerDisplay = sign.full_name || '';
+                if (!ownerDisplay || ownerDisplay.trim() === '') {
+                    const ownerParts = [sign.title, sign.fname, sign.lname].filter(v => v && v.toString().trim());
+                    ownerDisplay = ownerParts.join(' | ');
+                }
+
                 const statusClass = sign.check === 'ถ่ายรูปแล้ว' ? 'status-ถ่ายรูปแล้ว' :
                                    sign.check === 'ตรวจสอบแล้ว' ? 'status-ตรวจสอบแล้ว' : 'status-ยังไม่สำรวจ';
                 const statusText = sign.check || 'ยังไม่สำรวจ';
@@ -5737,6 +5744,7 @@
                 <tr class="${duplicateClass}">
                     <td><span class="marker-icon marker-sign"></span></td>
                     <td class="font-medium">${sign.s_code || '-'}${duplicateBadge}</td>
+                    <td>${ownerDisplay || '-'}</td>
                     <td class="text-center">${sign.s_characte || '-'}</td>
                     <td class="text-center">${sign.s_wide || '-'}</td>
                     <td class="text-center">${sign.s_length || '-'}</td>
@@ -5753,6 +5761,12 @@
             }).join('');
             
             lucide.createIcons();
+        }
+
+        // ✅ ✅ ✅ ฟังก์ชันช่วยแสดงค่า (แทนที่ค่าว่างด้วย '-') ✅ ✅ ✅
+        function displayValue(value) {
+            if (value === null || value === undefined || value === '') return '-';
+            return String(value).trim();
         }
 
         // อัปเดตจำนวนสิ่งปลูกสร้างและป้ายที่หัวตาราง
