@@ -9731,60 +9731,50 @@
 
         // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไขสำหรับมือถือ)
         function closeAreaCalculatorA() {
-            console.log('🔒 ปิดโหมดคำนวณพื้นที่ (ผู้ใช้กดปิด)');
-            
-            // ✅ ปิดโหมดคำนวณพื้นที่
-            isAreaCalculatorMode = false;  // ← มีอยู่แล้ว ✅
-            
+            // 1. ลบหน้าต่าง Modal
             if (areaCalculatorModalA) {
-                areaCalculatorModalA.classList.add('animate-scale-out');
-                setTimeout(() => {
-                    if (areaCalculatorModalA && areaCalculatorModalA.parentNode) {
-                        areaCalculatorModalA.remove();
-                    }
-                    areaCalculatorModalA = null;
-                    areaAccumulatorA = 0;
-                    areaHistoryA = [];
-                    
-                    // ✅ ย้าย building_area กลับลงล่าง
-                    if (window.buildingAreaLayer) {
-                        window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
-                    }
-                    
-                    // ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง
-                    const crosshair = document.getElementById('crosshair');
-                    const addTrigger = document.getElementById('add-trigger-container');
-                    if (crosshair) {
-                        crosshair.classList.add('hidden');
-                        crosshair.classList.remove('visible');
-                    }
-                    if (addTrigger) {
-                        addTrigger.classList.add('hidden');
-                        addTrigger.classList.remove('visible');
-                        
-                        // ✅ ✅ ✅ สำคัญ: ล้าง onclick เดิมที่ผูกไว้ ✅ ✅ ✅
-                        const btn = addTrigger.querySelector('button');
-                        if (btn) {
-                            btn.onclick = null;  // ← ล้างฟังก์ชันคำนวณพื้นที่
-                        }
-                    }
-                    
-                    // ✅ คืนค่า input
-                    const input = document.getElementById('calc-input-a');
-                    if (input) input.removeAttribute('readonly');
-                    
-                    // ✅ ✅ ✅ รีเซ็ตโหมดเครื่องมือทั้งหมด ✅ ✅ ✅
-                    window.mouseAddMode = false;   // ← ปิดโหมดเพิ่มจุด
-                    window.activeTool = null;      // ← รีเซ็ตเครื่องมือที่เลือก
-                    
-                    // ✅ เปิด parcel/boundary กลับมา
-                    disableAreaCalculatorMode();
-                    
-                }, 200);
-            } else {
-                isAreaCalculatorMode = false;
-                disableAreaCalculatorMode();
+                areaCalculatorModalA.remove();
+                areaCalculatorModalA = null;
             }
+
+            // 2. 🔴 ปลดล็อคโหมดคำนวณพื้นที่ (เพื่อให้คลิกเพิ่มจุดด้วยเป้าได้)
+            isAreaCalculatorMode = false; 
+            disableAreaCalculatorMode(); // เรียกฟังก์ชันหลักเพื่อล้างสถานะ
+
+            // 3. ✅ คืนค่า Input ให้กลับมาพิมพ์ได้ (Remove Readonly)
+            const input = document.getElementById('calc-input-a');
+            if (input) {
+                input.removeAttribute('readonly');
+                input.value = ''; // ล้างค่าเก่าออกถ้าต้องการเริ่มใหม่
+            }
+
+            // 4. ✅ คืนค่า UI เป้าเล็งและปุ่มเพิ่มจุด
+            const crosshair = document.getElementById('crosshair');
+            const addTrigger = document.getElementById('add-trigger-container');
+            
+            if (crosshair) {
+                crosshair.classList.remove('hidden');
+                crosshair.classList.add('visible');
+            }
+            if (addTrigger) {
+                addTrigger.classList.remove('hidden');
+                addTrigger.classList.add('visible');
+            }
+
+            // 5. ✅ เปิดเลเยอร์แผนที่ (Parcel/Boundary) กลับมา
+            if (window.parcelLayer && !map.hasLayer(window.parcelLayer)) {
+                map.addLayer(window.parcelLayer);
+            }
+            if (window.boundaryLayer && !map.hasLayer(window.boundaryLayer)) {
+                map.addLayer(window.boundaryLayer);
+            }
+
+            // 6. ล้างค่าตัวแปรคำนวณสะสม
+            areaAccumulatorA = 0;
+            areaHistoryA = [];
+
+            console.log('✅ คืนค่าระบบครบถ้วน: Input พิมพ์ได้, เป้าเล็งมาแล้ว, เลเยอร์เปิดแล้ว');
+        }
             
             // ✅ แจ้งเตือนผู้ใช้ว่าพร้อมใช้งานแล้ว
             showNotificationLeft('✅ ปิดโหมดคำนวณพื้นที่ - พร้อมเพิ่มจุดแล้ว', 'success');
