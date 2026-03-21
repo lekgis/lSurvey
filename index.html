@@ -1915,79 +1915,83 @@
             }
         }
 
-        // ✅ ✅ ✅ PWA Install Logic (เวอร์ชันแก้ไข) ✅ ✅ ✅
-        document.addEventListener('DOMContentLoaded', () => {
-            const installContainer = document.getElementById('pwa-install-container');
-            const installBtn = document.getElementById('pwa-install-btn');
+        // 📱 PWA Support Logic
+        let deferredPrompt;
+        const installContainer = document.getElementById('pwa-install-container');
+        const installBtn = document.getElementById('pwa-install-btn');
+        const installCloseBtn = document.getElementById('pwa-install-close');
+        const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        // ✅ ตรวจสอบและลงทะเบียน Service Worker
+        if ('serviceWorker' in navigator && isSecure) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+              .then((reg) => console.log('✅ SW registered:', reg.scope))
+              .catch(err => console.warn('❌ SW failed:', err.message));
+          });
+
+          // ✅ จับเหตุการณ์ก่อนติดตั้ง (beforeinstallprompt)
+          window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); // ป้องกันการโชว์ prompt อัตโนมัติของเบราว์เซอร์
+            deferredPrompt = e;
             
-            if (!installContainer || !installBtn) return;
-            
-            let deferredPrompt = null;
-            let installPromptShown = false;
-            
-            // ✅ 1. Chrome/Android: ใช้ beforeinstallprompt
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                installPromptShown = true;
+            // ✅ แสดงปุ่มติดตั้งแอปขนาดใหญ่
+            if (installContainer) {
+              installContainer.style.display = 'block';
+              // ✅ เพิ่ม animation ดึงดูดความสนใจ
+              installContainer.classList.add('animate-bounce');
+            }
+            console.log('✨ PWA install prompt available');
+          });
+
+          // ✅ เมื่อผู้ใช้คลิกปุ่มติดตั้ง
+          installBtn?.addEventListener('click', async () => {
+            if (deferredPrompt) {
+              // ซ่อนปุ่มขณะรอการติดตั้ง
+              installContainer.style.opacity = '0.7';
+              installBtn.disabled = true;
+              installBtn.innerHTML = '<span class="animate-spin">⏳</span> กำลังติดตั้ง...';
+              
+              try {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`Install ${outcome}`);
                 
-                if (installContainer) {
-                    installContainer.style.display = 'flex';
-                    installContainer.classList.add('animate-bounce');
+                if (outcome === 'accepted') {
+                  installContainer.style.display = 'none';
+                  showNotificationLeft('✅ ติดตั้งแอปสำเร็จ! สามารถใช้งานแบบออฟไลน์ได้', 'success');
+                } else {
+                  // ถ้าผู้ใช้ยกเลิก → แสดงปุ่มกลับคืน
+                  installContainer.style.opacity = '1';
+                  installBtn.disabled = false;
+                  installBtn.innerHTML = '<span class="text-2xl">📲</span> <span>ติดตั้งแอป "โนนไทย" เพื่อใช้งานแบบออฟไลน์</span>';
                 }
-                console.log('✨ beforeinstallprompt triggered');
-            });
-            
-            // ✅ 2. สำรอง: ถ้าไม่เกิด event ใน 10 วินาที → แสดงปุ่มแบบ manual
-            setTimeout(() => {
-                if (!installPromptShown && !window.matchMedia('(display-mode: standalone)').matches) {
-                    console.log('⚠️ beforeinstallprompt ไม่เกิด → แสดงปุ่มสำรอง');
-                    
-                    installBtn.innerHTML = '📲 ติดตั้งแอป "โนนไทย"';
-                    installBtn.onclick = () => {
-                        if (deferredPrompt) {
-                            deferredPrompt.prompt();
-                        } else {
-                            alert('📱 วิธีติดตั้งบน Android Chrome:\n\n1. กดเมนู ⋮ มุมขวาบน\n2. เลือก "ติดตั้งแอป" หรือ "เพิ่มลงในหน้าจอหลัก"\n3. กด "ติดตั้ง" เพื่อยืนยัน');
-                        }
-                    };
-                    
-                    if (installContainer) {
-                        installContainer.style.display = 'flex';
-                    }
-                }
-            }, 10000);
-            
-            // ✅ 3. เมื่อติดตั้งสำเร็จ
-            window.addEventListener('appinstalled', () => {
-                console.log('🎉 PWA installed!');
-                if (installContainer) installContainer.style.display = 'none';
-                showNotificationLeft('✅ ติดตั้งแอปสำเร็จ!', 'success');
-            });
-            
-            // ✅ 4. คลิกปุ่มติดตั้ง
-            installBtn?.addEventListener('click', async () => {
-                if (deferredPrompt) {
-                    try {
-                        installBtn.disabled = true;
-                        installBtn.innerHTML = '⏳ กำลังติดตั้ง...';
-                        
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        
-                        if (outcome === 'accepted') {
-                            installContainer.style.display = 'none';
-                        } else {
-                            installBtn.disabled = false;
-                            installBtn.innerHTML = '📲 ติดตั้งแอป "โนนไทย"';
-                        }
-                        deferredPrompt = null;
-                    } catch (err) {
-                        console.error('Install error:', err);
-                        installBtn.disabled = false;
-                    }
-                }
-            });
+                deferredPrompt = null;
+              } catch (err) {
+                console.error('Install error:', err);
+                installContainer.style.opacity = '1';
+                installBtn.disabled = false;
+              }
+            }
+          });
+
+          // ✅ เมื่อแอปติดตั้งสำเร็จ
+          window.addEventListener('appinstalled', () => {
+            console.log('🚀 PWA installed!');
+            if (installContainer) installContainer.style.display = 'none';
+            if (installCloseBtn) installCloseBtn.classList.add('hidden');
+            showNotificationLeft('🎉 แอป "โนนไทย" ติดตั้งเรียบร้อยแล้ว!', 'success');
+          });
+        }
+
+        // ✅ ปุ่มปิดคำแนะนำการติดตั้ง (สำหรับผู้ใช้ที่ต้องการซ่อน)
+        installCloseBtn?.addEventListener('click', () => {
+          if (installContainer) {
+            installContainer.style.display = 'none';
+            installCloseBtn.classList.add('hidden');
+            // ✅ บันทึกว่าผู้ใช้ปิดคำแนะนำแล้ว (ไม่แสดงอีกใน session นี้)
+            sessionStorage.setItem('pwa-install-dismissed', 'true');
+          }
         });
 
         // ✅ iOS Install Hint (แสดงคำแนะนำสำหรับ iPhone/iPad)
