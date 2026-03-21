@@ -1185,20 +1185,23 @@
     <!--  เป้าเล็ง + ปุ่มยืนยัน สำหรับ "เพิ่มจุด" เท่านั้น (แยกจากคำนวณพื้นที่) อันใหม่ -->
 
     <!-- เป้าเล็งเพิ่มจุด  อันใหม่ -->
-    <div id="add-point-crosshair" class="fixed hidden pointer-events-none z-[2000]" 
-         style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <div class="w-10 h-10 border-4 border-orange-400 rounded-full relative animate-pulse">
-            <div class="absolute top-1/2 left-0 w-full h-0.5 bg-orange-400"></div>
-            <div class="absolute left-1/2 top-0 h-full w-0.5 bg-orange-400"></div>
-            <div class="absolute top-1/2 left-1/2 w-4 h-4 bg-orange-400 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+    <div id="add-point-crosshair" class="absolute hidden pointer-events-none z-[1000]" 
+         style="top: 35%; left: 50%; transform: translate(-50%, -50%);">
+        <div class="w-[60px] h-[60px] border-[3px] border-white/90 rounded-full relative">
+            <div class="absolute w-[3px] h-[18px] bg-white left-1/2 -translate-x-1/2" style="top: -20px;"></div>
+            <div class="absolute w-[3px] h-[18px] bg-white left-1/2 -translate-x-1/2" style="bottom: -20px;"></div>
+            <div class="absolute h-[3px] w-[18px] bg-white top-1/2 -translate-y-1/2" style="left: -20px;"></div>
+            <div class="absolute h-[3px] w-[18px] bg-white top-1/2 -translate-y-1/2" style="right: -20px;"></div>
+            <div class="absolute top-1/2 left-1/2 w-[6px] h-[6px] bg-white bg-orange-400 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
         </div>
     </div>
 
-    <!-- ปุ่มยืนยันเพิ่มจุด -->
-    <div id="add-point-trigger" class="fixed hidden z-[2001] bottom-10 left-1/2 transform -translate-x-1/2">
+    <!-- ปุ่มยืนยันเพิ่มจุด (แก้ให้เหมือนปุ่มเดิม) -->
+    <div id="add-point-trigger" class="fixed hidden z-[1001] bottom-10 left-1/2 transform -translate-x-1/2">
         <button type="button" id="add-point-confirm-btn"
-                class="w-16 h-16 bg-orange-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl font-bold hover:bg-orange-700 active:scale-95 transition">
-            +
+                class="p-4 bg-blue-600/50 text-white rounded-full shadow-xl border-[3px] border-white active:scale-90 transition-all"
+                onclick="showConfirmButton()">
+            <i data-lucide="plus" class="w-8 h-8"></i>
         </button>
     </div>
 
@@ -2241,10 +2244,10 @@
                     surveyLayers.removeLayer(mouseTempMarker);
                 }
                 mouseTempMarker = L.circleMarker(latlng, {
-                    radius: 8,
+                    radius: 6,
                     color: activeTool === 'building' ? '#f97316' : '#22c55e',
                     fillColor: activeTool === 'building' ? '#f97316' : '#22c55e',
-                    fillOpacity: 0.8,
+                    fillOpacity: 0.9,
                     weight: 2
                 }).addTo(surveyLayers);
                 
