@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- ✅ เพิ่มใน <head> ของ import.html -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    
     <style>
         body { font-family: 'Sarabun', 'Tahoma', sans-serif; }
         .progress-bar { transition: width 0.3s ease; }
@@ -408,11 +409,10 @@
                         id: `owner_${Date.now()}_${Math.floor(Math.random() * 1000)}`
                     };
                     
-                    // ✅ ✅ ✅ เพิ่ม: เช็คออฟไลน์ก่อนส่ง ✅ ✅ ✅
+                    // ✅ เช็คออฟไลน์ → เพิ่มเข้าคิว
                     if (!navigator.onLine) {
-                        // เพิ่มเข้าคิวรอ
                         addToImportQueue('owner', newOwner);
-                        ownerImportStats.success++; // นับว่า "คิวสำเร็จ"
+                        ownerImportStats.success++;
                         addLog(`📥 ออฟไลน์: บันทึกคิว "${item.fname} ${item.lname}"`, 'info');
                         updateOwnerImportProgress();
                         continue;
@@ -616,34 +616,24 @@
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 
-                // ✅ ✅ ✅ เพิ่ม: เช็คออฟไลน์ก่อนประมวลผล ✅ ✅ ✅
+                // ✅ เช็คออฟไลน์ → เพิ่มเข้าคิว
                 if (!navigator.onLine) {
-                    // เตรียมข้อมูลสำหรับคิว
                     const codePart = file.name.length >= 11 ? file.name.substring(0, 11).replace(/[^a-zA-Z0-9\-]/g, '') : '';
                     const rowData = {
                         [type === 'building' ? 'building_c' : 's_code']: codePart,
-                        check: 'ถ่ายรูปแล้ว',
-                        picture: file.name,
+                        check: 'ถ่ายรูปแล้ว', picture: file.name,
                         date_added: formatThaiDateTimeBE(new Date()),
                         update: formatThaiDateTimeBE(new Date())
                     };
-                    
-                    // อ่านไฟล์เป็น base64
                     const base64 = await fileToBase64(file);
-                    
-                    // เพิ่มเข้าคิว
                     addToImportQueue(type, rowData, base64, file.name);
-                    
-                    stats.success++; // นับว่า "คิวสำเร็จ"
+                    stats.success++;
                     addLog(`📥 ออฟไลน์: บันทึกคิว "${file.name}"`, 'info');
                     updateProgress(i + 1, files.length);
-                    continue; // ข้ามการส่งทันที
+                    continue;
                 }
                 
-                // ออนไลน์ → ประมวลผลปกติ
                 await processImageFile(file, type, i + 1, files.length);
-                
-                // อัปเดต UI
                 updateProgress(i + 1, files.length);
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
@@ -973,44 +963,6 @@
             }
         });
 
-        // ✅ เริ่มต้น
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            addLog('🚀 หน้าจอพร้อมใช้งาน', 'info');
-            
-            // ✅ ✅ ✅ แก้: แสดงชื่อไฟล์ในกล่องทันทีที่เลือก ✅ ✅ ✅
-            document.getElementById('owner-import-file')?.addEventListener('change', function(e) {
-                const btn = document.getElementById('btn-owner-import-start');
-                const fileNameDisplay = document.getElementById('owner-selected-filename');
-                const fileContainer = document.getElementById('owner-selected-file');
-                
-                if (e.target.files[0]) {
-                    // ✅ เปิดใช้งานปุ่มเริ่มนำเข้า
-                    if (btn) btn.disabled = false;
-                    
-                    // ✅ ✅ ✅ แสดงชื่อไฟล์ในกล่อง (ไม่ต้องเลื่อนดูล็อก) ✅ ✅ ✅
-                    if (fileNameDisplay && fileContainer) {
-                        fileNameDisplay.textContent = e.target.files[0].name;
-                        fileContainer.classList.remove('hidden');
-                    }
-                    
-                    // ✅ ล้างล็อก + รีเซ็ต
-                    clearLog();
-                    document.getElementById('owner-import-bar').style.width = '0%';
-                    document.getElementById('owner-import-percent').textContent = '0%';
-                    document.getElementById('owner-import-success').textContent = '0';
-                    document.getElementById('owner-import-skipped').textContent = '0';
-                    document.getElementById('owner-import-failed').textContent = '0';
-                    document.getElementById('owner-import-progress').classList.add('hidden');
-                    
-                    addLog(`📄 เลือกไฟล์: ${e.target.files[0].name}`, 'info');
-                } else {
-                    // ✅ ถ้ายกเลิกการเลือก
-                    if (btn) btn.disabled = true;
-                    if (fileContainer) fileContainer.classList.add('hidden');
-                }
-            });
-        });
 
         // ✅ ✅ ✅ ฟังก์ชันกรองข้อมูลซ้ำภายในไฟล์ ✅ ✅ ✅
         function deduplicateOwnerData(data) {
@@ -1310,12 +1262,189 @@
             updateImportQueueBadge();
         });
 
-        // ✅ โหลดคิวเมื่อเริ่มแอป + ตั้งค่า interval
-        document.addEventListener('DOMContentLoaded', () => {
+
+            
+            // 2. โหลดข้อมูลคิว
             loadImportQueue();
             updateImportQueueBadge();
             
-            // เช็คทุก 30 วินาที
+            // 3. แสดงข้อความเริ่มต้นใน Log
+            addLog('🚀 ระบบพร้อมใช้งาน (ไอคอนโหลดเสร็จสิ้น)', 'info');
+
+            // 4. ตั้งเวลาเช็คคิวทุก 30 วินาที
+            setInterval(() => { 
+                if (navigator.onLine) processImportQueue(); 
+                updateImportQueueBadge(); 
+            }, 30000);
+        });
+
+        // ============================================
+        // ✅ ระบบคิวนำเข้าแบบออฟไลน์ (รอได้ 60 นาที)
+        // ============================================
+
+        const IMPORT_QUEUE_TIMEOUT = 60 * 60 * 1000;
+
+        function loadImportQueue() {
+            try {
+                const saved = localStorage.getItem('importQueue');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    importQueue = parsed.filter(item => Date.now() - item.timestamp < IMPORT_QUEUE_TIMEOUT);
+                }
+            } catch (err) { importQueue = []; }
+        }
+
+        function saveImportQueue() {
+            try { localStorage.setItem('importQueue', JSON.stringify(importQueue)); } catch (err) {}
+        }
+
+        function addToImportQueue(type, data, imageBase64 = null, fileName = null) {
+            const queueItem = {
+                id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                timestamp: Date.now(), type, data, imageBase64, fileName,
+                retryCount: 0, status: 'pending'
+            };
+            importQueue.push(queueItem);
+            saveImportQueue();
+            if (navigator.onLine) setTimeout(processImportQueue, 500);
+            return queueItem.id;
+        }
+
+        async function processImportQueue() {
+            if (!navigator.onLine || importQueue.length === 0) return;
+            const now = Date.now();
+            importQueue = importQueue.filter(item => now - item.timestamp < IMPORT_QUEUE_TIMEOUT);
+            
+            for (let i = 0; i < importQueue.length; i++) {
+                const item = importQueue[i];
+                if (item.status === 'success') continue;
+                try {
+                    let result;
+                    if (item.type === 'owner') {
+                        const formData = new FormData();
+                        formData.append('action', 'quickAdd');
+                        formData.append('type', 'owner');
+                        formData.append('payload', JSON.stringify(item.data));
+                        const res = await fetch(SCRIPT_URL, { method: 'POST', body: formData });
+                        result = await res.json();
+                    } else if (item.imageBase64) {
+                        const formData = new FormData();
+                        formData.append('action', 'quickAdd');
+                        formData.append('type', item.type);
+                        formData.append('payload', JSON.stringify(item.data));
+                        formData.append('image', item.imageBase64);
+                        if (item.fileName) formData.append('fileName', item.fileName);
+                        const res = await fetch(SCRIPT_URL, { method: 'POST', body: formData });
+                        result = await res.json();
+                    }
+                    if (result.status === 200 || result.data?.success) item.status = 'success';
+                } catch (err) {
+                    item.retryCount++;
+                    item.status = 'failed';
+                }
+                saveImportQueue();
+                if (i % 5 === 0) await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            importQueue = importQueue.filter(item => item.status !== 'success' && item.retryCount < 3);
+            saveImportQueue();
+            updateImportQueueBadge();
+        }
+
+        function updateImportQueueBadge() {
+            const badge = document.getElementById('import-queue-badge');
+            if (badge) {
+                const pending = importQueue.filter(i => i.status === 'pending').length;
+                if (pending > 0) { badge.textContent = pending; badge.classList.remove('hidden'); } 
+                else { badge.classList.add('hidden'); }
+            }
+        }
+
+        function showImportQueueModal() {
+            const modal = document.getElementById('import-queue-modal');
+            const list = document.getElementById('import-queue-list');
+            if (importQueue.length === 0) {
+                list.innerHTML = '<p class="text-gray-500 text-center">ไม่มีคิวรอส่ง</p>';
+            } else {
+                list.innerHTML = importQueue.map(item => `
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <div><div class="font-medium">${item.type}</div>
+                        <div class="text-gray-500">${new Date(item.timestamp).toLocaleTimeString('th-TH')}</div></div>
+                        <span class="px-2 py-0.5 rounded text-[10px] ${
+                            item.status === 'success' ? 'bg-green-100 text-green-700' :
+                            item.retryCount >= 3 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">
+                            ${item.status === 'success' ? 'สำเร็จ' : item.retryCount >= 3 ? 'ล้มเหลว' : 'รอส่ง'}
+                        </span>
+                    </div>`).join('');
+            }
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function hideImportQueueModal() { document.getElementById('import-queue-modal').classList.add('hidden'); }
+
+        function clearImportQueue() {
+            if (confirm('ล้างคิวนำเข้าทั้งหมด?')) {
+                importQueue = []; 
+                saveImportQueue(); 
+                updateImportQueueBadge();
+                
+                // ❌ อาจไม่เจอฟังก์ชันนี้ถ้าไม่ได้นำเข้าจากไฟล์หลัก
+                showNotificationLeft('✅ ล้างคิวแล้ว', 'success');
+                
+                // ✅ แก้: เช็คก่อนเรียก หรือใช้ alert แทน
+                if (typeof showNotificationLeft === 'function') {
+                    showNotificationLeft('✅ ล้างคิวแล้ว', 'success');
+                } else {
+                    alert('✅ ล้างคิวแล้ว');
+                }
+            }
+        }
+
+        window.addEventListener('online', () => { processImportQueue(); });
+        window.addEventListener('offline', () => { saveImportQueue(); });
+
+        // ✅ ✅ ✅ DOMContentLoaded จุดเดียว (รวมทุกอย่าง) ✅ ✅ ✅
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // 1. สร้างไอคอนทั้งหมด (เช็คก่อนเรียก)
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            
+            // 2. โหลดระบบคิว
+            loadImportQueue();
+            updateImportQueueBadge();
+            
+            // 3. แสดงข้อความเริ่มต้น
+            addLog('🚀 หน้าจอพร้อมใช้งาน', 'info');
+            
+            // 4. ผูกเหตุการณ์เลือกไฟล์เจ้าของ
+            document.getElementById('owner-import-file')?.addEventListener('change', function(e) {
+                const btn = document.getElementById('btn-owner-import-start');
+                const fileNameDisplay = document.getElementById('owner-selected-filename');
+                const fileContainer = document.getElementById('owner-selected-file');
+                
+                if (e.target.files[0]) {
+                    if (btn) btn.disabled = false;
+                    if (fileNameDisplay && fileContainer) {
+                        fileNameDisplay.textContent = e.target.files[0].name;
+                        fileContainer.classList.remove('hidden');
+                    }
+                    clearLog();
+                    document.getElementById('owner-import-bar').style.width = '0%';
+                    document.getElementById('owner-import-percent').textContent = '0%';
+                    document.getElementById('owner-import-success').textContent = '0';
+                    document.getElementById('owner-import-skipped').textContent = '0';
+                    document.getElementById('owner-import-failed').textContent = '0';
+                    document.getElementById('owner-import-progress').classList.add('hidden');
+                    addLog(`📄 เลือกไฟล์: ${e.target.files[0].name}`, 'info');
+                } else {
+                    if (btn) btn.disabled = true;
+                    if (fileContainer) fileContainer.classList.add('hidden');
+                }
+            });
+            
+            // 5. ตั้งเวลาเช็คคิวทุก 30 วินาที
             setInterval(() => {
                 if (navigator.onLine) {
                     cleanupExpiredImportQueue();
@@ -1323,6 +1452,7 @@
                 }
                 updateImportQueueBadge();
             }, 30000);
+            
         });
 
     </script>
