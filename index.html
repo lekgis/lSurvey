@@ -9729,7 +9729,7 @@
             closeAreaCalculatorA();
         }
 
-        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไข: ไม่ต้องแสดงเป้า/ปุ่มเดิมกลับ)
+        // ✅ ฟังก์ชันปิดหน้าต่างคำนวณพื้นที่ A (แก้ไข: รีเซ็ตโหมดทั้งหมด)
         function closeAreaCalculatorA() {
             console.log('🔒 ปิดโหมดคำนวณพื้นที่ (ผู้ใช้กดปิด)');
             
@@ -9751,7 +9751,7 @@
                         window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
                     }
                     
-                    // ✅ ✅ ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง ✅ ✅ ✅
+                    // ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง
                     const crosshair = document.getElementById('crosshair');
                     const addTrigger = document.getElementById('add-trigger-container');
                     if (crosshair) {
@@ -9761,11 +9761,28 @@
                     if (addTrigger) {
                         addTrigger.classList.add('hidden');
                         addTrigger.classList.remove('visible');
+                        
+                        // ✅ ✅ ✅ ล้าง onclick เดิมที่ผูกไว้ (สำคัญ!) ✅ ✅ ✅
+                        const btn = addTrigger.querySelector('button');
+                        if (btn) {
+                            btn.onclick = null;  // ✅ ล้างฟังก์ชันคำนวณพื้นที่
+                        }
                     }
                     
                     // ✅ คืนค่า input
                     const input = document.getElementById('calc-input-a');
                     if (input) input.removeAttribute('readonly');
+                    
+                    // ✅ ✅ ✅ เพิ่ม 4 บรรทัดนี้: รีเซ็ตโหมดเครื่องมือทั้งหมด ✅ ✅ ✅
+                    window.mouseAddMode = false;           // ✅ ปิดโหมดเพิ่มจุด (สำคัญ!)
+                    window.activeTool = null;              // ✅ รีเซ็ตเครื่องมือที่เลือก
+                    if (map) map.getContainer().style.cursor = '';  // ✅ คืนค่า Cursor ปกติ
+                    
+                    // ✅ ซ่อนปุ่มยืนยันชั่วคราวถ้ามี
+                    const confirmOverlay = document.getElementById('add-point-overlay');
+                    const confirmBtn = document.getElementById('btn-confirm-action');
+                    if (confirmOverlay) confirmOverlay.classList.add('hidden');
+                    if (confirmBtn) confirmBtn.style.display = 'none';
                     
                     // ✅ เปิด parcel/boundary กลับมา
                     disableAreaCalculatorMode();
@@ -9775,6 +9792,10 @@
                 isAreaCalculatorMode = false;
                 disableAreaCalculatorMode();
             }
+            
+            // ✅ แจ้งเตือนผู้ใช้ว่าพร้อมใช้งานแล้ว
+            showNotificationLeft('✅ ปิดโหมดคำนวณพื้นที่ - พร้อมเพิ่มจุดแล้ว', 'success');
+            console.log('✅ ปิดหน้าต่างคำนวณพื้นที่ A เรียบร้อย - โหมดปกติแล้ว');
         }
 
 
