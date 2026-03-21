@@ -4508,10 +4508,10 @@
                                     <span id="filename-text-${f.id}">${fileName}</span>
                                 </span>
                                 
-                                <!-- ✅ ปุ่มลบรูป (แสดงเฉพาะเมื่อมีรูปภาพ) -->
+                                <!-- ✅ ปุ่มลบรูป (แก้: ส่ง imageUrl เข้าไปด้วย) -->
                                 <button type="button" id="delete-image-btn-${f.id}"
                                     class="text-[10px] text-red-500 hover:text-red-700 px-1.5 py-0.5 bg-red-50 rounded hover:bg-red-100 transition ${!data.image || data.image.trim() === '' ? 'hidden' : ''}"
-                                    onclick="deleteImageField('${f.id}', event)">
+                                    onclick="deleteImageField('${f.id}', event, '${data.image|| ''}')">
                                     ลบรูป
                                 </button>
                                 
@@ -11689,6 +11689,101 @@
             } finally {
                 document.getElementById('btn-owner-import-start').disabled = false;
             }
+        }
+
+        // ✅ ฟังก์ชันลบรูปภาพ (ลบจริงจาก Google Drive)
+        // ✅ ✅ ✅ แก้: เช็ค result.data.success ✅ ✅ ✅
+        async function deleteImageField(fieldId, event, imageUrl = null) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            
+            if (!confirm('คุณแน่ใจว่าต้องการลบรูปภาพนี้?\n(ไฟล์จะย้ายไปถังขยะ กู้คืนได้ภายใน 30 วัน)')) {
+                return;
+            }
+            
+            if (imageUrl && imageUrl.includes('drive.google.com')) {
+                try {
+                    const fileId = extractGoogleDriveFileId(imageUrl);
+                    if (fileId) {
+                        const body = new URLSearchParams();
+                        body.append('action', 'deleteFile');
+                        body.append('fileId', fileId);
+                        body.append('type', 'building');
+                        
+                        const res = await fetch(CONFIG.SCRIPT_URL.trim(), {
+                            method: 'POST',
+                            body: body
+                        });
+                        
+                        const result = await res.json();
+                        
+                        // ✅ ✅ ✅ แก้: เช็ค result.data.success ✅ ✅ ✅
+                        if (!result.data?.success) {
+                            console.warn('⚠️ ลบล้มเหลว:', result.message || result.data?.message);
+                            // ไม่ throw → ยังล้างฟอร์มต่อได้
+                        }
+                    }
+                } catch (err) {
+                    console.error('❌ Error deleting from Drive:', err);
+                }
+            }
+            
+            // ✅ 3. ล้างค่าในฟอร์ม (เหมือนเดิม)
+            const fileInput = document.getElementById(`file-input-${fieldId}`);
+            const filenameText = document.getElementById(`filename-text-${fieldId}`);
+            const deleteBtn = document.getElementById(`delete-image-btn-${fieldId}`);
+            
+            if (fileInput) fileInput.value = '';
+            if (filenameText) filenameText.textContent = 'ยังไม่มีรูปภาพ';
+            if (deleteBtn) deleteBtn.classList.add('hidden');
+            
+            // ✅ 4. ล้างค่า input ที่ซ่อนอยู่
+            const form = document.getElementById('survey-form');
+            if (form) {
+                const input = form.querySelector(`[name="${fieldId}"]`);
+                if (input) input.value = '';
+            }
+            
+            // ✅ 5. ซ่อนภาพตัวอย่างถ้าเปิดอยู่
+            if (fieldId === 'picture' || fieldId === 'image') {
+                const preview = document.getElementById('image-preview');
+                const placeholder = document.getElementById('image-preview-placeholder');
+                if (preview) preview.classList.add('hidden');
+                if (placeholder) {
+                    placeholder.textContent = 'คลิกที่ชื่อรูปภาพในแผงข้อมูลเพื่อดูรูปใหญ่';
+                    placeholder.classList.remove('hidden');
+                }
+            }
+            
+            showNotificationLeft('✅ ลบรูปภาพแล้ว', 'success');
+            console.log(`🗑️ ลบรูปภาพจากฟิลด์: ${fieldId}`);
+        }
+
+        // ✅ ฟังก์ชันลบไฟล์จาก Google Drive (เรียก backend)
+        async function deleteFileFromDrive(fileId) {
+          const body = new URLSearchParams();
+          body.append('action', 'deleteFile');
+          body.append('fileId', fileId);
+          body.append('type', 'building');  // หรือ 'sign'
+          
+          const res = await fetch(CONFIG.SCRIPT_URL.trim(), {
+            method: 'POST',
+            body: body
+          });
+          
+          const result = await res.json();
+          if (!result.success) {
+            throw new Error(result.error || 'ลบไฟล์ไม่สำเร็จ');
+          }
+          return result;  // ← { success: true, action: "trashed" }
+        }
+
+        // ✅ ดึง Google Drive File ID จาก URL
+        function extractGoogleDriveFileId(url) {
+            if (!url || !url.includes('drive.google.com')) return null;
+            
+            // รูปแบบ: /file/d/FILE_ID/view หรือ /file/d/FILE_ID/edit
+            const match = url.match(/\/file\/d\/([^\/\?]+)/);
+            return match ? match[1] : null;
         }
 
         // ✅ อัปเดตแถบความคืบหน้า
