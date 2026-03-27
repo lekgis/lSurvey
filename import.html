@@ -1370,11 +1370,15 @@
             
             // วัสดุ
             'b_mat': {
+                // ✅ รองรับรูปแบบ `1 - ไม้`, `2`, `3`
+                '1 - ไม้': 'ไม้',
+                '1': 'ไม้',  // ✅ ถ้าเป็นตัวเลข 1 → ไม้
+                '2': 'ตึก',   // ✅ ถ้าเป็นตัวเลข 2 → ตึก
+                '3': 'ตึก/ไม้', // ✅ ถ้าเป็นตัวเลข 3 → ตึก/ไม้
                 'ไม้': 'ไม้',
-                'คอนกรีต': 'ตึก',
                 'ตึก': 'ตึก',
-                'ปูน': 'ตึก',
-                'ผสม': 'ตึก/ไม้',
+                'ตึก/ไม้': 'ตึก/ไม้',
+                'คอนกรีต': 'ตึก',
                 'ครึ่งตึกครึ่งไม้': 'ตึก/ไม้'
             },
             
@@ -1512,12 +1516,11 @@
             const progressPercent = document.getElementById('building-data-percent');
             const progressTitle = document.getElementById('building-data-title');
             
-            // ✅ แสดงความคืบหน้า
             progressDiv.classList.remove('hidden');
             progressTitle.textContent = 'กำลังอ่านไฟล์...';
             
             try {
-                // ✅ 1. อ่านไฟล์ด้วย SheetJS
+                // ✅ 1. อ่านไฟล์
                 const data = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -1534,117 +1537,93 @@
                 
                 if (data.length < 2) throw new Error('ไฟล์ไม่มีข้อมูล');
                 
-                // ✅ 2. แปลงหัวคอลัมน์เป็น lowercase
                 const headers = data[0].map(h => String(h).trim().toLowerCase());
                 const rows = data.slice(1).filter(row => row.some(cell => cell));
                 
                 stats.total = rows.length;
                 progressTitle.textContent = `กำลังประมวลผล ${stats.total} รายการ...`;
                 
-                // ✅ 3. ดึงรหัสที่มีอยู่แล้ว (เพื่อข้ามซ้ำ)
+                // ✅ 2. ดึงรหัสที่มีอยู่แล้ว
                 const existingCodes = await getExistingBuildingCodes();
                 
-                // ✅ 4. ประมวลผลทีละแถว
+                // ✅ 3. ประมวลผลทีละแถว + ดีบัก
                 for (let i = 0; i < rows.length; i++) {
                     const row = rows[i];
                     const rowData = {};
+                    const errors = []; // ✅ เก็บเหตุผลผิดพลาด
                     
-                    // ✅ แมปคอลัมน์จากไฟล์ → ฟิลด์ในฟอร์ม
+                    // ✅ แมปคอลัมน์
                     headers.forEach((header, idx) => {
                         const value = row[idx];
                         if (value === undefined || value === null || value.toString().trim() === '') return;
                         
-                        // ✅ แมปชื่อคอลัมน์จากไฟล์ → id ในฟอร์ม
                         const fieldMap = {
-                            'building_c': 'building_c',
-                            'รหัสสิ่งปลูกสร้าง': 'building_c',
-                            'parcel_cod': 'parcel_cod',
-                            'รหัสแปลง': 'parcel_cod',
-                            'b_type': 'b_type',
-                            'ประเภท': 'b_type',
-                            'ประเภทสิ่งปลูกสร้าง': 'b_type',
-                            'b_mat': 'b_mat',
-                            'วัสดุ': 'b_mat',
-                            'b_year': 'b_year',
-                            'อายุ': 'b_year',
-                            'hs_no': 'hs_no',
-                            'บ้านเลขที่': 'hs_no',
-                            'hs_moo': 'hs_moo',
-                            'หมู่': 'hs_moo',
-                            'no_floor': 'no_floor',
-                            'จำนวนชั้น': 'no_floor',
-                            'b_area': 'b_area',
-                            'พื้นที่': 'b_area',
-                            'พท': 'b_area',
-                            'b_note': 'b_note',
-                            'รายละเอียด': 'b_note',
-                            'b_use': 'b_use',
-                            'ใช้ประโยชน์': 'b_use',
-                            'per_use': 'per_use',
-                            'การเช่า': 'per_use',
-                            'full_area': 'full_area',
-                            'ใช้ทั้งหลัง': 'full_area',
-                            'buse_floor': 'buse_floor',
-                            'ชั้นที่ใช้': 'buse_floor',
-                            'buse_area': 'buse_area',
-                            'ment_use': 'ment_use',
-                            'b_use2': 'b_use2',
-                            'per_use2': 'per_use2',
-                            'buse_floor2': 'buse_floor2',
-                            'buse_area2': 'buse_area2',
-                            'ment_use2': 'ment_use2',
-                            'full_area2': 'full_area2',
-                            'fname': 'fname',
-                            'lname': 'lname',
-                            'title': 'title',
-                            'full_name': 'full_name',
-                            'เจ้าของ': 'full_name',
-                            'land_type': 'land_type',
-                            'ประเภทที่ดิน': 'land_type',
-                            'land_use': 'land_use',
-                            'ใช้ประโยชน์ที่ดิน': 'land_use',
-                            'check': 'check',
-                            'สถานะ': 'check',
-                            'lat_long': 'lat_long',
-                            'พิกัด': 'lat_long'
+                            'building_c': 'building_c', 'รหัสสิ่งปลูกสร้าง': 'building_c',
+                            'parcel_cod': 'parcel_cod', 'รหัสแปลง': 'parcel_cod',
+                            'b_type': 'b_type', 'ประเภท': 'b_type', 'ประเภทสิ่งปลูกสร้าง': 'b_type',
+                            'b_mat': 'b_mat', 'วัสดุ': 'b_mat',
+                            'b_year': 'b_year', 'อายุ': 'b_year',
+                            'hs_no': 'hs_no', 'บ้านเลขที่': 'hs_no',
+                            'hs_moo': 'hs_moo', 'หมู่': 'hs_moo',
+                            'no_floor': 'no_floor', 'จำนวนชั้น': 'no_floor',
+                            'b_area': 'b_area', 'พื้นที่': 'b_area', 'พท': 'b_area',
+                            'b_note': 'b_note', 'รายละเอียด': 'b_note',
+                            'b_use': 'b_use', 'ใช้ประโยชน์': 'b_use',
+                            'per_use': 'per_use', 'การเช่า': 'per_use',
+                            'full_area': 'full_area', 'ใช้ทั้งหลัง': 'full_area',
+                            'buse_floor': 'buse_floor', 'ชั้นที่ใช้': 'buse_floor',
+                            'buse_area': 'buse_area', 'ment_use': 'ment_use',
+                            'b_use2': 'b_use2', 'per_use2': 'per_use2',
+                            'buse_floor2': 'buse_floor2', 'buse_area2': 'buse_area2',
+                            'ment_use2': 'ment_use2', 'full_area2': 'full_area2',
+                            'fname': 'fname', 'lname': 'lname', 'title': 'title',
+                            'full_name': 'full_name', 'เจ้าของ': 'full_name',
+                            'land_type': 'land_type', 'ประเภทที่ดิน': 'land_type',
+                            'land_use': 'land_use', 'ใช้ประโยชน์ที่ดิน': 'land_use',
+                            'check': 'check', 'สถานะ': 'check',
+                            'lat_long': 'lat_long', 'พิกัด': 'lat_long',
+                            'image': 'image', 'picture': 'picture',
+                            'date_added': 'date_added', 'update': 'update',
+                            'id': 'id'
                         };
                         
                         const fieldId = fieldMap[header];
                         if (fieldId) {
-                            // ✅ แมปค่าให้ตรงกับตัวเลือกในฟอร์ม
-                            rowData[fieldId] = mapFieldValue(fieldId, value);
+                            let mappedValue = mapFieldValueFlexible(fieldId, value);
+                            
+                            // ✅ เช็คค่าที่แมปไม่ได้
+                            if (mappedValue === null) {
+                                errors.push(`${fieldId}="${value}" ไม่ตรงกับตัวเลือก`);
+                                mappedValue = ''; // ✅ ใช้ค่าว่างแทน
+                            }
+                            
+                            rowData[fieldId] = mappedValue;
                         }
                     });
                     
-                    // ✅ ตรวจสอบรหัสสิ่งปลูกสร้าง (ต้องมี)
+                    // ✅ ตรวจสอบรหัสสิ่งปลูกสร้าง
                     if (!rowData.building_c) {
+                        errors.push('ไม่มี building_c');
                         stats.error++;
                         updateBuildingDataProgress(i + 1, stats);
+                        if (i < 5) console.warn(`❌ แถว ${i+1}: ${errors.join(', ')}`); // ✅ ดีบัก 5 แถวแรก
                         continue;
                     }
                     
-                    // ✅ ข้ามถ้ามีรหัสซ้ำในระบบ
+                    // ✅ ข้ามถ้ามีรหัสซ้ำ
                     if (existingCodes.has(rowData.building_c)) {
                         stats.skip++;
                         updateBuildingDataProgress(i + 1, stats);
                         continue;
                     }
                     
-                    // ✅ เพิ่มวันที่อัตโนมัติ
-                    const now = formatImportDateTime(new Date());
+                    // ✅ เพิ่มวันที่อัตโนมัติ (ใช้ฟังก์ชันเดิม)
+                    const now = formatThaiDateTimeBE(new Date());
                     rowData.date_added = now;
                     rowData.update = now;
                     
                     // ✅ สร้าง id อัตโนมัติ
                     rowData.id = `building_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-                    
-                    // ✅ สร้างรหัสรวมจาก parcel_cod + bcode_temp (ถ้ามี)
-                    if (rowData.parcel_cod && !rowData.building_c) {
-                        const bcodeTemp = rowData.bcode_temp || '';
-                        if (bcodeTemp) {
-                            rowData.building_c = `${rowData.parcel_cod}-${bcodeTemp}`;
-                        }
-                    }
                     
                     // ✅ ส่งข้อมูลไปบันทึก
                     try {
@@ -1662,24 +1641,28 @@
                         if (result.status === 200) {
                             stats.success++;
                         } else {
+                            errors.push(`API: ${result.message}`);
                             stats.error++;
+                            if (i < 5) console.warn(`❌ แถว ${i+1}: ${errors.join(', ')}`);
                         }
                     } catch (err) {
                         stats.error++;
+                        if (i < 5) console.error(`❌ แถว ${i+1}: ${err.message}`);
                     }
                     
-                    // ✅ อัปเดตความคืบหน้า
                     updateBuildingDataProgress(i + 1, stats);
-                    
-                    // ✅ หยุดพักเล็กน้อย
-                    if (i % 10 === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                    }
+                    if (i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 100));
                 }
                 
-                // ✅ สรุปผล
+                // ✅ สรุปผล + แสดงดีบัก
                 progressTitle.textContent = `✅ เสร็จสิ้น!`;
-                showNotificationLeft(`นำเข้าสำเร็จ: ${stats.success}/${stats.total} รายการ`, 'success');
+                const msg = `นำเข้าสำเร็จ: ${stats.success}/${stats.total} รายการ`;
+                if (stats.error > 0) {
+                    showNotificationLeft(`${msg} (ผิดพลาด: ${stats.error})`, 'warning');
+                    console.warn(`⚠️ สรุป: สำเร็จ ${stats.success}, ข้าม ${stats.skip}, ผิดพลาด ${stats.error}`);
+                } else {
+                    showNotificationLeft(msg, 'success');
+                }
                 
             } catch (err) {
                 progressTitle.textContent = `❌ ล้มเหลว`;
@@ -1687,7 +1670,46 @@
                 console.error('Building import error:', err);
             }
         }
-        
+
+        // ✅ ✅ ✅ ฟังก์ชันแมปค่าแบบยืดหยุ่น (รองรับรูปแบบไฟล์ส่งออก) ✅ ✅ ✅
+        function mapFieldValueFlexible(fieldId, rawValue) {
+            if (!rawValue || rawValue.toString().trim() === '') return '';
+            
+            const raw = rawValue.toString().trim();
+            const mappings = BUILDING_FIELD_MAPPINGS[fieldId];
+            
+            if (!mappings) return raw; // ไม่มีแมป → คืนค่าเดิม
+            
+            // ✅ 1. ค้นหาแบบตรงกันเป๊ะ (ตัดวงเล็บ/ช่องว่าง)
+            const cleanRaw = raw.replace(/[()]/g, '').trim();
+            if (mappings[cleanRaw]) return mappings[cleanRaw];
+            if (mappings[raw]) return mappings[raw];
+            
+            // ✅ 2. ค้นหาแบบมีส่วนของคำ (ไม่สนตัวพิมพ์ใหญ่/เล็ก)
+            const rawLower = raw.toLowerCase().replace(/[()]/g, '');
+            for (const [key, value] of Object.entries(mappings)) {
+                const keyClean = key.toLowerCase().replace(/[()]/g, '');
+                if (rawLower.includes(keyClean) || keyClean.includes(rawLower)) {
+                    return value;
+                }
+            }
+            
+            // ✅ 3. กรณีพิเศษ: `1 - ไม้` → `ไม้`
+            if (fieldId === 'b_mat') {
+                if (raw.includes('ไม้')) return 'ไม้';
+                if (raw.includes('ตึก') || raw.includes('คอนกรีต') || raw.includes('ปูน')) return 'ตึก';
+                if (raw.includes('ผสม') || raw.includes('ครึ่ง')) return 'ตึก/ไม้';
+            }
+            
+            // ✅ 4. กรณีพิเศษ: `1`, `2`, `3` ใน b_year → คืนค่าเดิม (allowCustom: true)
+            if (fieldId === 'b_year' && /^\d+$/.test(raw)) {
+                return raw;
+            }
+            
+            // ✅ 5. ไม่เจอ → คืน null (เพื่อให้รู้ว่าแมปไม่ได้)
+            return null;
+        }
+
         // ✅ อัปเดตแถบความคืบหน้า
         function updateBuildingDataProgress(current, stats) {
             const percent = Math.round((current / stats.total) * 100);
