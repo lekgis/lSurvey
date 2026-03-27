@@ -1506,7 +1506,7 @@
         }
 
         // ============================================
-        // ✅ ฟังก์ชันประมวลผลไฟล์นำเข้าสิ่งปลูกสร้าง
+        // ✅ ฟังก์ชันประมวลผลไฟล์นำเข้าสิ่งปลูกสร้าง (แก้แล้ว)
         // ============================================
         
         async function processBuildingImport(file) {
@@ -1543,16 +1543,15 @@
                 stats.total = rows.length;
                 progressTitle.textContent = `กำลังประมวลผล ${stats.total} รายการ...`;
                 
-                // ✅ 2. ดึงรหัสที่มีอยู่แล้ว
+                // ✅ 2. ดึงรหัสที่มีอยู่แล้ว (เพื่อเช็คซ้ำ)
                 const existingCodes = await getExistingBuildingCodes();
                 
-                // ✅ 3. ประมวลผลทีละแถว + ดีบัก
+                // ✅ 3. ประมวลผลทีละแถว
                 for (let i = 0; i < rows.length; i++) {
                     const row = rows[i];
                     const rowData = {};
-                    const errors = []; // ✅ เก็บเหตุผลผิดพลาด
                     
-                    // ✅ แมปคอลัมน์
+                    // ✅ แมปคอลัมน์: ถ้าแมปไม่ได้ → ใช้ค่าว่าง (ไม่ทำให้แถวผิดพลาด)
                     headers.forEach((header, idx) => {
                         const value = row[idx];
                         if (value === undefined || value === null || value.toString().trim() === '') return;
@@ -1589,31 +1588,24 @@
                         
                         const fieldId = fieldMap[header];
                         if (fieldId) {
-                            let mappedValue = mapFieldValueFlexible(fieldId, value);
-                            
-                            // ✅ เช็คค่าที่แมปไม่ได้
-                            if (mappedValue === null) {
-                                errors.push(`${fieldId}="${value}" ไม่ตรงกับตัวเลือก`);
-                                mappedValue = ''; // ✅ ใช้ค่าว่างแทน
-                            }
-                            
-                            rowData[fieldId] = mappedValue;
+                            // ✅ แมปค่า: ถ้าไม่ได้ → ใช้ค่าว่าง (ไม่ทำให้แถวผิดพลาด)
+                            rowData[fieldId] = mapFieldValueFlexible(fieldId, value) || '';
                         }
                     });
                     
-                    // ✅ ตรวจสอบรหัสสิ่งปลูกสร้าง
-                    if (!rowData.building_c) {
-                        errors.push('ไม่มี building_c');
+                    // ✅ ข้อ 1: ตรวจสอบ building_c (ต้องมี → ถ้าไม่มีข้ามแถวนี้)
+                    if (!rowData.building_c || rowData.building_c.trim() === '') {
                         stats.error++;
                         updateBuildingDataProgress(i + 1, stats);
-                        if (i < 5) console.warn(`❌ แถว ${i+1}: ${errors.join(', ')}`); // ✅ ดีบัก 5 แถวแรก
+                        if (i < 3) addLog(`⚠️ แถว ${i+1}: ข้ามเพราะไม่มี building_c`, 'warning');
                         continue;
                     }
                     
-                    // ✅ ข้ามถ้ามีรหัสซ้ำ
-                    if (existingCodes.has(rowData.building_c)) {
+                    // ✅ ข้อ 1: เช็คซ้ำกับระบบ → ถ้ามีแล้วให้ข้าม
+                    if (existingCodes.has(rowData.building_c.trim())) {
                         stats.skip++;
                         updateBuildingDataProgress(i + 1, stats);
+                        if (i < 3) addLog(`⏭️ แถว ${i+1}: ข้ามเพราะรหัส ${rowData.building_c} มีอยู่แล้ว`, 'skip');
                         continue;
                     }
                     
@@ -1632,7 +1624,8 @@
                         formData.append('type', 'building');
                         formData.append('payload', JSON.stringify(rowData));
                         
-                        const res = await fetch(CONFIG.SCRIPT_URL.trim(), {
+                        // ✅ ✅ ✅ ใช้ SCRIPT_URL (ไม่ใช่ CONFIG.SCRIPT_URL) ✅ ✅ ✅
+                        const res = await fetch(SCRIPT_URL.trim(), {
                             method: 'POST',
                             body: formData
                         });
@@ -1640,33 +1633,39 @@
                         
                         if (result.status === 200) {
                             stats.success++;
+                            if (i < 3) addLog(`✅ แถว ${i+1}: บันทึกสำเร็จ ${rowData.building_c}`, 'success');
                         } else {
-                            errors.push(`API: ${result.message}`);
                             stats.error++;
-                            if (i < 5) console.warn(`❌ แถว ${i+1}: ${errors.join(', ')}`);
+                            if (i < 3) addLog(`❌ แถว ${i+1}: API error - ${result.message}`, 'error');
                         }
                     } catch (err) {
                         stats.error++;
-                        if (i < 5) console.error(`❌ แถว ${i+1}: ${err.message}`);
+                        if (i < 3) addLog(`❌ แถว ${i+1}: ${err.message}`, 'error');
                     }
                     
                     updateBuildingDataProgress(i + 1, stats);
                     if (i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 100));
                 }
                 
-                // ✅ สรุปผล + แสดงดีบัก
+                // ✅ สรุปผล
                 progressTitle.textContent = `✅ เสร็จสิ้น!`;
                 const msg = `นำเข้าสำเร็จ: ${stats.success}/${stats.total} รายการ`;
+                
+                // ✅ ✅ ✅ ใช้ addLog แทน showNotificationLeft ✅ ✅ ✅
                 if (stats.error > 0) {
-                    showNotificationLeft(`${msg} (ผิดพลาด: ${stats.error})`, 'warning');
-                    console.warn(`⚠️ สรุป: สำเร็จ ${stats.success}, ข้าม ${stats.skip}, ผิดพลาด ${stats.error}`);
+                    addLog(`⚠️ ${msg} (ข้าม: ${stats.skip}, ผิดพลาด: ${stats.error})`, 'warning');
                 } else {
-                    showNotificationLeft(msg, 'success');
+                    addLog(`✅ ${msg} (ข้าม: ${stats.skip})`, 'success');
+                }
+                
+                // ✅ อัปเดต badge คิวถ้ามี
+                if (typeof updateImportQueueBadge === 'function') {
+                    updateImportQueueBadge();
                 }
                 
             } catch (err) {
                 progressTitle.textContent = `❌ ล้มเหลว`;
-                showNotificationLeft(`ข้อผิดพลาด: ${err.message}`, 'error');
+                addLog(`❌ ข้อผิดพลาด: ${err.message}`, 'error');
                 console.error('Building import error:', err);
             }
         }
@@ -1723,7 +1722,8 @@
         // ✅ ดึงรหัสสิ่งปลูกสร้างที่มีอยู่แล้วในระบบ
         async function getExistingBuildingCodes() {
             try {
-                const res = await fetch(`${CONFIG.SCRIPT_URL}?action=getData`);
+                // ✅ ✅ ✅ ใช้ SCRIPT_URL (ไม่ใช่ CONFIG.SCRIPT_URL) ✅ ✅ ✅
+                const res = await fetch(`${SCRIPT_URL}?action=getData`);
                 const data = await res.json();
                 const codes = new Set();
                 if (data.buildings) {
