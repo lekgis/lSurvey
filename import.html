@@ -1505,12 +1505,14 @@
             }
         }
 
+        
         // ============================================
-        // ✅ ฟังก์ชันประมวลผลไฟล์นำเข้าสิ่งปลูกสร้าง (แก้แล้ว)
+        // ✅ ฟังก์ชันประมวลผลไฟล์นำเข้าสิ่งปลูกสร้าง (แก้รายงานข้อผิดพลาด)
         // ============================================
         
         async function processBuildingImport(file) {
             const stats = { success: 0, skip: 0, error: 0, total: 0 };
+            const errorDetails = []; // ✅ ✅ ✅ เก็บรายละเอียดข้อผิดพลาดทั้งหมด ✅ ✅ ✅
             const progressDiv = document.getElementById('building-data-progress');
             const progressBar = document.getElementById('building-data-bar');
             const progressPercent = document.getElementById('building-data-percent');
@@ -1520,14 +1522,24 @@
             progressTitle.textContent = 'กำลังอ่านไฟล์...';
             
             try {
-                // ✅ 1. อ่านไฟล์
+                // ✅ ในส่วนอ่านไฟล์:
                 const data = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         try {
-                            const workbook = XLSX.read(e.target.result, { type: 'array' });
+                            const workbook = XLSX.read(e.target.result, { 
+                                type: 'array',
+                                cellDates: false,
+                                cellNF: false,
+                                cellText: true,
+                                raw: true  // ✅ อ่านค่าดิบ ไม่แปลงอัตโนมัติ
+                            });
                             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                            const rows = XLSX.utils.sheet_to_json(firstSheet, { 
+                                header: 1,
+                                raw: true,  // ✅ อ่านค่าดิบ
+                                defval: ''
+                            });
                             resolve(rows);
                         } catch (err) { reject(err); }
                     };
@@ -1551,7 +1563,7 @@
                     const row = rows[i];
                     const rowData = {};
                     
-                    // ✅ แมปคอลัมน์: ถ้าแมปไม่ได้ → ใช้ค่าว่าง (ไม่ทำให้แถวผิดพลาด)
+                    // ✅ ✅ ✅ แก้: บังคับ parcel_cod เป็นข้อความ ป้องกันวิทยาศาสตร์ ✅ ✅ ✅
                     headers.forEach((header, idx) => {
                         const value = row[idx];
                         if (value === undefined || value === null || value.toString().trim() === '') return;
@@ -1588,33 +1600,71 @@
                         
                         const fieldId = fieldMap[header];
                         if (fieldId) {
-                            // ✅ แมปค่า: ถ้าไม่ได้ → ใช้ค่าว่าง (ไม่ทำให้แถวผิดพลาด)
-                            rowData[fieldId] = mapFieldValueFlexible(fieldId, value) || '';
+                            let rawValue = String(value).trim();
+                            
+                            // ✅ ✅ ✅ แก้เฉพาะ parcel_cod: ถ้าเป็นวิทยาศาสตร์ → แปลงกลับ ✅ ✅ ✅
+                            // ✅ ในลูปแมปคอลัมน์:
+                            if (fieldId === 'parcel_cod') {
+                                let rawValue = String(value).trim();
+                                
+                                // ✅ ถ้าเป็นวิทยาศาสตร์ (เช่น "6e+71") → แปลงกลับ
+                                if (/^[0-9.]+[eE][+-]?[0-9]+$/.test(rawValue)) {
+                                    const num = parseFloat(rawValue);
+                                    // ✅ แปลงกลับเป็นเลขปกติ + เติม 0 นำหน้าให้ครบ 6 หลัก
+                                    rawValue = String(Math.floor(num)).padStart(6, '0').toUpperCase();
+                                    console.log(`🔧 แก้วิทยาศาสตร์: ${value} → ${rawValue}`);
+                                }
+                                // ✅ ถ้าเป็นตัวเลขล้วน 6 หลัก → เติม 0 นำหน้าถ้าจำเป็น
+                                else if (/^\d+$/.test(rawValue)) {
+                                    rawValue = rawValue.padStart(6, '0').toUpperCase();
+                                }
+                                
+                                rowData[fieldId] = rawValue;
+                            }
+                            
+                            rowData[fieldId] = rawValue;
                         }
                     });
                     
-                    // ✅ ข้อ 1: ตรวจสอบ building_c (ต้องมี → ถ้าไม่มีข้ามแถวนี้)
+                    // ✅ แปลง full_name → title/fname/lname
+                    if (rowData.full_name && rowData.full_name.includes('|')) {
+                        const parts = rowData.full_name.split('|').map(p => p.trim()).filter(p => p);
+                        if (parts.length >= 3) {
+                            rowData.title = rowData.title || parts[0];
+                            rowData.fname = rowData.fname || parts[1];
+                            rowData.lname = rowData.lname || parts.slice(2).join(' ');
+                        }
+                    }
+                    if (rowData.title && rowData.fname && rowData.lname) {
+                        delete rowData.full_name;
+                    }
+                    
+                    // ✅ ถ้าไม่มี parcel_cod → ดึง 6 ตัวแรกของ building_c
+                    if (!rowData.parcel_cod || rowData.parcel_cod.trim() === '') {
+                        if (rowData.building_c && rowData.building_c.length >= 6) {
+                            rowData.parcel_cod = rowData.building_c.substring(0, 6);
+                        }
+                    }
+                    
+                    // ✅ ตรวจสอบ building_c
                     if (!rowData.building_c || rowData.building_c.trim() === '') {
                         stats.error++;
+                        errorDetails.push({ row: i+1, code: 'NO_BUILDING_C', message: 'ไม่มี building_c' });
                         updateBuildingDataProgress(i + 1, stats);
-                        if (i < 3) addLog(`⚠️ แถว ${i+1}: ข้ามเพราะไม่มี building_c`, 'warning');
                         continue;
                     }
                     
-                    // ✅ ข้อ 1: เช็คซ้ำกับระบบ → ถ้ามีแล้วให้ข้าม
-                    if (existingCodes.has(rowData.building_c.trim())) {
+                    // ✅ ในส่วนเช็คซ้ำ:
+                    if (existingCodes.has(rowData.building_c.trim().toUpperCase())) {
                         stats.skip++;
                         updateBuildingDataProgress(i + 1, stats);
-                        if (i < 3) addLog(`⏭️ แถว ${i+1}: ข้ามเพราะรหัส ${rowData.building_c} มีอยู่แล้ว`, 'skip');
                         continue;
                     }
                     
-                    // ✅ เพิ่มวันที่อัตโนมัติ (ใช้ฟังก์ชันเดิม)
+                    // ✅ สร้างค่าอัตโนมัติ
                     const now = formatThaiDateTimeBE(new Date());
                     rowData.date_added = now;
                     rowData.update = now;
-                    
-                    // ✅ สร้าง id อัตโนมัติ
                     rowData.id = `building_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
                     
                     // ✅ ส่งข้อมูลไปบันทึก
@@ -1624,7 +1674,6 @@
                         formData.append('type', 'building');
                         formData.append('payload', JSON.stringify(rowData));
                         
-                        // ✅ ✅ ✅ ใช้ SCRIPT_URL (ไม่ใช่ CONFIG.SCRIPT_URL) ✅ ✅ ✅
                         const res = await fetch(SCRIPT_URL.trim(), {
                             method: 'POST',
                             body: formData
@@ -1633,32 +1682,74 @@
                         
                         if (result.status === 200) {
                             stats.success++;
-                            if (i < 3) addLog(`✅ แถว ${i+1}: บันทึกสำเร็จ ${rowData.building_c}`, 'success');
                         } else {
                             stats.error++;
-                            if (i < 3) addLog(`❌ แถว ${i+1}: API error - ${result.message}`, 'error');
+                            // ✅ ✅ ✅ เก็บรายละเอียดข้อผิดพลาดทั้งหมด ✅ ✅ ✅
+                            errorDetails.push({ 
+                                row: i+1, 
+                                code: rowData.building_c,
+                                message: result.message || 'Unknown error',
+                                status: result.status
+                            });
                         }
                     } catch (err) {
                         stats.error++;
-                        if (i < 3) addLog(`❌ แถว ${i+1}: ${err.message}`, 'error');
+                        // ✅ ✅ ✅ เก็บรายละเอียดข้อผิดพลาดทั้งหมด ✅ ✅ ✅
+                        errorDetails.push({ 
+                            row: i+1, 
+                            code: rowData.building_c,
+                            message: err.message,
+                            type: 'network_error'
+                        });
                     }
                     
                     updateBuildingDataProgress(i + 1, stats);
                     if (i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 100));
                 }
                 
-                // ✅ สรุปผล
+                // ✅ ✅ ✅ สรุปผล + แสดงรายงานข้อผิดพลาดแบบละเอียด ✅ ✅ ✅
                 progressTitle.textContent = `✅ เสร็จสิ้น!`;
                 const msg = `นำเข้าสำเร็จ: ${stats.success}/${stats.total} รายการ`;
                 
-                // ✅ ✅ ✅ ใช้ addLog แทน showNotificationLeft ✅ ✅ ✅
+                // ✅ แสดงสรุปใน progress bar
                 if (stats.error > 0) {
                     addLog(`⚠️ ${msg} (ข้าม: ${stats.skip}, ผิดพลาด: ${stats.error})`, 'warning');
                 } else {
                     addLog(`✅ ${msg} (ข้าม: ${stats.skip})`, 'success');
                 }
                 
-                // ✅ อัปเดต badge คิวถ้ามี
+                // ✅ ✅ ✅ แสดงรายงานข้อผิดพลาดทั้งหมดในล็อก ✅ ✅ ✅
+                if (errorDetails.length > 0) {
+                    addLog(`\n📋 รายงานข้อผิดพลาด (${errorDetails.length} รายการ):`, 'error');
+                    
+                    // ✅ จัดกลุ่มข้อผิดพลาดตามประเภท
+                    const errorGroups = {};
+                    errorDetails.forEach(err => {
+                        const key = err.message.split(':')[0] || err.type || 'unknown';
+                        if (!errorGroups[key]) errorGroups[key] = [];
+                        errorGroups[key].push(err);
+                    });
+                    
+                    // ✅ แสดงแต่ละกลุ่ม
+                    Object.entries(errorGroups).forEach(([reason, errors]) => {
+                        addLog(`  • ${reason}: ${errors.length} รายการ`, 'error');
+                        // ✅ แสดงตัวอย่าง 5 รายการแรกของแต่ละกลุ่ม
+                        errors.slice(0, 5).forEach(err => {
+                            addLog(`    - แถว ${err.row}: ${err.code} → ${err.message}`, 'error');
+                        });
+                        if (errors.length > 5) {
+                            addLog(`    ... และอีก ${errors.length - 5} รายการ`, 'error');
+                        }
+                    });
+                    
+                    // ✅ ปุ่มดาวน์โหลดรายงานข้อผิดพลาด
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'mt-2 px-3 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200';
+                    downloadBtn.innerHTML = '📥 ดาวน์โหลดรายงานข้อผิดพลาด (CSV)';
+                    downloadBtn.onclick = () => downloadErrorReport(errorDetails);
+                    document.getElementById('log-container').appendChild(downloadBtn);
+                }
+                
                 if (typeof updateImportQueueBadge === 'function') {
                     updateImportQueueBadge();
                 }
@@ -1669,8 +1760,32 @@
                 console.error('Building import error:', err);
             }
         }
+        
+        // ✅ ✅ ✅ ฟังก์ชันดาวน์โหลดรายงานข้อผิดพลาดเป็น CSV ✅ ✅ ✅
+        function downloadErrorReport(errorDetails) {
+            if (errorDetails.length === 0) return;
+            
+            const headers = ['row', 'building_c', 'error_message', 'error_type'];
+            const rows = errorDetails.map(err => [
+                err.row,
+                err.code || '',
+                err.message || '',
+                err.type || err.status || ''
+            ]);
+            
+            const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `error_report_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addLog('✅ ดาวน์โหลดรายงานข้อผิดพลาดแล้ว', 'success');
+        }
 
-        // ✅ ✅ ✅ ฟังก์ชันแมปค่าแบบยืดหยุ่น (รองรับรูปแบบไฟล์ส่งออก) ✅ ✅ ✅
+        // ✅ ✅ ✅ ฟังก์ชันแมปค่าแบบยืดหยุ่น (แก้แล้ว) ✅ ✅ ✅
         function mapFieldValueFlexible(fieldId, rawValue) {
             if (!rawValue || rawValue.toString().trim() === '') return '';
             
@@ -1684,7 +1799,7 @@
             if (mappings[cleanRaw]) return mappings[cleanRaw];
             if (mappings[raw]) return mappings[raw];
             
-            // ✅ 2. ค้นหาแบบมีส่วนของคำ (ไม่สนตัวพิมพ์ใหญ่/เล็ก)
+            // ✅ 2. ค้นหาแบบมีส่วนของคำ
             const rawLower = raw.toLowerCase().replace(/[()]/g, '');
             for (const [key, value] of Object.entries(mappings)) {
                 const keyClean = key.toLowerCase().replace(/[()]/g, '');
@@ -1700,13 +1815,13 @@
                 if (raw.includes('ผสม') || raw.includes('ครึ่ง')) return 'ตึก/ไม้';
             }
             
-            // ✅ 4. กรณีพิเศษ: `1`, `2`, `3` ใน b_year → คืนค่าเดิม (allowCustom: true)
+            // ✅ 4. กรณีพิเศษ: `1`, `2`, `3` ใน b_year → คืนค่าเดิม
             if (fieldId === 'b_year' && /^\d+$/.test(raw)) {
                 return raw;
             }
             
-            // ✅ 5. ไม่เจอ → คืน null (เพื่อให้รู้ว่าแมปไม่ได้)
-            return null;
+            // ✅ ✅ ✅ แก้: ไม่เจอ → คืนค่าว่าง (ไม่ใช่ null) เพื่อให้กรอกคอลัมน์อื่นได้ ✅ ✅ ✅
+            return '';
         }
 
         // ✅ อัปเดตแถบความคืบหน้า
@@ -1719,16 +1834,18 @@
             document.getElementById('bd-error').textContent = stats.error;
         }
         
-        // ✅ ดึงรหัสสิ่งปลูกสร้างที่มีอยู่แล้วในระบบ
+        // ✅ ในฟังก์ชัน `getExistingBuildingCodes()` → แปลงเป็นใหญ่ทั้งหมด:
         async function getExistingBuildingCodes() {
             try {
-                // ✅ ✅ ✅ ใช้ SCRIPT_URL (ไม่ใช่ CONFIG.SCRIPT_URL) ✅ ✅ ✅
                 const res = await fetch(`${SCRIPT_URL}?action=getData`);
                 const data = await res.json();
                 const codes = new Set();
                 if (data.buildings) {
                     data.buildings.forEach(b => {
-                        if (b.building_c) codes.add(b.building_c.trim());
+                        if (b.building_c) {
+                            // ✅ แปลงเป็นใหญ่ทั้งหมดเพื่อเปรียบเทียบ
+                            codes.add(b.building_c.trim().toUpperCase());
+                        }
                     });
                 }
                 return codes;
