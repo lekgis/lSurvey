@@ -203,8 +203,23 @@
                 <button type="button" onclick="document.getElementById('sign-data-file').click()"
                         class="w-full mt-2 py-2 bg-blue-600 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
                     <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-                    เลือกไฟล์ข้อมูลป้าย
+                    นำเข้าข้อมูลป้าย
                 </button>
+                <!-- ✅ แถบความคืบหน้าสำหรับนำเข้าข้อมูลป้าย -->
+                <div id="sign-data-progress" class="hidden mt-3 p-3 bg-gray-50 rounded border">
+                    <div class="flex justify-between text-xs text-gray-600 mb-1">
+                        <span id="sign-data-title">กำลังประมวลผล...</span>
+                        <span id="sign-data-percent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="sign-data-bar" class="bg-green-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                    <div class="flex gap-3 text-xs text-gray-500 mt-2">
+                        <span>✅ สำเร็จ: <b id="sd-success">0</b></span>
+                        <span>⏭️ ข้าม: <b id="sd-skip">0</b></span>
+                        <span>❌ ผิดพลาด: <b id="sd-error">0</b></span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1966,6 +1981,229 @@
             if (e.target.files[0]) {
                 if (confirm(`นำเข้าข้อมูลจากไฟล์ "${e.target.files[0].name}"?\n\nข้อมูลจะถูกรองกรองและแมปให้ตรงกับฟอร์มอัตโนมัติ`)) {
                     processBuildingImport(e.target.files[0]);
+                }
+                e.target.value = ''; // รีเซ็ต
+            }
+        });
+
+        // ✅ ✅ ✅ แมปชื่อคอลัมน์จากไฟล์ → field ID ภายใน ✅ ✅ ✅
+        const SIGN_FIELD_MAP = {
+            's_code': 's_code', 'รหัสป้าย': 's_code', 'code': 's_code', 'sign_code': 's_code',
+            'parcel_cod': 'parcel_cod', 'รหัสแปลง': 'parcel_cod', 'parcel': 'parcel_cod',
+            's_name': 's_name', 'ชื่อป้าย': 's_name', 'name': 's_name',
+            's_type': 's_type', 'ประเภท': 's_type', 'ชนิด': 's_type', 'type': 's_type',
+            's_characte': 's_characte', 'ลักษณะ': 's_characte', 'character': 's_characte',
+            's_wide': 's_wide', 'กว้าง': 's_wide', 'width': 's_wide',
+            's_length': 's_length', 'ยาว': 's_length', 'length': 's_length',
+            'no_side': 'no_side', 'จำนวนด้าน': 'no_side', 'sides': 'no_side',
+            's_text': 's_text', 'ข้อความ': 's_text', 'text': 's_text',
+            'comment': 'comment', 'หมายเหตุ': 'comment', 'หมายเหตุเพิ่มเติม': 'comment',
+            'title': 'title', 'คำนำหน้า': 'title', 'prefix': 'title',
+            'fname': 'fname', 'ชื่อ': 'fname', 'firstname': 'fname',
+            'lname': 'lname', 'นามสกุล': 'lname', 'lastname': 'lname',
+            'full_name': 'full_name', 'เจ้าของ': 'full_name', 'owner': 'full_name',
+            'address': 'address', 'ที่อยู่': 'address',
+            'image': 'image', 'picture': 'picture', 'รูป': 'picture',
+            'check': 'check', 'สถานะ': 'check', 'status': 'check',
+            'lat_long': 'lat_long', 'พิกัด': 'lat_long', 'coordinate': 'lat_long',
+            'date_added': 'date_added', 'update': 'update', 'id': 'id'
+        };
+
+                    
+        // ✅ ✅ ✅ ดึงรหัสป้ายที่มีอยู่แล้วจากเซิร์ฟเวอร์ ✅ ✅ ✅
+        async function getExistingSignCodes() {
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await res.json();
+                const codes = new Set();
+                if (data.signs) {
+                    data.signs.forEach(s => {
+                        if (s.s_code) {
+                            codes.add(s.s_code.trim().toUpperCase());
+                        }
+                    });
+                }
+                return codes;
+            } catch {
+                return new Set();
+            }
+        }
+
+        // ✅ ✅ ✅ อัปเดตแถบความคืบหน้าการนำเข้าป้าย ✅ ✅ ✅
+        function updateSignDataProgress(current, stats) {
+            const percent = Math.round((current / stats.total) * 100);
+            document.getElementById('sign-data-bar').style.width = `${percent}%`;
+            document.getElementById('sign-data-percent').textContent = `${percent}%`;
+            document.getElementById('sd-success').textContent = stats.success;
+            document.getElementById('sd-skip').textContent = stats.skip;
+            document.getElementById('sd-error').textContent = stats.error;
+        }
+
+        // ============================================
+        // ✅ ฟังก์ชันประมวลผลไฟล์นำเข้าข้อมูลป้าย
+        // ============================================
+        async function processSignImport(file) {
+            const stats = { success: 0, skip: 0, error: 0, total: 0 };
+            const errorDetails = [];
+            const progressDiv = document.getElementById('sign-data-progress');
+            const progressTitle = document.getElementById('sign-data-title');
+            
+            progressDiv.classList.remove('hidden');
+            progressTitle.textContent = 'กำลังอ่านไฟล์...';
+            
+            try {
+                // ✅ อ่านไฟล์ด้วย SheetJS (เหมือนเดิม)
+                const data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const workbook = XLSX.read(e.target.result, { 
+                                type: 'array', cellDates: false, cellNF: false, cellText: true, raw: true 
+                            });
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: true, defval: '' });
+                            resolve(rows);
+                        } catch (err) { reject(err); }
+                    };
+                    reader.onerror = () => reject(new Error('อ่านไฟล์ล้มเหลว'));
+                    reader.readAsArrayBuffer(file);
+                });
+                
+                if (data.length < 2) throw new Error('ไฟล์ไม่มีข้อมูล');
+                
+                const headers = data[0].map(h => String(h).trim().toLowerCase());
+                const rows = data.slice(1).filter(row => row.some(cell => cell));
+                
+                stats.total = rows.length;
+                progressTitle.textContent = `กำลังประมวลผล ${stats.total} รายการ...`;
+                
+                // ✅ ดึงรหัสป้ายที่มีอยู่แล้ว
+                const existingCodes = await getExistingSignCodes();
+                
+                // ✅ ประมวลผลทีละแถว
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    const rowData = {};
+                    
+                    // ✅ แมปคอลัมน์จากไฟล์ → ข้อมูลภายใน
+                    headers.forEach((header, idx) => {
+                        const value = row[idx];
+                        if (value === undefined || value === null || value.toString().trim() === '') return;
+                        
+                        const fieldId = SIGN_FIELD_MAP[header];
+                        if (fieldId) {
+                            let rawValue = String(value).trim();
+                            
+                            // ✅ จัดการรหัสป้ายพิเศษ
+                            if (fieldId === 's_code') {
+                                if (/^[A-Za-z0-9]+-[A-Z0-9]+$/.test(rawValue.toUpperCase())) {
+                                    console.log(`✅ รหัสป้ายพิเศษ: ${rawValue} → ใช้ค่าเดิม`);
+                                } else if (/^[0-9.]+[eE][+-]?[0-9]+$/.test(rawValue)) {
+                                    const num = parseFloat(rawValue);
+                                    rawValue = String(Math.floor(num));
+                                }
+                                rowData[fieldId] = rawValue.toUpperCase();
+                            }
+                            // ✅ แมปค่าด้วย SIGN_FIELD_MAPPINGS
+                            else if (SIGN_FIELD_MAPPINGS[fieldId]) {
+                                rowData[fieldId] = mapFieldValue(fieldId, rawValue);
+                            }
+                            // ✅ ค่าทั่วไป
+                            else {
+                                rowData[fieldId] = rawValue;
+                            }
+                        }
+                    });
+                    
+                    // ✅ สร้าง full_name อัตโนมัติถ้าไม่มี
+                    if (!rowData.full_name && (rowData.title || rowData.fname || rowData.lname)) {
+                        const parts = [rowData.title, rowData.fname, rowData.lname].filter(v => v?.trim());
+                        if (parts.length > 0) rowData.full_name = parts.join(' | ');
+                    }
+                    
+                    // ✅ ✅ ✅ ข้อ 2: ถ้าไม่มี parcel_cod → ดึง 6 ตัวแรกของ s_code ✅ ✅ ✅
+                    if (!rowData.parcel_cod || rowData.parcel_cod.trim() === '') {
+                        if (rowData.s_code && rowData.s_code.length >= 6) {
+                            rowData.parcel_cod = rowData.s_code.substring(0, 6);
+                            console.log(`✅ Auto-fill parcel_cod: "${rowData.parcel_cod}" จาก s_code: "${rowData.s_code}"`);
+                        }
+                    }
+                    
+                    // ✅ ตรวจสอบ s_code
+                    if (!rowData.s_code || rowData.s_code.trim() === '') {
+                        stats.error++;
+                        errorDetails.push({ row: i+1, code: 'NO_S_CODE', message: 'ไม่มี s_code' });
+                        updateSignDataProgress(i + 1, stats);
+                        continue;
+                    }
+                    
+                    // ✅ เช็คซ้ำ
+                    if (existingCodes.has(rowData.s_code.trim().toUpperCase())) {
+                        stats.skip++;
+                        updateSignDataProgress(i + 1, stats);
+                        continue;
+                    }
+                    
+                    // ✅ ✅ ✅ ข้อ 1: สร้างค่าอัตโนมัติ ✅ ✅ ✅
+                    const now = formatThaiDateTimeBE(new Date());
+                    rowData.date_added = now;
+                    rowData.update = now;
+                    rowData.id = `sign_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                    
+                    // ✅ ส่งข้อมูลไปบันทึก
+                    try {
+                        const formData = new FormData();
+                        formData.append('action', 'quickAdd');
+                        formData.append('type', 'sign');
+                        formData.append('payload', JSON.stringify(rowData));
+                        
+                        const res = await fetch(SCRIPT_URL.trim(), { method: 'POST', body: formData });
+                        const result = await res.json();
+                        
+                        if (result.status === 200) {
+                            stats.success++;
+                            if (i < 3) addLog(`✅ แถว ${i+1}: บันทึกสำเร็จ ${rowData.s_code}`, 'success');
+                        } else {
+                            stats.error++;
+                            errorDetails.push({ row: i+1, code: rowData.s_code, message: result.message || 'Unknown error', status: result.status });
+                        }
+                    } catch (err) {
+                        stats.error++;
+                        errorDetails.push({ row: i+1, code: rowData.s_code, message: err.message, type: 'network_error' });
+                    }
+                    
+                    updateSignDataProgress(i + 1, stats);
+                    if (i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                // ✅ สรุปผล + รีเฟรชแผนที่ (เหมือนเดิม)
+                progressTitle.textContent = `✅ เสร็จสิ้น!`;
+                const msg = `นำเข้าป้ายสำเร็จ: ${stats.success}/${stats.total} รายการ`;
+                if (stats.error > 0) {
+                    addLog(`⚠️ ${msg} (ข้าม: ${stats.skip}, ผิดพลาด: ${stats.error})`, 'warning');
+                } else {
+                    addLog(`✅ ${msg} (ข้าม: ${stats.skip})`, 'success');
+                }
+                
+                // ✅ รีเฟรชแผนที่หลังนำเข้าเสร็จ
+                setTimeout(() => {
+                    if (window.markersBeingMoved) markersBeingMoved.clear();
+                    if (typeof refreshData === 'function') refreshData(true);
+                    showNotificationLeft('✅ นำเข้าป้ายเสร็จสิ้น! กำลังอัปเดต...', 'success');
+                }, 5000);
+                
+            } catch (err) {
+                progressTitle.textContent = `❌ ล้มเหลว`;
+                addLog(`❌ ข้อผิดพลาด: ${err.message}`, 'error');
+                console.error('Sign import error:', err);
+            }
+        }
+
+        // ✅ ผูกเหตุการณ์กับปุ่มเลือกไฟล์ข้อมูลป้าย
+        document.getElementById('sign-data-file')?.addEventListener('change', function(e) {
+            if (e.target.files[0]) {
+                if (confirm(`นำเข้าข้อมูลป้ายจากไฟล์ "${e.target.files[0].name}"?\n\nข้อมูลจะถูกรองกรองและแมปให้ตรงกับฟอร์มอัตโนมัติ`)) {
+                    processSignImport(e.target.files[0]);
                 }
                 e.target.value = ''; // รีเซ็ต
             }
