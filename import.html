@@ -2038,7 +2038,10 @@
             document.getElementById('sd-skip').textContent = stats.skip;
             document.getElementById('sd-error').textContent = stats.error;
         }
-
+                
+        // ✅ ✅ ✅ เพิ่มบรรทัดนี้ ✅ ✅ ✅
+        const SIGN_FIELD_MAPPINGS = {};  // ← ว่างไว้ก่อนก็ได้ ถ้ายังไม่มีค่าที่จะแมป
+                
         // ============================================
         // ✅ ฟังก์ชันประมวลผลไฟล์นำเข้าข้อมูลป้าย
         // ============================================
@@ -2105,10 +2108,11 @@
                                 rowData[fieldId] = rawValue.toUpperCase();
                             }
                             // ✅ แมปค่าด้วย SIGN_FIELD_MAPPINGS
-                            else if (SIGN_FIELD_MAPPINGS[fieldId]) {
+                            // ✅ ถ้ามี SIGN_FIELD_MAPPINGS และมีค่าสำหรับ field นี้ → ใช้แมป
+                            if (typeof SIGN_FIELD_MAPPINGS !== 'undefined' && SIGN_FIELD_MAPPINGS[fieldId]) {
                                 rowData[fieldId] = mapFieldValue(fieldId, rawValue);
                             }
-                            // ✅ ค่าทั่วไป
+                            // ✅ ถ้าไม่มี → ใช้ค่าเดิม
                             else {
                                 rowData[fieldId] = rawValue;
                             }
