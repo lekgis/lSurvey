@@ -1602,21 +1602,25 @@
                         if (fieldId) {
                             let rawValue = String(value).trim();
                             
-                            // ✅ ✅ ✅ แก้เฉพาะ parcel_cod: ถ้าเป็นวิทยาศาสตร์ → แปลงกลับ ✅ ✅ ✅
-                            // ✅ ในลูปแมปคอลัมน์:
+                            // ✅ ✅ ✅ แก้เฉพาะ parcel_cod: ถ้าเป็นรหัสพิเศษ → ใช้ค่าเดิม ✅ ✅ ✅
                             if (fieldId === 'parcel_cod') {
                                 let rawValue = String(value).trim();
                                 
-                                // ✅ ถ้าเป็นวิทยาศาสตร์ (เช่น "6e+71") → แปลงกลับ
-                                if (/^[0-9.]+[eE][+-]?[0-9]+$/.test(rawValue)) {
+                                // ✅ เช็คก่อนว่าเป็นรหัสพิเศษแบบ "06E001", "14E074" ฯลฯ หรือไม่
+                                // ✅ รูปแบบ: ตัวอักษร+เลข + 'E' + เลข 3 หลัก (เช่น 06E001, 14E074)
+                                if (/^[A-Za-z0-9]+E\d{3}$/.test(rawValue.toUpperCase())) {
+                                    // ✅ เป็นรหัสพิเศษ → ใช้ค่าเดิม ไม่ต้องแปลง!
+                                    console.log(`✅ รหัสพิเศษ: ${rawValue} → ใช้ค่าเดิม`);
+                                }
+                                // ✅ ถ้าเป็นวิทยาศาสตร์จริง (เช่น "6e+71") → แปลงกลับ
+                                else if (/^[0-9.]+[eE][+-]?[0-9]+$/.test(rawValue)) {
                                     const num = parseFloat(rawValue);
-                                    // ✅ แปลงกลับเป็นเลขปกติ + เติม 0 นำหน้าให้ครบ 6 หลัก
-                                    rawValue = String(Math.floor(num)).padStart(6, '0').toUpperCase();
+                                    rawValue = String(Math.floor(num)).padStart(6, '0');
                                     console.log(`🔧 แก้วิทยาศาสตร์: ${value} → ${rawValue}`);
                                 }
-                                // ✅ ถ้าเป็นตัวเลขล้วน 6 หลัก → เติม 0 นำหน้าถ้าจำเป็น
+                                // ✅ ถ้าเป็นตัวเลขล้วน → เติม 0 นำหน้า
                                 else if (/^\d+$/.test(rawValue)) {
-                                    rawValue = rawValue.padStart(6, '0').toUpperCase();
+                                    rawValue = rawValue.padStart(6, '0');
                                 }
                                 
                                 rowData[fieldId] = rawValue;
@@ -1626,17 +1630,30 @@
                         }
                     });
                     
-                    // ✅ แปลง full_name → title/fname/lname
-                    if (rowData.full_name && rowData.full_name.includes('|')) {
-                        const parts = rowData.full_name.split('|').map(p => p.trim()).filter(p => p);
-                        if (parts.length >= 3) {
-                            rowData.title = rowData.title || parts[0];
-                            rowData.fname = rowData.fname || parts[1];
-                            rowData.lname = rowData.lname || parts.slice(2).join(' ');
+                    // ✅ ✅ ✅ สร้าง full_name อัตโนมัติถ้าไม่มีในไฟล์ ✅ ✅ ✅
+                    // (รองรับกรณีมีค่าแค่บางคอลัมน์: title หรือ fname หรือ lname)
+                    if (!rowData.full_name || rowData.full_name.trim() === '') {
+                        // ✅ รวบรวมค่าที่มีอยู่จาก 3 คอลัมน์ (ไม่ต้องมีครบ)
+                        const ownerParts = [rowData.title, rowData.fname, rowData.lname]
+                            .filter(v => v && v.toString().trim() !== '');
+                        
+                        // ✅ ✅ ✅ แก้: ถ้ามีข้อมูลเจ้าของอย่างน้อย 1 คอลัมน์ → สร้าง full_name ✅ ✅ ✅
+                        if (ownerParts.length >= 1) {
+                            rowData.full_name = ownerParts.join(' | ');  // ✅ คั่นด้วย " | "
+                            console.log(`✅ สร้าง full_name: ${rowData.full_name}`);
                         }
                     }
-                    if (rowData.title && rowData.fname && rowData.lname) {
-                        delete rowData.full_name;
+                    
+                    // ✅ ถ้ามี full_name แล้ว → แยกกลับเป็น title/fname/lname (กรณีไฟล์มี full_name แต่ไม่มี 3 คอลัมน์)
+                    if (rowData.full_name && rowData.full_name.includes('|') && 
+                        (!rowData.fname || !rowData.lname)) {
+                        const parts = rowData.full_name.split('|').map(p => p.trim()).filter(p => p);
+                        if (parts.length >= 1) {
+                            // ✅ แบ่งตามตำแหน่ง: 0=title, 1=fname, 2+=lname
+                            rowData.title = rowData.title || parts[0];
+                            rowData.fname = rowData.fname || parts[1];
+                            rowData.lname = rowData.lname || (parts.length > 2 ? parts.slice(2).join(' ') : '');
+                        }
                     }
                     
                     // ✅ ถ้าไม่มี parcel_cod → ดึง 6 ตัวแรกของ building_c
@@ -1680,8 +1697,11 @@
                         });
                         const result = await res.json();
                         
+                        // ✅ หาบรรทัดนี้ในลูป for (ประมาณแถวที่ 1650-1680 ของไฟล์)
                         if (result.status === 200) {
-                            stats.success++;
+                            stats.success++;                           
+                            
+                            if (i < 3) addLog(`✅ แถว ${i+1}: บันทึกสำเร็จ ${rowData.building_c}`, 'success');
                         } else {
                             stats.error++;
                             // ✅ ✅ ✅ เก็บรายละเอียดข้อผิดพลาดทั้งหมด ✅ ✅ ✅
@@ -1748,19 +1768,106 @@
                     downloadBtn.innerHTML = '📥 ดาวน์โหลดรายงานข้อผิดพลาด (CSV)';
                     downloadBtn.onclick = () => downloadErrorReport(errorDetails);
                     document.getElementById('log-container').appendChild(downloadBtn);
-                }
-                
-                if (typeof updateImportQueueBadge === 'function') {
-                    updateImportQueueBadge();
-                }
-                
+                }                
+               
+                // ✅ 2. รีเซ็ตตัวแปรบล็อก + รีเฟรชแผนที่ (รอ 5 วิ)
+                setTimeout(() => {
+                    console.log('🔄 เริ่มรีเฟรชแผนที่หลังนำเข้า...');
+                    
+                    // ✅ รีเซ็ต markersBeingMoved (สำคัญมาก!)
+                    if (window.markersBeingMoved) {
+                        window.markersBeingMoved.clear();
+                        console.log('🔄 รีเซ็ต markersBeingMoved แล้ว');
+                    }
+                    
+                    // ✅ ✅ ✅ แก้บรรทัดนี้: เปลี่ยน refreshMarkers() เป็น refreshData(true) ✅ ✅ ✅
+                    if (typeof refreshData === 'function') {  // ← แก้จาก refreshMarkers เป็น refreshData
+                        refreshData(true);  // ← แก้จาก refreshMarkers() เป็น refreshData(true)
+                        console.log('✅ รีเฟรชเสร็จสิ้น');
+                    }
+                    
+                    // ✅ แจ้งผู้ใช้
+                    showNotificationLeft('✅ นำเข้าเสร็จสิ้น! กรุณารอสักครู่...', 'success');
+                    
+                    // ✅ เช็คว่ามีจุดไหม
+                    setTimeout(() => {
+                        const layerCount = window.surveyLayers?.getLayers?.().length || 0;
+                        console.log(`📊 จำนวนจุดบนแผนที่: ${layerCount}`);
+                        if (layerCount === 0) {
+                            showNotificationLeft('⚠️ ไม่พบจุดบนแผนที่ กรุณากด F5 รีเฟรชหน้า', 'warning');
+                        }
+                    }, 2000);
+                    
+                }, 5000);  // ✅ รอ 5 วิ ให้ Google Sheets บันทึกเสร็จ
             } catch (err) {
                 progressTitle.textContent = `❌ ล้มเหลว`;
                 addLog(`❌ ข้อผิดพลาด: ${err.message}`, 'error');
                 console.error('Building import error:', err);
             }
         }
-        
+
+        // ✅ ✅ ✅ ฟังก์ชันสร้างมาร์กเกอร์จากข้อมูลที่นำเข้า (แก้แล้ว) ✅ ✅ ✅
+        function createMarkerFromImport(data, type) {
+            if (!map || !data.lat_long) return null;
+            
+            // ✅ แปลง "lat, lng" → [lat, lng]
+            const coords = data.lat_long.split(',').map(c => parseFloat(c.trim()));
+            if (coords.length < 2 || isNaN(coords[0]) || isNaN(coords[1])) return null;
+            
+            const latlng = L.latLng(coords[0], coords[1]);
+            
+            // ✅ ✅ ✅ เช็คก่อน: ถ้ามีมาร์กเกอร์ที่พิกัดนี้แล้ว → ไม่ต้องสร้างใหม่ ✅ ✅ ✅
+            let markerExists = false;
+            surveyLayers.eachLayer(layer => {
+                if (layer.getLatLng && layer.getLatLng().equals(latlng)) {
+                    markerExists = true;
+                }
+            });
+            if (markerExists) {
+                console.log(`⏭️ ข้ามสร้างมาร์กเกอร์: ${data.building_c} (มีอยู่แล้วที่พิกัดนี้)`);
+                return null;
+            }
+            
+            // ✅ สร้างมาร์กเกอร์
+            const marker = L.marker(latlng, {
+                icon: type === 'building' 
+                    ? L.divIcon({ className: 'building-marker', html: '🏠' })
+                    : L.divIcon({ className: 'sign-marker', html: '🪧' }),
+                interactive: true  // ✅ ต้องเปิด!
+            });
+            
+            // ✅ ผูกป๊อปอัป
+            const popupContent = `
+                <div class="p-2 min-w-[180px]">
+                    <p class="font-bold text-sm">${type === 'building' ? 'สิ่งปลูกสร้าง' : 'ป้าย'}</p>
+                    <p class="text-[10px] text-gray-500">${data.building_c || data.s_code || ''}</p>
+                    <p class="text-[10px] text-gray-500">${data.lat_long}</p>
+                    <div class="mt-2 space-y-1">
+                        <button onclick="openEditPanel('${data.id || ''}', '${type}')" 
+                                class="w-full bg-blue-600 text-white text-[10px] py-1 rounded font-bold">
+                            แก้ข้อมูล
+                        </button>
+                        <button onclick="deleteRecord('${data.id || ''}', '${type}')" 
+                                class="w-full bg-red-600 text-white text-[10px] py-1 rounded font-bold">
+                            ลบจุด
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent, {
+                minWidth: 180,
+                maxWidth: 220,
+                autoPan: false,
+                closeOnClick: true
+            });
+            
+            // ✅ เพิ่มลงเลเยอร์
+            marker.addTo(surveyLayers);
+            
+            return marker;
+        }
+
         // ✅ ✅ ✅ ฟังก์ชันดาวน์โหลดรายงานข้อผิดพลาดเป็น CSV ✅ ✅ ✅
         function downloadErrorReport(errorDetails) {
             if (errorDetails.length === 0) return;
