@@ -1986,30 +1986,41 @@
             }
         });
 
-        // ✅ ✅ ✅ แมปชื่อคอลัมน์จากไฟล์ → field ID ภายใน ✅ ✅ ✅
-        const SIGN_FIELD_MAP = {
-            's_code': 's_code', 'รหัสป้าย': 's_code', 'code': 's_code', 'sign_code': 's_code',
-            'parcel_cod': 'parcel_cod', 'รหัสแปลง': 'parcel_cod', 'parcel': 'parcel_cod',
-            's_name': 's_name', 'ชื่อป้าย': 's_name', 'name': 's_name',
-            's_type': 's_type', 'ประเภท': 's_type', 'ชนิด': 's_type', 'type': 's_type',
-            's_characte': 's_characte', 'ลักษณะ': 's_characte', 'character': 's_characte',
-            's_wide': 's_wide', 'กว้าง': 's_wide', 'width': 's_wide',
-            's_length': 's_length', 'ยาว': 's_length', 'length': 's_length',
-            'no_side': 'no_side', 'จำนวนด้าน': 'no_side', 'sides': 'no_side',
-            's_text': 's_text', 'ข้อความ': 's_text', 'text': 's_text',
-            'comment': 'comment', 'หมายเหตุ': 'comment', 'หมายเหตุเพิ่มเติม': 'comment',
-            'title': 'title', 'คำนำหน้า': 'title', 'prefix': 'title',
-            'fname': 'fname', 'ชื่อ': 'fname', 'firstname': 'fname',
-            'lname': 'lname', 'นามสกุล': 'lname', 'lastname': 'lname',
-            'full_name': 'full_name', 'เจ้าของ': 'full_name', 'owner': 'full_name',
-            'address': 'address', 'ที่อยู่': 'address',
-            'image': 'image', 'picture': 'picture', 'รูป': 'picture',
-            'check': 'check', 'สถานะ': 'check', 'status': 'check',
-            'lat_long': 'lat_long', 'พิกัด': 'lat_long', 'coordinate': 'lat_long',
-            'date_added': 'date_added', 'update': 'update', 'id': 'id'
-        };
 
-                    
+        // ✅ ✅ ✅ ฟังก์ชันแมปค่าสักษณะเนื้อหาป้าย (พิเศษ) ✅ ✅ ✅
+        function mapSCharacte(rawValue) {
+            if (!rawValue || rawValue.toString().trim() === '') return '';
+            
+            const raw = rawValue.toString().trim().toLowerCase();
+            
+            // ✅ 1. ลองแมปผ่าน SIGN_FIELD_MAPPINGS ก่อน
+            if (typeof SIGN_FIELD_MAPPINGS !== 'undefined' && SIGN_FIELD_MAPPINGS['s_characte']) {
+                const mappings = SIGN_FIELD_MAPPINGS['s_characte'];
+                
+                // ค้นหาแบบตรงกันเป๊ะ
+                if (mappings[raw]) return mappings[raw];
+                
+                // ค้นหาแบบมีส่วนของคำ
+                for (const [key, value] of Object.entries(mappings)) {
+                    if (raw.includes(key.toLowerCase())) {
+                        return value;
+                    }
+                }
+            }
+            
+            // ✅ 2. ถ้าไม่เจอ → ลองแยกเลข+ตัวอักษรอัตโนมัติ
+            // รูปแบบ: "1 ก", "1(ก)", "1ก", "2 ข", ฯลฯ
+            const match = raw.match(/^([1-3])\s*[\(\)]?\s*([กข])[\)\)]?$/);
+            if (match) {
+                const num = match[1];  // 1, 2, หรือ 3
+                const letter = match[2];  // ก หรือ ข
+                return `${num}(${letter})`;  // แปลงเป็นรูปแบบมาตรฐาน
+            }
+            
+            // ✅ 3. ไม่เจอรูปแบบใด → คืนค่าเดิม
+            return rawValue;
+        }
+
         // ✅ ✅ ✅ ดึงรหัสป้ายที่มีอยู่แล้วจากเซิร์ฟเวอร์ ✅ ✅ ✅
         async function getExistingSignCodes() {
             try {
@@ -2038,7 +2049,40 @@
             document.getElementById('sd-skip').textContent = stats.skip;
             document.getElementById('sd-error').textContent = stats.error;
         }
+
+        // ✅ ✅ ✅ ฟังก์ชันแมปค่าสักษณะเนื้อหาป้าย (พิเศษ) ✅ ✅ ✅
+        function mapSCharacte(rawValue) {
+            if (!rawValue || rawValue.toString().trim() === '') return '';
+            
+            const raw = rawValue.toString().trim().toLowerCase();
+            
+            // ✅ 1. ลองแมปผ่าน SIGN_FIELD_MAPPINGS ก่อน
+            if (typeof SIGN_FIELD_MAPPINGS !== 'undefined' && SIGN_FIELD_MAPPINGS['s_characte']) {
+                const mappings = SIGN_FIELD_MAPPINGS['s_characte'];
                 
+                // ค้นหาแบบตรงกันเป๊ะ
+                if (mappings[raw]) return mappings[raw];
+                
+                // ค้นหาแบบมีส่วนของคำ
+                for (const [key, value] of Object.entries(mappings)) {
+                    if (raw.includes(key.toLowerCase())) {
+                        return value;
+                    }
+                }
+            }
+            
+            // ✅ 2. ถ้าไม่เจอ → ลองแยกเลข+ตัวอักษรอัตโนมัติ
+            const match = raw.match(/^([1-3])\s*[\(\)]?\s*([กข])[\)\)]?$/);
+            if (match) {
+                const num = match[1];
+                const letter = match[2];
+                return `${num}(${letter})`;
+            }
+            
+            // ✅ 3. ไม่เจอรูปแบบใด → คืนค่าเดิม
+            return rawValue;
+        }
+
         // ✅ ✅ ✅ เพิ่มบรรทัดนี้ ✅ ✅ ✅
         const SIGN_FIELD_MAPPINGS = {};  // ← ว่างไว้ก่อนก็ได้ ถ้ายังไม่มีค่าที่จะแมป
                 
@@ -2056,20 +2100,63 @@
             
             try {
                 // ✅ อ่านไฟล์ด้วย SheetJS (เหมือนเดิม)
+                // ✅ ✅ ✅ แก้ฟังก์ชันอ่านไฟล์ให้รองรับไทย ✅ ✅ ✅
                 const data = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         try {
-                            const workbook = XLSX.read(e.target.result, { 
-                                type: 'array', cellDates: false, cellNF: false, cellText: true, raw: true 
-                            });
-                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: true, defval: '' });
-                            resolve(rows);
+                            const arrayBuffer = e.target.result;
+                            
+                            // ✅ ถ้าเป็นไฟล์ CSV → ใช้ TextDecoder ระบุ UTF-8 ชัดเจน
+                            if (file.name.toLowerCase().endsWith('.csv')) {
+                                const decoder = new TextDecoder('utf-8');  // ✅ ระบุ encoding
+                                const text = decoder.decode(arrayBuffer);
+                                
+                                // ✅ แบ่งบรรทัดและคอลัมน์แบบปลอดภัย
+                                const rows = text.split(/\r?\n/).map(line => {
+                                    // ✅ แบ่งโดยคำนึงถึงเครื่องหมายคำพูด (ป้องกันคอมม่าในข้อมูล)
+                                    const cols = [];
+                                    let current = '';
+                                    let inQuotes = false;
+                                    
+                                    for (let char of line) {
+                                        if (char === '"') {
+                                            inQuotes = !inQuotes;
+                                        } else if (char === ',' && !inQuotes) {
+                                            cols.push(current.trim());
+                                            current = '';
+                                        } else {
+                                            current += char;
+                                        }
+                                    }
+                                    cols.push(current.trim());
+                                    return cols;
+                                }).filter(row => row.length > 1 && row.some(c => c));
+                                
+                                resolve(rows);
+                            } 
+                            // ✅ ถ้าเป็น Excel (.xlsx/.xls) → ใช้ SheetJS ปกติ
+                            else {
+                                const workbook = XLSX.read(arrayBuffer, { 
+                                    type: 'array',
+                                    cellDates: false,
+                                    cellNF: false,
+                                    cellText: true,
+                                    raw: true,
+                                    codepage: 65001  // ✅ ระบุ UTF-8 codepage
+                                });
+                                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                                const rows = XLSX.utils.sheet_to_json(firstSheet, { 
+                                    header: 1, 
+                                    raw: true, 
+                                    defval: '' 
+                                });
+                                resolve(rows);
+                            }
                         } catch (err) { reject(err); }
                     };
                     reader.onerror = () => reject(new Error('อ่านไฟล์ล้มเหลว'));
-                    reader.readAsArrayBuffer(file);
+                    reader.readAsArrayBuffer(file);  // ✅ อ่านเป็น ArrayBuffer เพื่อควบคุม encoding
                 });
                 
                 if (data.length < 2) throw new Error('ไฟล์ไม่มีข้อมูล');
@@ -2092,31 +2179,41 @@
                     headers.forEach((header, idx) => {
                         const value = row[idx];
                         if (value === undefined || value === null || value.toString().trim() === '') return;
-                        
+                    
                         const fieldId = SIGN_FIELD_MAP[header];
-                        if (fieldId) {
-                            let rawValue = String(value).trim();
+                        if (!fieldId) return; // ถ้าไม่ตรงกับ Map ให้ข้ามไปเลย
+                    
+                        let rawValue = String(value).trim();
+                        let finalValue = rawValue; // เก็บค่าที่จะใช้จริง
+                    
+                        // 1. จัดการ Logic พิเศษตามราย Field
+                        if (fieldId === 's_characte') {
+                            finalValue = mapSCharacte(rawValue);
+                        } 
+                        else if (fieldId === 's_code') {
+                            // เช็ค Scientific Notation (เช่น 1.2E+5)
+                            if (/^[0-9.]+[eE][+-]?[0-9]+$/.test(rawValue)) {
+                                const num = parseFloat(rawValue);
+                                finalValue = String(Math.floor(num));
+                            }
                             
-                            // ✅ จัดการรหัสป้ายพิเศษ
-                            if (fieldId === 's_code') {
-                                if (/^[A-Za-z0-9]+-[A-Z0-9]+$/.test(rawValue.toUpperCase())) {
-                                    console.log(`✅ รหัสป้ายพิเศษ: ${rawValue} → ใช้ค่าเดิม`);
-                                } else if (/^[0-9.]+[eE][+-]?[0-9]+$/.test(rawValue)) {
-                                    const num = parseFloat(rawValue);
-                                    rawValue = String(Math.floor(num));
-                                }
-                                rowData[fieldId] = rawValue.toUpperCase();
-                            }
-                            // ✅ แมปค่าด้วย SIGN_FIELD_MAPPINGS
-                            // ✅ ถ้ามี SIGN_FIELD_MAPPINGS และมีค่าสำหรับ field นี้ → ใช้แมป
-                            if (typeof SIGN_FIELD_MAPPINGS !== 'undefined' && SIGN_FIELD_MAPPINGS[fieldId]) {
-                                rowData[fieldId] = mapFieldValue(fieldId, rawValue);
-                            }
-                            // ✅ ถ้าไม่มี → ใช้ค่าเดิม
-                            else {
-                                rowData[fieldId] = rawValue;
+                            // เช็ค Format รหัสพิเศษ (A-123) ถ้าไม่ใช่ ให้ทำเป็นตัวพิมพ์ใหญ่
+                            finalValue = finalValue.toUpperCase();
+                            
+                            if (/^[A-Z0-9]+-[A-Z0-9]+$/.test(finalValue)) {
+                                console.log(`✅ รหัสป้ายพิเศษ: ${finalValue} → ใช้ค่าเดิม`);
                             }
                         }
+                    
+                        // 2. ตรวจสอบว่าต้องผ่านฟังก์ชัน Mapping กลาง (SIGN_FIELD_MAPPINGS) หรือไม่
+                        // ย้ายมาไว้นอก if-else ของ s_code เพื่อให้ s_code สามารถถูก map ต่อได้ถ้าจำเป็น
+                        if (typeof SIGN_FIELD_MAPPINGS !== 'undefined' && SIGN_FIELD_MAPPINGS[fieldId]) {
+                            // ส่ง finalValue ที่ Clean แล้วไป Map ต่อ
+                            finalValue = mapFieldValue(fieldId, finalValue);
+                        }
+                    
+                        // 3. บันทึกค่าลง rowData เพียงที่เดียว
+                        rowData[fieldId] = finalValue;
                     });
                     
                     // ✅ สร้าง full_name อัตโนมัติถ้าไม่มี
