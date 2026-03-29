@@ -2010,7 +2010,7 @@
             
             // ✅ 2. ถ้าไม่เจอ → ลองแยกเลข+ตัวอักษรอัตโนมัติ
             // รูปแบบ: "1 ก", "1(ก)", "1ก", "2 ข", ฯลฯ
-            const match = raw.match(/^([1-3])\s*[\(\)]?\s*([กข])[\)\)]?$/);
+            const match = raw.match(/([1-3])\s*[\(\)]?\s*([กข])[\)\)]?/);
             if (match) {
                 const num = match[1];  // 1, 2, หรือ 3
                 const letter = match[2];  // ก หรือ ข
@@ -2040,11 +2040,16 @@
             }
         }
 
+
         // ✅ ✅ ✅ อัปเดตแถบความคืบหน้าการนำเข้าป้าย ✅ ✅ ✅
         function updateSignDataProgress(current, stats) {
-            const percent = Math.round((current / stats.total) * 100);
-            document.getElementById('sign-data-bar').style.width = `${percent}%`;
-            document.getElementById('sign-data-percent').textContent = `${percent}%`;
+            const bar = document.getElementById('sign-data-bar');
+            const pct = document.getElementById('sign-data-percent');
+            if (bar && pct && stats.total > 0) {
+                const p = Math.round((current / stats.total) * 100);
+                bar.style.width = `${p}%`;
+                pct.textContent = `${p}%`;
+            }
             document.getElementById('sd-success').textContent = stats.success;
             document.getElementById('sd-skip').textContent = stats.skip;
             document.getElementById('sd-error').textContent = stats.error;
@@ -2072,7 +2077,7 @@
             }
             
             // ✅ 2. ถ้าไม่เจอ → ลองแยกเลข+ตัวอักษรอัตโนมัติ
-            const match = raw.match(/^([1-3])\s*[\(\)]?\s*([กข])[\)\)]?$/);
+            const match = raw.match(/([1-3])\s*[\(\)]?\s*([กข])[\)\)]?/);
             if (match) {
                 const num = match[1];
                 const letter = match[2];
@@ -2225,6 +2230,12 @@
                             }
                         }
                         
+                        // ✅ 2.1 จัดการ s_characte (ตัดข้อความในวงเล็บ)
+                        if (fieldId === 's_characte') {
+                            finalValue = mapSCharacte(rawValue);
+                            console.log(`🔄 s_characte: "${rawValue}" → "${finalValue}"`);
+                        }
+                        
                         // ✅ 3. บันทึกค่าลง rowData
                         rowData[fieldId] = finalValue;
                     });
@@ -2327,16 +2338,6 @@
             document.getElementById('sd-error').textContent = stats.error;
         }
         
-        // ✅ เช็ครหัสซ้ำ
-        async function getExistingSignCodes() {
-            try {
-                const res = await fetch(`${SCRIPT_URL}?action=getData`);
-                const data = await res.json();
-                const codes = new Set();
-                if (data.signs) data.signs.forEach(s => { if (s.s_code) codes.add(s.s_code.trim().toUpperCase()); });
-                return codes;
-            } catch { return new Set(); }
-        }
 
         // ✅ ผูกเหตุการณ์กับปุ่มเลือกไฟล์ข้อมูลป้าย
         document.getElementById('sign-data-file')?.addEventListener('change', function(e) {
