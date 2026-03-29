@@ -2176,43 +2176,56 @@
                     const rowData = {};
                     
                     // ✅ แมปคอลัมน์จากไฟล์ → ข้อมูลภายใน
+                    // ✅ แมปคอลัมน์จากไฟล์ → ข้อมูลภายใน
                     headers.forEach((header, idx) => {
                         const value = row[idx];
                         if (value === undefined || value === null || value.toString().trim() === '') return;
-                    
-                        const fieldId = SIGN_FIELD_MAP[header];
-                        if (!fieldId) return; // ถ้าไม่ตรงกับ Map ให้ข้ามไปเลย
-                    
+                        
+                        // ✅ 1. หา fieldId จากชื่อคอลัมน์ในไฟล์
+                        const fieldMap = {
+                            's_code': 's_code', 'รหัสป้าย': 's_code', 'code': 's_code',
+                            'parcel_cod': 'parcel_cod', 'รหัสแปลง': 'parcel_cod',
+                            's_name': 's_name', 'ชื่อป้าย': 's_name',
+                            's_type': 's_type', 'ประเภท': 's_type',
+                            's_characte': 's_characte', 'ลักษณะ': 's_characte',
+                            's_wide': 's_wide', 'กว้าง': 's_wide',
+                            's_length': 's_length', 'ยาว': 's_length',
+                            'no_side': 'no_side', 'จำนวนด้าน': 'no_side',
+                            's_text': 's_text', 'ข้อความ': 's_text',
+                            'comment': 'comment', 'หมายเหตุ': 'comment',
+                            'title': 'title', 'คำนำหน้า': 'title',
+                            'fname': 'fname', 'ชื่อ': 'fname',
+                            'lname': 'lname', 'นามสกุล': 'lname',
+                            'full_name': 'full_name', 'เจ้าของ': 'full_name',
+                            'address': 'address', 'ที่อยู่': 'address',
+                            'image': 'image', 'picture': 'picture',
+                            'check': 'check', 'สถานะ': 'check',
+                            'lat_long': 'lat_long', 'พิกัด': 'lat_long',
+                            'date_added': 'date_added', 'update': 'update', 'id': 'id'
+                        };
+                        
+                        const fieldId = fieldMap[header];
+                        if (!fieldId) return;  // ถ้าไม่ตรงกับที่แมป → ข้าม
+                        
                         let rawValue = String(value).trim();
-                        let finalValue = rawValue; // เก็บค่าที่จะใช้จริง
-                    
-                        // 1. จัดการ Logic พิเศษตามราย Field
-                        if (fieldId === 's_characte') {
-                            finalValue = mapSCharacte(rawValue);
-                        } 
-                        else if (fieldId === 's_code') {
+                        let finalValue = rawValue;
+                        
+                        // ✅ 2. จัดการรหัสป้ายพิเศษ (s_code)
+                        if (fieldId === 's_code') {
                             // เช็ค Scientific Notation (เช่น 1.2E+5)
                             if (/^[0-9.]+[eE][+-]?[0-9]+$/.test(rawValue)) {
                                 const num = parseFloat(rawValue);
                                 finalValue = String(Math.floor(num));
                             }
-                            
-                            // เช็ค Format รหัสพิเศษ (A-123) ถ้าไม่ใช่ ให้ทำเป็นตัวพิมพ์ใหญ่
+                            // ทำเป็นตัวพิมพ์ใหญ่
                             finalValue = finalValue.toUpperCase();
                             
                             if (/^[A-Z0-9]+-[A-Z0-9]+$/.test(finalValue)) {
                                 console.log(`✅ รหัสป้ายพิเศษ: ${finalValue} → ใช้ค่าเดิม`);
                             }
                         }
-                    
-                        // 2. ตรวจสอบว่าต้องผ่านฟังก์ชัน Mapping กลาง (SIGN_FIELD_MAPPINGS) หรือไม่
-                        // ย้ายมาไว้นอก if-else ของ s_code เพื่อให้ s_code สามารถถูก map ต่อได้ถ้าจำเป็น
-                        if (typeof SIGN_FIELD_MAPPINGS !== 'undefined' && SIGN_FIELD_MAPPINGS[fieldId]) {
-                            // ส่ง finalValue ที่ Clean แล้วไป Map ต่อ
-                            finalValue = mapFieldValue(fieldId, finalValue);
-                        }
-                    
-                        // 3. บันทึกค่าลง rowData เพียงที่เดียว
+                        
+                        // ✅ 3. บันทึกค่าลง rowData
                         rowData[fieldId] = finalValue;
                     });
                     
@@ -2298,6 +2311,31 @@
                 addLog(`❌ ข้อผิดพลาด: ${err.message}`, 'error');
                 console.error('Sign import error:', err);
             }
+        }
+
+        // ✅ อัปเดตความคืบหน้า
+        function updateSignDataProgress(current, stats) {
+            const bar = document.getElementById('sign-data-bar');
+            const pct = document.getElementById('sign-data-percent');
+            if (bar && pct && stats.total > 0) {
+                const p = Math.round((current / stats.total) * 100);
+                bar.style.width = `${p}%`;
+                pct.textContent = `${p}%`;
+            }
+            document.getElementById('sd-success').textContent = stats.success;
+            document.getElementById('sd-skip').textContent = stats.skip;
+            document.getElementById('sd-error').textContent = stats.error;
+        }
+        
+        // ✅ เช็ครหัสซ้ำ
+        async function getExistingSignCodes() {
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await res.json();
+                const codes = new Set();
+                if (data.signs) data.signs.forEach(s => { if (s.s_code) codes.add(s.s_code.trim().toUpperCase()); });
+                return codes;
+            } catch { return new Set(); }
         }
 
         // ✅ ผูกเหตุการณ์กับปุ่มเลือกไฟล์ข้อมูลป้าย
