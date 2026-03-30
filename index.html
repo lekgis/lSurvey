@@ -3194,91 +3194,80 @@
             }
         }
 
-        // ✅ ✅ ✅ แก้ฟังก์ชันคำนวณพื้นที่จากเป้าใหม่ (ใช้ buildingAreaLayer) ✅ ✅ ✅
+        // ✅ ✅ ✅ แก้ฟังก์ชันคำนวณพื้นที่ ✅ ✅ ✅
         function calculateAreaFromAreaCrosshair() {
-            console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าใหม่ (35%, 50%)...');
+            console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าเล็ง...');
             
-            // ✅ ใช้ buildingAreaLayer (ไม่ใช่ buildingLayer) → มี polygon สิ่งปลูกสร้างสำหรับคำนวณพื้นที่
             if (!map || !window.buildingAreaLayer) {
                 showNotificationLeft('⚠️ โหลดข้อมูลสิ่งปลูกสร้างก่อน', 'warning');
                 return;
             }
             
-            // ✅ คำนวณพิกัดจากตำแหน่งเป้าใหม่จริง (top: 35%, left: 50%)
+            // ✅ คำนวณพิกัดจากตำแหน่งเป้าจริง (35%, 50%)
             const mapSize = map.getSize();
-            const targetX = mapSize.x * 0.5;      // กลางแนวนอน
-            const targetY = mapSize.y * 0.35;     // 35% จากบน (ตำแหน่งเป้าใหม่)
+            const targetX = mapSize.x * 0.5;
+            const targetY = mapSize.y * 0.35;
             const latlng = map.containerPointToLatLng(L.point(targetX, targetY));
             const point = turf.point([latlng.lng, latlng.lat]);
             
-            console.log(`📍 พิกัดเป้าใหม่: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`);
+            console.log(`📍 พิกัดเป้าเล็ง: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`);
             
             let calculatedArea = 0;
             let foundBuilding = false;
+            let checkedCount = 0;
             
-            // ✅ วนลูปหาสิ่งปลูกสร้างใน buildingAreaLayer
             window.buildingAreaLayer.eachLayer(function(layer) {
-                if (foundBuilding) return; // เจอแล้วให้หยุด
-                
+                if (foundBuilding) return; 
+
                 try {
-                    // 1. แปลง Layer เป็น GeoJSON (ปลอดภัยสำหรับ Turf)
+                    // 1. แปลง Layer เป็น GeoJSON ก่อน (วิธีนี้ปลอดภัยที่สุดสำหรับ Turf)
                     const feature = layer.toGeoJSON();
                     
-                    // 2. เช็คว่าเป็น Polygon หรือ MultiPolygon ไหม
+                    // 2. เช็คว่าเป็น Polygon หรือ MultiPolygon ไหม (ป้องกัน Error จากพวกเส้นหรือจุด)
                     if (!feature || !feature.geometry || 
                         (feature.geometry.type !== 'Polygon' && feature.geometry.type !== 'MultiPolygon')) {
-                        return; // ข้ามไปตัวถัดไป
+                        return; // ข้ามไปตัวถัดไปเลย ไม่ต้อง Error
                     }
-        
+
                     // 3. ใช้ turf เช็คว่าจุดอยู่ใน Polygon ไหม
                     const isInside = turf.booleanPointInPolygon(point, feature);
-        
+
                     if (isInside) {
-                        // ✅ คำนวณพื้นที่จาก feature นั้น
+                        // ถ้าใช่ ให้คำนวณพื้นที่จาก feature นั้นเลย
                         calculatedArea = turf.area(feature); 
                         foundBuilding = true;
                         
-                        // ✅ ไฮไลท์สิ่งปลูกสร้างที่เจอ
+                        // --- ส่วนการแสดงผล Highlight เดิมของคุณ ---
                         const originalStyle = {
                             color: layer.options.color || '#10b981',
                             weight: layer.options.weight || 1,
                             fillOpacity: layer.options.fillOpacity || 0.4
                         };
                         layer.setStyle({ color: '#22d3ee', weight: 4, fillOpacity: 0.6 });
-                        setTimeout(() => layer.setStyle(originalStyle), 3000);
+                        setTimeout(() => layer.setStyle(originalStyle), 5000);
                     }
                 } catch (err) {
-                    // ✅ ข้ามข้อมูลที่ไม่สมบูรณ์ → ไปตรวจตัวอื่นต่อ
+                    // ✅ จุดสำคัญ: ถ้าตัวไหนพัง (เช่น พิกัดไม่ครบ 4 จุดตาม Log) 
+                    // ให้มันข้ามไปเงียบๆ เพื่อไปตรวจตัวอื่นต่อ
                     console.warn('⚠️ ข้ามข้อมูลที่ไม่สมบูรณ์:', err.message);
                 }
             });
             
-            // ✅ แสดงผลลัพธ์
+            console.log(`🔍 ตรวจไป ${checkedCount} layers, พบ building: ${foundBuilding}`);
+            
             if (foundBuilding && calculatedArea > 0) {
-                const areaRounded = Math.round(calculatedArea * 10) / 10; // 1 ทศนิยม
+                const input = document.getElementById('calc-input-a');
+                if (input) input.value = calculatedArea.toFixed(2);
                 
-                // ✅ ถ้ามีฟอร์มเปิดอยู่ → ใส่ค่าในช่องพื้นที่อัตโนมัติ
-                const bAreaInput = document.getElementById('b_area');
-                if (bAreaInput && !bAreaInput.readOnly) {
-                    bAreaInput.value = areaRounded.toFixed(1);
-                    console.log(`✅ ใส่ค่าพื้นที่ในฟอร์ม: ${areaRounded.toFixed(1)} ตร.ม.`);
-                }
+                const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
+                if (addBtn) setTimeout(() => addBtn.click(), 100);
                 
-                // ✅ ถ้ามีเครื่องคิดเลขเปิดอยู่ → ใส่ค่าในช่อง calc-input-a
-                const calcInput = document.getElementById('calc-input-a');
-                if (calcInput) {
-                    calcInput.value = areaRounded.toFixed(2);
-                    // ✅ กดปุ่ม "+ เพิ่ม" อัตโนมัติ (ถ้ามี)
-                    const addBtn = document.querySelector('button[onclick="addAreaToAccumulatorA()"]');
-                    if (addBtn) setTimeout(() => addBtn.click(), 100);
-                }
-                
-                showNotificationLeft(`✅ พื้นที่: ${areaRounded.toFixed(1)} ตร.ม.`, 'success');
+                showNotificationLeft(`✅ +${calculatedArea.toFixed(2)} ตร.ม.`, 'success');
             } else {
-                showNotificationLeft('⚠️ เลื่อนเป้าใหม่ให้ทับสิ่งปลูกสร้างสีเขียว', 'warning');
+                console.warn('⚠️ ไม่พบสิ่งปลูกสร้างใต้เป้า');
+                showNotificationLeft('⚠️ เลื่อนเป้าให้ทับสิ่งปลูกสร้างสีเขียว', 'warning');
             }
         }
-
 
 
         // ✅ แก้ไขฟังก์ชัน backgroundUpload (ใช้ getParcelCodeAtLocation แบบ sync)
