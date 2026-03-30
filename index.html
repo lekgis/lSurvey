@@ -9381,15 +9381,17 @@
                 }
                 
                 // ✅ ผูกปุ่ม + เป้าใหม่ให้เรียกคำนวณพื้นที่
-                const newBtn = newTrigger?.querySelector('button');
-                if (newBtn) {
-                    newBtn.onclick = function(e) {
+                // ✅ ผูกปุ่ม + ใหม่ให้เรียกคำนวณพื้นที่
+                const btn = newTrigger.querySelector('button');
+                if (btn) {
+                    btn.onclick = function(e) {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('🔘 คลิกปุ่ม + ใหม่ → คำนวณพื้นที่จากเป้าใหม่');
-                        calculateAreaFromAreaCrosshair();
+                        console.log('🔘 คลิกปุ่ม + ใหม่ → คำนวณจากเป้าใหม่ (35%)');
+                        calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันคำนวณ!
                     };
                 }
+            }
                 
                 // ✅ ย้าย building_area ขึ้นบนสุด (ใช้ buildingAreaLayer)
                 if (window.buildingLayer) {
@@ -10068,16 +10070,17 @@
             isAreaCalculatorMode = false;           
 
             // ✅ 2. ซ่อนเป้าใหม่ + ปุ่มใหม่
+            // ✅ ✅ ✅ ซ่อนเป้าใหม่ + ปุ่มใหม่เมื่อปิดหน้าต่าง ✅ ✅ ✅
             const newCrosshair = document.getElementById('add-point-crosshair');
             const newTrigger = document.getElementById('add-point-trigger');
-            if (newCrosshair) { 
-                newCrosshair.classList.add('hidden'); 
-                newCrosshair.classList.remove('visible'); 
-            }
-            if (newTrigger) { 
-                newTrigger.classList.add('hidden'); 
-                newTrigger.classList.remove('visible'); 
-            }
+            if (newCrosshair) { newCrosshair.classList.add('hidden'); newCrosshair.classList.remove('visible'); }
+            if (newTrigger) { newTrigger.classList.add('hidden'); newTrigger.classList.remove('visible'); }
+            
+            // ✅ ซ่อนเป้าเก่า + ปุ่มเก่าด้วย (เผื่อกรณีค้าง)
+            const oldCrosshair = document.getElementById('crosshair');
+            const oldTrigger = document.getElementById('add-trigger-container');
+            if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
+            if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
             
             // ✅ 3. คืนการโต้ตอบกับแผนที่
             if (window.parcelLayer) window.parcelLayer.setStyle({ interactive: true });
