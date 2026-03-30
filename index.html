@@ -2224,8 +2224,8 @@
             }
             
             // ✅ ดึง building_area ขึ้นมาบนสุด
-            if (window.buildingAreaLayer) {
-                window.buildingAreaLayer.bringToFront();
+            if (window.buildingLayer) {
+                window.buildingLayer.bringToFront();
             }
             
             // ✅ ปิดการโต้ตอบกับ parcel/boundary ชั่วคราว
@@ -2250,8 +2250,8 @@
             enableMapInteractionAfterAreaCalc();
             
             // ✅ ย้าย building_area กลับลงล่าง
-            if (window.buildingAreaLayer) {
-                window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
+            if (window.buildingLayer) {
+                window.buildingLayerr.eachLayer(layer => layer.bringToBack());
             }
         }
         
@@ -3198,7 +3198,7 @@
         function calculateAreaFromAreaCrosshair() {
             console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าเล็ง...');
             
-            if (!map || !window.buildingAreaLayer) {
+            if (!map || !window.buildingLayer) {
                 showNotificationLeft('⚠️ โหลดข้อมูลสิ่งปลูกสร้างก่อน', 'warning');
                 return;
             }
@@ -3216,7 +3216,7 @@
             let foundBuilding = false;
             let checkedCount = 0;
             
-            window.buildingAreaLayer.eachLayer(function(layer) {
+            window.buildingLayer.eachLayer(function(layer) {
                 if (foundBuilding) return; 
 
                 try {
@@ -9340,8 +9340,8 @@
             );            
 
             // ✅ ย้าย building_area ขึ้นบนสุด
-            if (window.buildingAreaLayer) {  // ← ใช้ buildingLayer ตามที่แก้ไว้
-                window.buildingAreaLayer.eachLayer(layer => layer.bringToFront());
+            if (window.buildingLayer) {  // ← ใช้ buildingLayer ตามที่แก้ไว้
+                window.buildingLayer.eachLayer(layer => layer.bringToFront());
             }
             
             // ✅ ปิดการโต้ตอบกับ parcel/boundary ชั่วคราว
@@ -9392,8 +9392,8 @@
                 }
                 
                 // ✅ ย้าย building_area ขึ้นบนสุด (ใช้ buildingAreaLayer)
-                if (window.buildingAreaLayer) {
-                    window.buildingAreaLayer.eachLayer(layer => layer.bringToFront());
+                if (window.buildingLayer) {
+                    window.buildingLayer.eachLayer(layer => layer.bringToFront());
                     console.log('✅ ย้าย buildingAreaLayer ขึ้นบนสุด');
                 }
                 
@@ -9611,7 +9611,7 @@
             layer.addTo(map);
             
             // ✅ ข้อ 4: เก็บ reference ไว้ที่ global variable (สำคัญ!)
-            window.buildingAreaLayer = layer;
+            window.buildingLayer = layer;
             
             console.log('✅ โหลด building_area.geojson เรียบร้อย, layers:', layer.getLayers?.().length || 'N/A');
             return layer;
@@ -9642,8 +9642,8 @@
             isAreaCalculatorMode = true;
             
             // ✅ ดึง building_area ขึ้นมาชั้นบนสุด
-            if (window.buildingAreaLayer) {
-                window.buildingAreaLayer.bringToFront();
+            if (window.buildingLayer) {
+                window.buildingLayer.bringToFront();
             }
             
             // ✅ ปิดการโต้ตอบกับ parcel/boundary ชั่วคราว (ป้องกันคลิกผิด)
@@ -10084,8 +10084,8 @@
             if (window.boundaryLayer) window.boundaryLayer.setStyle({ interactive: true });
             
             // ✅ 4. ย้าย building_area กลับลงล่าง (ใช้ buildingAreaLayer)
-            if (window.buildingAreaLayer) {
-                window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
+            if (window.buildingLayer) {
+                window.buildingLayer.eachLayer(layer => layer.bringToBack());
                 console.log('✅ ย้าย buildingAreaLayer กลับลงล่าง');
             }
         
@@ -10100,8 +10100,8 @@
                     areaHistoryA = [];
                     
                     // ✅ ย้าย building_area กลับลงล่าง
-                    if (window.buildingAreaLayer) {
-                        window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
+                    if (window.buildingLayer) {
+                        window.buildingLayer.eachLayer(layer => layer.bringToBack());
                     }
                     
                     // ✅ ✅ ✅ ซ่อนเป้าและปุ่มยืนยันเมื่อปิดหน้าต่าง ✅ ✅ ✅
@@ -11642,7 +11642,7 @@
 
         // 1. สร้างฟังก์ชันเพื่อหาพื้นที่จากจุดกึ่งกลางเป้า
         function calculateAreaAtCrosshair() {
-            if (!window.buildingAreaLayer) {
+            if (!window.buildingLayer) {
                 showNotificationLeft("ไม่พบข้อมูลสิ่งปลูกสร้าง", "error");
                 return;
             }
@@ -11652,7 +11652,7 @@
             const point = turf.point([center.lng, center.lat]);
             let found = false;
 
-            window.buildingAreaLayer.eachLayer(function(layer) {
+            window.buildingLayer.eachLayer(function(layer) {
                 if (found) return; // ถ้าเจอแล้วให้หยุดหา
 
                 try {
