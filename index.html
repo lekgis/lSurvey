@@ -9372,6 +9372,8 @@
                 mapContainer.classList.remove('cursor-crosshair-add');
                 
                 // ✅ ซ่อนเป้าเก่า + ปุ่มเก่า
+                // ✅ ✅ ✅ แก้: แสดงเป้าใหม่ + ปุ่มใหม่ (แทนเป้าเก่า) ✅ ✅ ✅
+                // ซ่อนเป้าเก่า + ปุ่มเก่า
                 const oldCrosshair = document.getElementById('crosshair');
                 const oldTrigger = document.getElementById('add-trigger-container');
                 if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
@@ -9380,25 +9382,37 @@
                 // ✅ แสดงเป้าใหม่ + ปุ่มใหม่
                 const newCrosshair = document.getElementById('add-point-crosshair');
                 const newTrigger = document.getElementById('add-point-trigger');
-                if (newCrosshair) {
-                    newCrosshair.classList.remove('hidden');
-                    newCrosshair.classList.add('visible');
+                if (newCrosshair) { 
+                    newCrosshair.classList.remove('hidden'); 
+                    newCrosshair.classList.add('visible'); 
                 }
-                if (newTrigger) {
-                    newTrigger.classList.remove('hidden');
-                    newTrigger.classList.add('visible');
-                    
-                    // ✅ ผูกปุ่ม + เป้าใหม่ให้เรียกคำนวณพื้นที่
-                    const btn = newTrigger.querySelector('button');
-                    if (btn) {
-                        btn.onclick = function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('🔘 คลิกปุ่ม + → คำนวณจากเป้าใหม่');
-                            calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันคำนวณ!
-                        };
-                    }
+                if (newTrigger) { 
+                    newTrigger.classList.remove('hidden'); 
+                    newTrigger.classList.add('visible'); 
                 }
+                
+                // ✅ ผูกปุ่ม + เป้าใหม่ให้เรียกคำนวณพื้นที่
+                const newBtn = newTrigger?.querySelector('button');
+                if (newBtn) {
+                    newBtn.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('🔘 คลิกปุ่ม + ใหม่ → คำนวณพื้นที่จากเป้าใหม่');
+                        calculateAreaFromAreaCrosshair();
+                    };
+                }
+                
+                // ✅ ย้าย building_area ขึ้นบนสุด (ใช้ buildingAreaLayer)
+                if (window.buildingAreaLayer) {
+                    window.buildingAreaLayer.eachLayer(layer => layer.bringToFront());
+                    console.log('✅ ย้าย buildingAreaLayer ขึ้นบนสุด');
+                }
+                
+                // ✅ ปิดการโต้ตอบกับ parcel/boundary ชั่วคราว
+                if (window.parcelLayer) window.parcelLayer.setStyle({ interactive: false });
+                if (window.boundaryLayer) window.boundaryLayer.setStyle({ interactive: false });
+                
+                console.log('✅ เปิดโหมดคำนวณพื้นที่ด้วยเป้าใหม่เรียบร้อย');
                 
                 // มือถือ: อย่าโฟกัส input
                 const input = document.getElementById('calc-input-a');
@@ -10064,7 +10078,28 @@
             // ✅ ปิดโหมดคำนวณพื้นที่
             isAreaCalculatorMode = false;           
 
-
+            // ✅ 2. ซ่อนเป้าใหม่ + ปุ่มใหม่
+            const newCrosshair = document.getElementById('add-point-crosshair');
+            const newTrigger = document.getElementById('add-point-trigger');
+            if (newCrosshair) { 
+                newCrosshair.classList.add('hidden'); 
+                newCrosshair.classList.remove('visible'); 
+            }
+            if (newTrigger) { 
+                newTrigger.classList.add('hidden'); 
+                newTrigger.classList.remove('visible'); 
+            }
+            
+            // ✅ 3. คืนการโต้ตอบกับแผนที่
+            if (window.parcelLayer) window.parcelLayer.setStyle({ interactive: true });
+            if (window.boundaryLayer) window.boundaryLayer.setStyle({ interactive: true });
+            
+            // ✅ 4. ย้าย building_area กลับลงล่าง (ใช้ buildingAreaLayer)
+            if (window.buildingAreaLayer) {
+                window.buildingAreaLayer.eachLayer(layer => layer.bringToBack());
+                console.log('✅ ย้าย buildingAreaLayer กลับลงล่าง');
+            }
+        
             if (areaCalculatorModalA) {
                 areaCalculatorModalA.classList.add('animate-scale-out');
                 setTimeout(() => {
