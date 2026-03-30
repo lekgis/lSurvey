@@ -9348,8 +9348,8 @@
             );            
 
             // ✅ ย้าย building_area ขึ้นบนสุด
-            if (window.buildingLayer) {  // ← ใช้ buildingLayer ตามที่แก้ไว้
-                window.buildingLayer.eachLayer(layer => layer.bringToFront());
+            if (window.buildingAreaLayer) {  // ← ใช้ buildingLayer ตามที่แก้ไว้
+                window.buildingAreaLayer.eachLayer(layer => layer.bringToFront());
             }
             
             // ✅ ปิดการโต้ตอบกับ parcel/boundary ชั่วคราว
@@ -9363,35 +9363,38 @@
                 console.log('🖱️ โหมดคอม: ใช้ Cursor +');
                 
             } else {
-                // ✅ ✅ ✅ โหมดมือถือ: แสดงเป้า + ปุ่มน้ำเงิน ✅ ✅ ✅
+                // ✅ ✅ ✅ โหมดมือถือ: ใช้เป้าใหม่ (#add-point-crosshair) + ปุ่มใหม่ ✅ ✅ ✅
                 const mapContainer = document.getElementById('map');
                 mapContainer.style.cursor = 'default';
                 mapContainer.classList.remove('cursor-crosshair-add');
                 
-                // แสดงเป้า
-                const crosshair = document.getElementById('crosshair');
-                if (crosshair) {
-                    crosshair.classList.remove('hidden');
-                    crosshair.classList.add('visible');
-                }
+                // ✅ ซ่อนเป้าเก่า + ปุ่มเก่า
+                const oldCrosshair = document.getElementById('crosshair');
+                const oldTrigger = document.getElementById('add-trigger-container');
+                if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
+                if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
                 
-                // แสดงปุ่ม +
-                const addTrigger = document.getElementById('add-trigger-container');
-                if (addTrigger) {
-                    addTrigger.classList.remove('hidden');
-                    addTrigger.classList.add('visible');
+                // ✅ แสดงเป้าใหม่ + ปุ่มใหม่
+                const newCrosshair = document.getElementById('add-point-crosshair');
+                const newTrigger = document.getElementById('add-point-trigger');
+                if (newCrosshair) {
+                    newCrosshair.classList.remove('hidden');
+                    newCrosshair.classList.add('visible');
+                }
+                if (newTrigger) {
+                    newTrigger.classList.remove('hidden');
+                    newTrigger.classList.add('visible');
                     
-                    // ✅ ✅ ✅ ✅ ✅ ใส่โค้ดผูกปุ่มตรงนี้! ✅ ✅ ✅ ✅ ✅
-                    const btn = addTrigger.querySelector('button');
+                    // ✅ ผูกปุ่ม + เป้าใหม่ให้เรียกคำนวณพื้นที่
+                    const btn = newTrigger.querySelector('button');
                     if (btn) {
                         btn.onclick = function(e) {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('🔘 คลิกปุ่ม + → คำนวณจากเป้า');
+                            console.log('🔘 คลิกปุ่ม + → คำนวณจากเป้าใหม่');
                             calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันคำนวณ!
                         };
                     }
-                    // ✅ ✅ ✅ ✅ ✅ จบบล็อกผูกปุ่ม ✅ ✅ ✅ ✅ ✅
                 }
                 
                 // มือถือ: อย่าโฟกัส input
@@ -9401,7 +9404,7 @@
                     input.blur();
                 }
                 
-                console.log('👆 โหมดมือถือ: เป้า + ปุ่มน้ำเงิน');
+                console.log('👆 โหมดมือถือ: เป้าใหม่ + ปุ่มน้ำเงิน');
             }
             
             console.log('✅ เปิดโหมดคำนวณพื้นที่เรียบร้อย');
