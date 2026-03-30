@@ -10070,17 +10070,16 @@
             isAreaCalculatorMode = false;           
 
             // ✅ 2. ซ่อนเป้าใหม่ + ปุ่มใหม่
-            // ✅ ✅ ✅ ซ่อนเป้าใหม่ + ปุ่มใหม่เมื่อปิดหน้าต่าง ✅ ✅ ✅
             const newCrosshair = document.getElementById('add-point-crosshair');
             const newTrigger = document.getElementById('add-point-trigger');
-            if (newCrosshair) { newCrosshair.classList.add('hidden'); newCrosshair.classList.remove('visible'); }
-            if (newTrigger) { newTrigger.classList.add('hidden'); newTrigger.classList.remove('visible'); }
-            
-            // ✅ ซ่อนเป้าเก่า + ปุ่มเก่าด้วย (เผื่อกรณีค้าง)
-            const oldCrosshair = document.getElementById('crosshair');
-            const oldTrigger = document.getElementById('add-trigger-container');
-            if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
-            if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
+            if (newCrosshair) { 
+                newCrosshair.classList.add('hidden'); 
+                newCrosshair.classList.remove('visible'); 
+            }
+            if (newTrigger) { 
+                newTrigger.classList.add('hidden'); 
+                newTrigger.classList.remove('visible'); 
+            }
             
             // ✅ 3. คืนการโต้ตอบกับแผนที่
             if (window.parcelLayer) window.parcelLayer.setStyle({ interactive: true });
