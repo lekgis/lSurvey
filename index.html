@@ -3198,7 +3198,7 @@
         function calculateAreaFromAreaCrosshair() {
             console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าเล็ง...');
             
-            if (!map || !window.buildingLayer) {
+            if (!map || !window.buildingAreaLayer) {
                 showNotificationLeft('⚠️ โหลดข้อมูลสิ่งปลูกสร้างก่อน', 'warning');
                 return;
             }
@@ -3216,7 +3216,7 @@
             let foundBuilding = false;
             let checkedCount = 0;
             
-            window.buildingLayer.eachLayer(function(layer) {
+            window.buildingAreaLayer.eachLayer(function(layer) {
                 if (foundBuilding) return; 
 
                 try {
