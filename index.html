@@ -1189,7 +1189,7 @@
     <!-- เป้าเล็งเพิ่มจุด  อันใหม่ ใช้คำนวณพื้นที่สิ่งปลูกสร้างทั้งหลัง-->
     <!-- เป้าเล็งเพิ่มจุด (แก้ให้อนิเมชั่นเหมือนเป้าเดิม) -->
     <div id="add-point-crosshair" class="crosshair hidden"
-         style="top: 35%; left: 50%; transform: translate(-50%, -50%);">
+         style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
         <div class="crosshair-circle">
             <div class="crosshair-line line-v v-top"></div>
             <div class="crosshair-line line-v v-bottom"></div>
@@ -3196,21 +3196,21 @@
 
         // ✅ ✅ ✅ แก้ฟังก์ชันคำนวณพื้นที่ ✅ ✅ ✅
         function calculateAreaFromAreaCrosshair() {
-            console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าเล็ง...');
+            console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าใหม่ (50%, 50%)...');
             
             if (!map || !window.buildingLayer) {
                 showNotificationLeft('⚠️ โหลดข้อมูลสิ่งปลูกสร้างก่อน', 'warning');
                 return;
             }
             
-            // ✅ คำนวณพิกัดจากตำแหน่งเป้าจริง (35%, 50%)
+            // ✅ คำนวณพิกัดจากตำแหน่งเป้าจริง (50%, 50%)
             const mapSize = map.getSize();
             const targetX = mapSize.x * 0.5;
-            const targetY = mapSize.y * 0.35;
+            const targetY = mapSize.y * 0.5;
             const latlng = map.containerPointToLatLng(L.point(targetX, targetY));
             const point = turf.point([latlng.lng, latlng.lat]);
             
-            console.log(`📍 พิกัดเป้าเล็ง: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`);
+            console.log(`📍 พิกัดเป้าเล็ง (50%): ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`);
             
             let calculatedArea = 0;
             let foundBuilding = false;
@@ -9351,12 +9351,12 @@
             
             // ✅ แยกโหมดคอม/มือถือ
             if (hasMouse) {
-                // โหมดคอม: ใช้ Cursor +
+                // 🖱️ โหมดคอม: ใช้ Cursor + (ไม่ต้องแสดงเป้าใหม่)
                 enablePlusCursorForCalculator();
-                console.log('🖱️ โหมดคอม: ใช้ Cursor +');
+                console.log('🖱️ โหมดคอม: ใช้ Cursor + (ไม่แสดงเป้าใหม่)');
                 
             } else {
-                // ✅ ✅ ✅ โหมดมือถือ: ใช้เป้าใหม่ (+ ใหม่) ✅ ✅ ✅
+                // 📱 โหมดมือถือ: แสดงเป้าใหม่ + ปุ่มใหม่
                 const mapContainer = document.getElementById('map');
                 mapContainer.style.cursor = 'default';
                 mapContainer.classList.remove('cursor-crosshair-add');
@@ -9367,7 +9367,7 @@
                 if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
                 if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
                 
-                // ✅ ✅ ✅ แสดงเป้าใหม่ (35%) + ปุ่มใหม่ ✅ ✅ ✅
+                // ✅ ✅ ✅ แสดงเป้าใหม่ (50%) + ปุ่มใหม่ ✅ ✅ ✅
                 const newCrosshair = document.getElementById('add-point-crosshair');
                 const newTrigger = document.getElementById('add-point-trigger');
                 if (newCrosshair) { 
@@ -9384,8 +9384,8 @@
                         btn.onclick = function(e) {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('🔘 คลิกปุ่ม + ใหม่ → คำนวณจากเป้าใหม่ (35%)');
-                            calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันคำนวณ!
+                            console.log('🔘 คลิกปุ่ม + ใหม่ → คำนวณจากเป้าใหม่ (50%)');
+                            calculateAreaFromAreaCrosshair();
                         };
                     }
                 }
@@ -9397,7 +9397,7 @@
                     input.blur();
                 }
                 
-                console.log('👆 โหมดมือถือ: เป้าใหม่ (35%) + ปุ่มใหม่');
+                console.log('👆 โหมดมือถือ: เป้าใหม่ (50%) + ปุ่มใหม่');
             }
             
             console.log('✅ เปิดโหมดคำนวณพื้นที่เรียบร้อย');
