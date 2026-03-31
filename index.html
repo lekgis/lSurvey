@@ -9471,23 +9471,23 @@
                     if (el) { el.classList.add('hidden'); el.classList.remove('visible'); }
                 });
                 enablePlusCursorForCalculator();
+
             } else {
-                // --- 👆 โหมดมือถือ (โหมดสัมผัส) ---
+                // ✅ ✅ ✅ โหมดสัมผัส: ซ่อนเป้าเก่า → แสดงเป้าใหม่ ✅ ✅ ✅
                 
-                // 1. สั่ง "ซ่อน" ของเก่า (ไอ้ตัวที่กวนส้นตีนอยู่)
+                // 1. ซ่อนเป้าเก่า + ปุ่มเก่า
+                const oldCrosshair = document.getElementById('crosshair');
+                const oldTrigger = document.getElementById('add-trigger-container');
                 if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
                 if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
                 
-                // 2. สั่ง "แสดง" ของใหม่ (ตัวที่ควรใช้)
-                if (newCrosshair) {
-                    newCrosshair.classList.remove('hidden');
-                    newCrosshair.classList.add('visible');
-                }
-                if (newTrigger) {
-                    newTrigger.classList.remove('hidden');
-                    newTrigger.classList.add('visible');
-                }
-                console.log('✅ ใช้เป้าใหม่ (#add-point-crosshair) เรียบร้อย');
+                // 2. ✅ แสดงเป้าใหม่ + ปุ่มใหม่ (ใช้ตัวแปรใหม่!)
+                const newCrosshair = document.getElementById('add-point-crosshair');
+                const newTrigger = document.getElementById('add-point-trigger');
+                if (newCrosshair) { newCrosshair.classList.remove('hidden'); newCrosshair.classList.add('visible'); }
+                if (newTrigger) { newTrigger.classList.remove('hidden'); newTrigger.classList.add('visible'); }
+                
+                console.log('👆 โหมดสัมผัส: ใช้เป้าใหม่ (50%) + ปุ่มใหม่');
             }
         }
 
