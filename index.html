@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -9354,6 +9355,18 @@
                 // 🖱️ โหมดคอม: ใช้ Cursor + (ไม่ต้องแสดงเป้าใหม่)
                 enablePlusCursorForCalculator();
                 console.log('🖱️ โหมดคอม: ใช้ Cursor + (ไม่แสดงเป้าใหม่)');
+                
+                // ✅ ✅ ✅ เพิ่ม: ซ่อนเป้าใหม่/+ ใหม่ในโหมดคอม ✅ ✅ ✅
+                const newCrosshair = document.getElementById('add-point-crosshair');
+                const newTrigger = document.getElementById('add-point-trigger');
+                if (newCrosshair) { 
+                    newCrosshair.classList.add('hidden'); 
+                    newCrosshair.classList.remove('visible'); 
+                }
+                if (newTrigger) { 
+                    newTrigger.classList.add('hidden'); 
+                    newTrigger.classList.remove('visible'); 
+                }
                 
             } else {
                 // 📱 โหมดมือถือ: แสดงเป้าใหม่ + ปุ่มใหม่
