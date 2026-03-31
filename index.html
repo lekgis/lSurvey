@@ -9360,7 +9360,7 @@
                 mapContainer.style.cursor = 'default';
                 mapContainer.classList.remove('cursor-crosshair-add');
                 
-                // ✅ ซ่อนเป้าเก่า + ปุ่มเก่า (ป้องกันซ้อนกัน)
+                // ✅ ซ่อนเป้าเก่า + ปุ่มเก่า
                 const oldCrosshair = document.getElementById('crosshair');
                 const oldTrigger = document.getElementById('add-trigger-container');
                 if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
@@ -9377,14 +9377,14 @@
                     newTrigger.classList.remove('hidden'); 
                     newTrigger.classList.add('visible'); 
                     
-                    // ✅ ผูกปุ่ม + ใหม่ให้เรียกคำนวณพื้นที่ (ใช้ฟังก์ชันเดิมที่ทำงานได้!)
+                    // ✅ ผูกปุ่ม + ใหม่ให้เรียกคำนวณพื้นที่
                     const btn = newTrigger.querySelector('button');
                     if (btn) {
                         btn.onclick = function(e) {
                             e.preventDefault();
                             e.stopPropagation();
                             console.log('🔘 คลิกปุ่ม + ใหม่ → คำนวณจากเป้าใหม่ (35%)');
-                            calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันเดิมที่ทำงานได้!
+                            calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันคำนวณ!
                         };
                     }
                 }
@@ -9401,7 +9401,6 @@
             
             console.log('✅ เปิดโหมดคำนวณพื้นที่เรียบร้อย');
         }
-
 
 
         // ✅ ฟังก์ชันตรวจจับประเภทอุปกรณ์ (เมาส์ หรือ สัมผัส) - เวอร์ชั่นยืดหยุ่น
