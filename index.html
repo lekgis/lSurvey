@@ -2299,25 +2299,11 @@
             }
             
             map.on('click', function(e) {
-                // ✅ ✅ ✅ เช็คโหมดคำนวณพื้นที่ก่อนเป็นอันดับแรก ✅ ✅ ✅
+                // ✅ ✅ ✅ เช็คโหมดคำนวณพื้นที่ก่อน ✅ ✅ ✅
                 if (isAreaCalculatorMode) {
-                    console.log('ℹ️ อยู่ในโหมดคำนวณพื้นที่ - ไม่แสดงเป้าเก่า');
-                    
-                    // ✅ ✅ ✅ ซ่อนเป้าเก่าทันที (ป้องกันแสดงซ้อน) ✅ ✅ ✅
-                    const oldCrosshair = document.getElementById('crosshair');
-                    const oldTrigger = document.getElementById('add-trigger-container');
-                    if (oldCrosshair) { 
-                        oldCrosshair.classList.add('hidden'); 
-                        oldCrosshair.classList.remove('visible'); 
-                    }
-                    if (oldTrigger) { 
-                        oldTrigger.classList.add('hidden'); 
-                        oldTrigger.classList.remove('visible'); 
-                    }
-                    
-                    return;  // ← ออกจากฟังก์ชันทันที ไม่ทำอะไรต่อ
+                    console.log('ℹ️ อยู่ในโหมดคำนวณพื้นที่ - ไม่ประมวลผลคลิกแผนที่ทั่วไป');
+                    return; // ✅ อย่าทำอะไร → เครื่องมือยังอยู่
                 }
-
                 if (!mouseAddMode) return;
                 if (!activeTool) {
                     showNotificationLeft('กรุณาเลือกประเภทสิ่งปลูกสร้างหรือป้ายก่อน', 'warning');
@@ -9488,16 +9474,12 @@
                 enablePlusCursorForCalculator();
                 console.log('🖱️ โหมดเมาส์: ใช้ Cursor + คลิกบนสิ่งปลูกสร้าง');
             } else {
-                // ✅ โหมดสัมผัส: แสดงเป้า + ปุ่ม
-                if (crosshair) {
-                    crosshair.classList.remove('hidden');
-                    crosshair.classList.add('visible');
-                }
-                if (addTrigger) {
-                    addTrigger.classList.remove('hidden');
-                    addTrigger.classList.add('visible');
-                }
-                console.log('👆 โหมดสัมผัส: ใช้เป้าเล็ง + ปุ่มยืนยัน');
+                // ✅ โหมดสัมผัส: ซ่อนเป้าเก่า, แสดงเป้าใหม่ + ปุ่มใหม่
+                if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
+                if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
+                if (newCrosshair) { newCrosshair.classList.remove('hidden'); newCrosshair.classList.add('visible'); }
+                if (newTrigger) { newTrigger.classList.remove('hidden'); newTrigger.classList.add('visible'); }
+                console.log('👆 โหมดสัมผัส: ใช้เป้าใหม่ (50%) + ปุ่มใหม่');
             }
             // ❌ ❌ ❌ ห้ามมี: disableAreaCalculatorMode() ❌ ❌ ❌
         }
