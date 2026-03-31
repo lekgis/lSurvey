@@ -9453,39 +9453,42 @@
         }
 
         // ✅ ฟังก์ชันอัปเดตโหมดคำนวณพื้นที่ตามอุปกรณ์
-        // ✅ แก้ฟังก์ชันอัปเดตโหมดคำนวณพื้นที่ตามอุปกรณ์
         function updateCalculatorMode() {
-            // ✅ เช็คก่อน: ถ้าไม่ได้อยู่ในโหมดคำนวณ → อย่าทำอะไร
-            if (!isAreaCalculatorMode) return;  // ✅ สำคัญ!
+            if (!isAreaCalculatorMode) return;
             
-            const crosshair = document.getElementById('crosshair');
-            const addTrigger = document.getElementById('add-trigger-container');
+            // ชุดเก่า (เป้า + ปุ่มเก่า)
+            const oldCrosshair = document.getElementById('crosshair');
+            const oldTrigger = document.getElementById('add-trigger-container');
+            
+            // ชุดใหม่ (เป้า + ปุ่มใหม่)
+            const newCrosshair = document.getElementById('add-point-crosshair');
+            const newTrigger = document.getElementById('add-point-trigger');
             
             if (hasMouse) {
-                // ✅ โหมดเมาส์: ซ่อนเป้า, ใช้ Cursor +
-                if (crosshair) {
-                    crosshair.classList.add('hidden');
-                    crosshair.classList.remove('visible');
-                }
-                if (addTrigger) {
-                    addTrigger.classList.add('hidden');
-                    addTrigger.classList.remove('visible');
-                }
+                // --- 🖱️ โหมดเมาส์ ---
+                // ปิดให้หมดทั้งเก่าและใหม่
+                [oldCrosshair, oldTrigger, newCrosshair, newTrigger].forEach(el => {
+                    if (el) { el.classList.add('hidden'); el.classList.remove('visible'); }
+                });
                 enablePlusCursorForCalculator();
-                console.log('🖱️ โหมดเมาส์: ใช้ Cursor + คลิกบนสิ่งปลูกสร้าง');
             } else {
-                // ✅ โหมดสัมผัส: แสดงเป้า + ปุ่ม
-                if (crosshair) {
-                    crosshair.classList.remove('hidden');
-                    crosshair.classList.add('hidden');
+                // --- 👆 โหมดมือถือ (โหมดสัมผัส) ---
+                
+                // 1. สั่ง "ซ่อน" ของเก่า (ไอ้ตัวที่กวนส้นตีนอยู่)
+                if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
+                if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
+                
+                // 2. สั่ง "แสดง" ของใหม่ (ตัวที่ควรใช้)
+                if (newCrosshair) {
+                    newCrosshair.classList.remove('hidden');
+                    newCrosshair.classList.add('visible');
                 }
-                if (addTrigger) {
-                    addTrigger.classList.remove('hidden');
-                    addTrigger.classList.add('hidden');
+                if (newTrigger) {
+                    newTrigger.classList.remove('hidden');
+                    newTrigger.classList.add('visible');
                 }
-                console.log('👆 โหมดสัมผัส: ใช้เป้าเล็ง + ปุ่มยืนยัน');
+                console.log('✅ ใช้เป้าใหม่ (#add-point-crosshair) เรียบร้อย');
             }
-            // ❌ ❌ ❌ ห้ามมี: disableAreaCalculatorMode() ❌ ❌ ❌
         }
 
         function disableMapInteraction() {
