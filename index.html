@@ -9474,12 +9474,16 @@
                 enablePlusCursorForCalculator();
                 console.log('🖱️ โหมดเมาส์: ใช้ Cursor + คลิกบนสิ่งปลูกสร้าง');
             } else {
-                // ✅ โหมดสัมผัส: ซ่อนเป้าเก่า, แสดงเป้าใหม่ + ปุ่มใหม่
-                if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
-                if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
-                if (newCrosshair) { newCrosshair.classList.remove('hidden'); newCrosshair.classList.add('visible'); }
-                if (newTrigger) { newTrigger.classList.remove('hidden'); newTrigger.classList.add('visible'); }
-                console.log('👆 โหมดสัมผัส: ใช้เป้าใหม่ (50%) + ปุ่มใหม่');
+                // ✅ โหมดสัมผัส: แสดงเป้า + ปุ่ม
+                if (crosshair) {
+                    crosshair.classList.remove('hidden');
+                    crosshair.classList.add('hidden');
+                }
+                if (addTrigger) {
+                    addTrigger.classList.remove('hidden');
+                    addTrigger.classList.add('hidden');
+                }
+                console.log('👆 โหมดสัมผัส: ใช้เป้าเล็ง + ปุ่มยืนยัน');
             }
             // ❌ ❌ ❌ ห้ามมี: disableAreaCalculatorMode() ❌ ❌ ❌
         }
