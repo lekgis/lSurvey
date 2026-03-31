@@ -2299,11 +2299,25 @@
             }
             
             map.on('click', function(e) {
-                // ✅ ✅ ✅ เช็คโหมดคำนวณพื้นที่ก่อน ✅ ✅ ✅
+                // ✅ ✅ ✅ เช็คโหมดคำนวณพื้นที่ก่อนเป็นอันดับแรก ✅ ✅ ✅
                 if (isAreaCalculatorMode) {
-                    console.log('ℹ️ อยู่ในโหมดคำนวณพื้นที่ - ไม่ประมวลผลคลิกแผนที่ทั่วไป');
-                    return; // ✅ อย่าทำอะไร → เครื่องมือยังอยู่
+                    console.log('ℹ️ อยู่ในโหมดคำนวณพื้นที่ - ไม่แสดงเป้าเก่า');
+                    
+                    // ✅ ✅ ✅ ซ่อนเป้าเก่าทันที (ป้องกันแสดงซ้อน) ✅ ✅ ✅
+                    const oldCrosshair = document.getElementById('crosshair');
+                    const oldTrigger = document.getElementById('add-trigger-container');
+                    if (oldCrosshair) { 
+                        oldCrosshair.classList.add('hidden'); 
+                        oldCrosshair.classList.remove('visible'); 
+                    }
+                    if (oldTrigger) { 
+                        oldTrigger.classList.add('hidden'); 
+                        oldTrigger.classList.remove('visible'); 
+                    }
+                    
+                    return;  // ← ออกจากฟังก์ชันทันที ไม่ทำอะไรต่อ
                 }
+
                 if (!mouseAddMode) return;
                 if (!activeTool) {
                     showNotificationLeft('กรุณาเลือกประเภทสิ่งปลูกสร้างหรือป้ายก่อน', 'warning');
