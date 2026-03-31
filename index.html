@@ -9366,42 +9366,28 @@
                 if (oldCrosshair) { oldCrosshair.classList.add('hidden'); oldCrosshair.classList.remove('visible'); }
                 if (oldTrigger) { oldTrigger.classList.add('hidden'); oldTrigger.classList.remove('visible'); }
                 
-                // ✅ ✅ ✅ แสดงเป้าใหม่ (ที่ 35%) ✅ ✅ ✅
+                // ✅ ✅ ✅ แสดงเป้าใหม่ (35%) + ปุ่มใหม่ ✅ ✅ ✅
                 const newCrosshair = document.getElementById('add-point-crosshair');
-                if (newCrosshair) {
-                    newCrosshair.classList.remove('hidden');
-                    newCrosshair.classList.add('visible');
-                }
-                
-                // ✅ ✅ ✅ แสดงปุ่ม + ใหม่ ✅ ✅ ✅
                 const newTrigger = document.getElementById('add-point-trigger');
-                if (newTrigger) {
-                    newTrigger.classList.remove('hidden');
-                    newTrigger.classList.add('visible');
+                if (newCrosshair) { 
+                    newCrosshair.classList.remove('hidden'); 
+                    newCrosshair.classList.add('visible'); 
+                }
+                if (newTrigger) { 
+                    newTrigger.classList.remove('hidden'); 
+                    newTrigger.classList.add('visible'); 
                     
-                    // ✅ ผูกปุ่ม + ใหม่ให้เรียกคำนวณพื้นที่
+                    // ✅ ผูกปุ่ม + ใหม่ให้เรียกคำนวณพื้นที่ (ใช้ฟังก์ชันเดิมที่ทำงานได้!)
                     const btn = newTrigger.querySelector('button');
                     if (btn) {
                         btn.onclick = function(e) {
                             e.preventDefault();
                             e.stopPropagation();
                             console.log('🔘 คลิกปุ่ม + ใหม่ → คำนวณจากเป้าใหม่ (35%)');
-                            calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันคำนวณ!
+                            calculateAreaFromAreaCrosshair();  // ← เรียกฟังก์ชันเดิมที่ทำงานได้!
                         };
                     }
                 }
-                
-                // ✅ ถูก: ใช้ buildingAreaLayer (พื้นที่) → มี polygon สำหรับคำนวณพื้นที่
-                if (window.buildingAreaLayer) {  // ← แก้จาก buildingLayer เป็น buildingAreaLayer
-                    window.buildingAreaLayer.eachLayer(layer => layer.bringToFront());
-                    console.log('✅ ย้าย buildingAreaLayer ขึ้นบนสุด');
-                }
-                
-                // ✅ ปิดการโต้ตอบกับ parcel/boundary ชั่วคราว
-                if (window.parcelLayer) window.parcelLayer.setStyle({ interactive: false });
-                if (window.boundaryLayer) window.boundaryLayer.setStyle({ interactive: false });
-                
-                console.log('✅ เปิดโหมดคำนวณพื้นที่ด้วยเป้าใหม่เรียบร้อย');
                 
                 // มือถือ: อย่าโฟกัส input
                 const input = document.getElementById('calc-input-a');
@@ -9410,7 +9396,7 @@
                     input.blur();
                 }
                 
-                console.log('👆 โหมดมือถือ: เป้าใหม่ + ปุ่มน้ำเงิน');
+                console.log('👆 โหมดมือถือ: เป้าใหม่ (35%) + ปุ่มใหม่');
             }
             
             console.log('✅ เปิดโหมดคำนวณพื้นที่เรียบร้อย');
