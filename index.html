@@ -3198,7 +3198,7 @@
         function calculateAreaFromAreaCrosshair() {
             console.log('🎯 [DEBUG] เริ่มคำนวณพื้นที่จากเป้าเล็ง...');
             
-            if (!map || !window.buildingAreaLayer) {
+            if (!map || !window.buildingLayer) {
                 showNotificationLeft('⚠️ โหลดข้อมูลสิ่งปลูกสร้างก่อน', 'warning');
                 return;
             }
@@ -3216,7 +3216,7 @@
             let foundBuilding = false;
             let checkedCount = 0;
             
-            window.buildingAreaLayer.eachLayer(function(layer) {
+            window.buildingLayer.eachLayer(function(layer) {
                 if (foundBuilding) return; 
 
                 try {
@@ -9339,9 +9339,10 @@
                 areaCalculatorModalA.querySelector('#area-calculator-a-header')
             );            
 
-            // ✅ ย้าย building_area ขึ้นบนสุด
-            if (window.buildingLayer) {  // ← ใช้ buildingLayer ตามที่แก้ไว้
+            // ✅ ย้าย building_area ขึ้นบนสุด (ใช้ buildingLayer ตามโหมดเมาส์)
+            if (window.buildingLayer) {  // ← ต้องเป็น buildingLayer
                 window.buildingLayer.eachLayer(layer => layer.bringToFront());
+                console.log('✅ ย้าย buildingLayer ขึ้นบนสุด');
             }
             
             // ✅ ปิดการโต้ตอบกับ parcel/boundary ชั่วคราว
