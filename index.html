@@ -1673,10 +1673,11 @@
             
             // ✅ รอ 150-200ms หลังหยุดลาก/ซูม ค่อยเรนเดอร์ใหม่
             mapMoveTimeout = setTimeout(() => {
+                // ✅ ✅ ✅ แก้: เรียก updateVisibleMarkers() (ไม่ใช่ loadVisibleMarkers) ✅ ✅ ✅
                 if (typeof updateVisibleMarkers === 'function') {
                     updateVisibleMarkers();
                 }
-            }, isMobile() ? 200 : 150);  // ✅ มือถือรอหน่อยให้ลื่นขึ้น
+            }, isMobile() ? 200 : 150);
         }
 
         // ✅ แก้ไขฟังก์ชัน activateTool เพื่อตั้งค่า mouseAddType
@@ -11038,9 +11039,9 @@
             });
         }
 
-        // เรียกใช้เมื่อเลื่อนหรือซูมแผนที่
-        map.on('moveend', loadVisibleMarkers);
-        map.on('zoomend', loadVisibleMarkers);
+        // ✅ ✅ ✅ แก้ 2 บรรทัดนี้: ใช้ debounce แทน ✅ ✅ ✅
+        map.on('moveend', debounceMapRender);  // ← เปลี่ยนจาก loadVisibleMarkers
+        map.on('zoomend', debounceMapRender);  // ← เปลี่ยนจาก loadVisibleMarkers
 
 
         // ============================================
