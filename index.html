@@ -6951,93 +6951,78 @@
             return size;
         }
 
+        // ✅ ✅ ✅ เก็บสถานะมาร์กเกอร์ที่เรนเดอร์แล้ว (กันสร้างซ้ำ) ✅ ✅ ✅
+        let lastRenderedKeys = new Set();  // เก็บ rowKey ของจุดที่เรนเดอร์ไว้แล้ว
+        let lastRenderZoom = null;         // เก็บระดับซูมตอนเรนเดอร์ล่าสุด
+
         // ============================================
         // อัปเดตมาร์กเกอร์เฉพาะในมุมมอง (GPU Optimized)
         // ============================================
         function updateVisibleMarkers() {
-            // ✅ ใช้ requestAnimationFrame สำหรับการเรนเดอร์แบบประสิทธิภาพสูง
             requestAnimationFrame(() => {
                 const bounds = map.getBounds();
                 const zoom = map.getZoom();
-                const bufferRatio = isMobile() ? 1.3 : 1.5; // ลดบัฟเฟอร์สำหรับมือถือ
+                
+                // ✅ ✅ ✅ เพิ่มเช็คนี้ "บรรทัดแรก" ใน requestAnimationFrame ✅ ✅ ✅
+                const zoomChanged = Math.abs(zoom - (lastRenderZoom || -999)) > 0.5;
+                if (!zoomChanged && lastRenderedKeys.size > 0) {
+                    return;  // ✅ ข้ามเรนเดอร์ถ้าซูมไม่เปลี่ยน + มีจุดอยู่แล้ว
+                }
+                lastRenderZoom = zoom;  // ✅ อัปเดตซูมล่าสุด
+                // ✅ ✅ ✅ จบส่วนเช็ค ✅ ✅ ✅
+                
+                // ... โค้ดเดิมทั้งหมดด้านล่าง ...
+                const bufferRatio = isMobile() ? 1.3 : 1.5;
                 const bufferedBounds = bounds.pad(bufferRatio);
-                
-                // ✅ ล้างมาร์กเกอร์ทั้งหมดในครั้งเดียว (แทนทีละตัว)
                 surveyLayers.clearLayers();
-                
-                // ✅ สร้างมาร์กเกอร์แบบแบตช์
                 const markersToRender = [];
                 
-                // จุดสิ่งปลูกสร้าง
+                // ✅ จุดสิ่งปลูกสร้าง (โค้ดเดิม)
                 allBuildings.forEach(r => {
                     if (!r.lat_long) return;
                     const coords = r.lat_long.split(',').map(Number);
                     if (coords.length < 2 || isNaN(coords[0]) || isNaN(coords[1])) return;
-                    
                     const latLng = L.latLng(coords[0], coords[1]);
                     if (!bufferedBounds.contains(latLng)) return;
-                    
-                    // ✅ ข้ามจุดที่กำลังถูกย้าย
                     const recordKey = r._row_num || r.id;
                     if (markersBeingMoved.has(recordKey)) return;
-                    
                     markersToRender.push({ latLng, data: r, type: 'building' });
                 });
-
-             
-                // จุดป้าย
+        
+                // ✅ จุดป้าย (โค้ดเดิม)
                 allSigns.forEach(r => {
                     if (!r.lat_long) return;
                     const coords = r.lat_long.split(',').map(Number);
                     if (coords.length < 2 || isNaN(coords[0]) || isNaN(coords[1])) return;
-                    
                     const latLng = L.latLng(coords[0], coords[1]);
                     if (!bufferedBounds.contains(latLng)) return;
-                    
                     const recordKey = r._row_num || r.id;
                     if (markersBeingMoved.has(recordKey)) return;
-                    
-                    markersToRender.push({ latLng, data: r, type: 'sign' });        
+                    markersToRender.push({ latLng, data: r, type: 'sign' });
                 });
-
-                // ✅ ✅ ✅ เพิ่มโค้ดจำกัดจุดสูงสุดตามซูม "ตรงนี้" ✅ ✅ ✅
-                const maxMarkersByZoom = {
-                    0: 100,    // ซูม 0-10 → แสดงแค่ 100 จุด
-                    11: 300,   // ซูม 11-13 → 300 จุด
-                    14: 800,   // ซูม 14-15 → 800 จุด
-                    16: 2000,  // ซูม 16 → 2000 จุด
-                    17: 5000,  // ซูม 17+ → แสดงทั้งหมด
-                };
-                
-                // ✅ หาค่าสูงสุดที่อนุญาตตามระดับซูมปัจจุบัน
+        
+                // ✅ จำกัดจุดตามซูม (โค้ดเดิม)
+                const maxMarkersByZoom = { 0: 100, 11: 300, 14: 800, 16: 2000, 17: 5000 };
                 const maxAllowed = Object.entries(maxMarkersByZoom)
-                    .reverse()
-                    .find(([z]) => zoom >= parseInt(z))?.[1] || 500;
-                
-                // ✅ ถ้าจุดเกินจำกัด → สุ่มเลือกแทนการตัดท้าย (กระจายทั่วพื้นที่)
+                    .reverse().find(([z]) => zoom >= parseInt(z))?.[1] || 500;
                 if (markersToRender.length > maxAllowed) {
                     markersToRender.sort(() => Math.random() - 0.5);
                     markersToRender.splice(maxAllowed);
-                    console.log(`⚠️ จำกัดจุด: ${markersToRender.length}/${maxAllowed} (ซูม ${zoom})`);
                 }
-                           
-                // ✅ ✅ ✅ เพิ่มบรรทัดนี้: ลดจุดซ้อนทับเมื่อซูมเข้า ✅ ✅ ✅
+        
+                // ✅ ลดจุดซ้อนทับ (โค้ดเดิม)
                 const filteredMarkers = thinOverlappingPoints(markersToRender, zoom, isMobile());
                 
-                // ✅ เรนเดอร์เฉพาะจุดที่ผ่านการกรอง
+                // ✅ เรนเดอร์ (โค้ดเดิม)
                 filteredMarkers.forEach(item => {
                     const m = createCircleMarker(item.latLng, item.type, isEditMode, item.data?.check);
-                    if (item.data) {
-                        m._popupData = item.data;
-                        setupMarkerPopup(m, item.data, item.type);
-                    }
-                    if (markerCluster) {
-                        markerCluster.addLayer(m);
-                    } else {
-                        m.addTo(surveyLayers);
-                    }
+                    if (item.data) { m._popupData = item.data; setupMarkerPopup(m, item.data, item.type); }
+                    if (markerCluster) { markerCluster.addLayer(m); } else { m.addTo(surveyLayers); }
                 });
-
+        
+                // ✅ ✅ ✅ เพิ่มบรรทัดนี้ "ท้ายฟังก์ชัน" ก่อนปิด } ✅ ✅ ✅
+                lastRenderedKeys = new Set(filteredMarkers.map(m => m.data._row_num || m.data.id));
+                
                 console.log(`✅ เรนเดอร์มาร์กเกอร์ ${filteredMarkers.length} จุดด้วย GPU (Canvas)`);
             });
         }
