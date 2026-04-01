@@ -6993,7 +6993,28 @@
                     
                     markersToRender.push({ latLng, data: r, type: 'sign' });        
                 });
+
+                // ✅ ✅ ✅ เพิ่มโค้ดจำกัดจุดสูงสุดตามซูม "ตรงนี้" ✅ ✅ ✅
+                const maxMarkersByZoom = {
+                    0: 100,    // ซูม 0-10 → แสดงแค่ 100 จุด
+                    11: 300,   // ซูม 11-13 → 300 จุด
+                    14: 800,   // ซูม 14-15 → 800 จุด
+                    16: 2000,  // ซูม 16 → 2000 จุด
+                    17: 5000,  // ซูม 17+ → แสดงทั้งหมด
+                };
                 
+                // ✅ หาค่าสูงสุดที่อนุญาตตามระดับซูมปัจจุบัน
+                const maxAllowed = Object.entries(maxMarkersByZoom)
+                    .reverse()
+                    .find(([z]) => zoom >= parseInt(z))?.[1] || 500;
+                
+                // ✅ ถ้าจุดเกินจำกัด → สุ่มเลือกแทนการตัดท้าย (กระจายทั่วพื้นที่)
+                if (markersToRender.length > maxAllowed) {
+                    markersToRender.sort(() => Math.random() - 0.5);
+                    markersToRender.splice(maxAllowed);
+                    console.log(`⚠️ จำกัดจุด: ${markersToRender.length}/${maxAllowed} (ซูม ${zoom})`);
+                }
+                           
                 // ✅ ✅ ✅ เพิ่มบรรทัดนี้: ลดจุดซ้อนทับเมื่อซูมเข้า ✅ ✅ ✅
                 const filteredMarkers = thinOverlappingPoints(markersToRender, zoom, isMobile());
                 
