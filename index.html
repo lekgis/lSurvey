@@ -1596,7 +1596,7 @@
         // ✅ ตัวแปรควบคุมการรีโหลดอัตโนมัติ
         let isRefreshing = false;  // ✅ สถานะการรีโหลด
         let lastAutoRefreshTime = 0;  // ✅ เวลาที่รีโหลดอัตโนมัติครั้งล่าสุด
-        const AUTO_REFRESH_COOLDOWN = 30000;  // ✅ 30 วินาที (30000ms)
+        const AUTO_REFRESH_COOLDOWN = 600000;  // ✅ 30 วินาที (30000ms)
 
         function initMap() {
             // ✅ สร้าง Canvas Renderer 1 ครั้ง
@@ -1606,60 +1606,65 @@
                 zoomControl: false,
                 attributionControl: false,
                 preferCanvas: true,
-                renderer: canvasRenderer, // ✅ ใช้ renderer เดียวกัน
+                renderer: canvasRenderer,
                 zoomSnap: isMobile() ? 0.5 : 1,
                 wheelDebounceTime: 40,
                 doubleClickZoom: false
             };
-
-          map = L.map('map', {
-            zoomControl: false,
-            attributionControl: false,
-            preferCanvas: true,
-            // ✅ อนุญาตให้แผนที่แสดงล้นขอบจอได้
-            padding: [50, 50], // เพิ่มพื้นที่ว่างรอบแผนที่ (บน, ล่าง, ซ้าย, ขวา)
-            maxBoundsViscosity: 0.5, // ลดความหนืดของขอบเขต (ทำให้เลื่อนลื่นขึ้น)
-            inertia: true, // เปิดใช้งานการเลื่อนแบบอินเนอร์เชีย
-            inertiaDeceleration: 3000, // ความเร็วการชะลอตัว
-            inertiaMaxSpeed: 1500, // ความเร็วสูงสุด
-            // ไม่กำหนดขอบเขตแผนที่ (ให้แสดงล้นได้)
-            // maxBounds: undefined
-          }).setView([15.390, 103.042], 14);
-
-          // Hardware Acceleration
-          const container = map.getContainer();
-          container.style.transform = 'translate3d(0, 0, 0)';
-          
-        // Google Hybrid Tile Options - ปรับเพิ่มประสิทธิภาพ
-        const tileOptions = {
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            updateWhenIdle: false, // ✅ โหลดขณะเลื่อน (ไม่รอหยุด)
-            updateWhenZooming: true, // ✅ อัปเดตขณะซูม
-            keepBuffer: isMobile() ? 6 : 10, // ✅ เพิ่มบัฟเฟอร์ (มือถือ 4, คอม 8)
-            maxNativeZoom: 19, // ป้องกันการโหลดไทล์ที่ไม่มี
-            reuseTiles: true, // ✅ ใช้ไทล์เก่าซ้ำแทนโหลดใหม่
-            className: 'map-tiles-optimized'
-        };
-
-        // Low Res / Background Layer
-        const lowResLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            ...tileOptions,
-            maxZoom: 15,
-            zIndex: 1
-        });
-
-        // High Res Layer
-        const highResLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            ...tileOptions,
-            minZoom: 16,
-            maxZoom: 22,
-            zIndex: 2
-        });
-
-          lowResLayer.addTo(map);
-          highResLayer.addTo(map);
-          surveyLayers.addTo(map);
+        
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false,
+                preferCanvas: true,
+                padding: [50, 50],
+                maxBoundsViscosity: 0.5,
+                inertia: true,
+                inertiaDeceleration: 3000,
+                inertiaMaxSpeed: 1500
+            }).setView([15.390, 103.042], 14);
+        
+            // Hardware Acceleration
+            const container = map.getContainer();
+            container.style.transform = 'translate3d(0, 0, 0)';
+            
+            // Google Hybrid Tile Options
+            const tileOptions = {
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                updateWhenIdle: false,
+                updateWhenZooming: true,
+                keepBuffer: isMobile() ? 15 : 25,  // ✅ บัฟเฟอร์กว้าง
+                maxNativeZoom: 19,
+                reuseTiles: true,
+                className: 'map-tiles-optimized'
+            };
+        
+            // ✅ 1. Low Res Layer (ซูม 0-17) - โหลดรอบๆ กว้าง
+            const lowResLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                ...tileOptions,
+                minZoom: 0,
+                maxZoom: 17,
+                keepBuffer: isMobile() ? 20 : 30,  // ✅ บัฟเฟอร์กว้างกว่าไฮเรส
+                updateWhenIdle: true,     // ✅ โหลดเฉพาะเมื่อหยุด
+                updateWhenZooming: false, // ✅ ไม่โหลดขณะซูม
+                zIndex: 1,
+                //opacity: 0.9  // ✅ จางเล็กน้อย กันสับสนกับไฮเรส
+            });
+            
+            // ✅ 2. High Res Layer (ซูม 18+) - โหลดเฉพาะพื้นที่เห็น
+            const highResLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                ...tileOptions,
+                minZoom: 18,
+                maxZoom: 22,
+                keepBuffer: isMobile() ? 6 : 10,  // ✅ บัฟเฟอร์เล็ก (โหลดเร็ว)
+                zIndex: 2
+            });
+        
+            // ✅ เพิ่มเลเยอร์ตามลำดับ (ล่าง → บน) - แค่ครั้งเดียว!
+            lowResLayer.addTo(map);      // ✅ ชั้นล่าง: ความละเอียดต่ำ (ซูม 0-17)
+            highResLayer.addTo(map);     // ✅ ชั้นบน: ความละเอียดสูง (ซูม 18+)
+            surveyLayers.addTo(map);     // ✅ ชั้นบนสุด: จุดสำรวจ
         }
+        
         // ตรวจจับอุปกรณ์มือถือ
         function isMobile() {
           return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -12163,6 +12168,7 @@
             
             return marker;
         }
+
 
         // ✅ ✅ ✅ ฟังก์ชันลดจุดซ้อนทับแบบกริด (สำหรับเมื่อซูมเข้าแล้ว) ✅ ✅ ✅
         function thinOverlappingPoints(items, zoom, isMobileDevice) {
