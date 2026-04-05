@@ -1681,7 +1681,7 @@
                 if (typeof updateVisibleMarkers === 'function') {
                     updateVisibleMarkers();
                 }
-            }, isMobile() ? 200 : 150);
+            }, isMobile() ? 600 : 450);  // ✅ จาก 200/150 → 400/300 (รอให้หยุดจริงๆ ค่อยเรนเดอร์)
         }
 
         // ✅ แก้ไขฟังก์ชัน activateTool เพื่อตั้งค่า mouseAddType
@@ -7018,6 +7018,7 @@
                     if (markerCluster) { markerCluster.addLayer(m); } else { m.addTo(surveyLayers); }
                 });
         
+
                 // ✅ ✅ ✅ เพิ่มบรรทัดนี้ "ท้ายฟังก์ชัน" ก่อนปิด } ✅ ✅ ✅
                 lastRenderedKeys = new Set(filteredMarkers.map(m => m.data._row_num || m.data.id));
                 
