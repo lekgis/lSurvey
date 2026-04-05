@@ -5749,7 +5749,7 @@
         }
 
         // ฟังก์ชันซูมไปที่ตำแหน่ง
-        function zoomToLocation(latlng, zoomLevel = 21) {
+        function zoomToLocation(latlng, zoomLevel = 21, rowData = null, type = 'building') {
             map.setView(latlng, zoomLevel);
             
             // สร้างเอฟเฟกต์กระพริบ
@@ -5775,6 +5775,30 @@
                     map.removeLayer(blinkMarker);
                 }
             }, 300);
+
+            // ✅ ✅ ✅ เพิ่ม 15 บรรทัดนี้ ท้ายฟังก์ชัน ✅ ✅ ✅
+            // เฉพาะคอมพิวเตอร์: เปิด panel + รูปภาพ
+            if (!isMobile() && rowData) {
+                setTimeout(() => {
+                    // หา marker ที่ตรงกัน
+                    let targetMarker = null;
+                    surveyLayers.eachLayer(layer => {
+                        const d = layer._popupData;
+                        if (d && (d._row_num || d.id) === (rowData._row_num || rowData.id)) {
+                            targetMarker = layer;
+                        }
+                    });
+                    // เปิด panel
+                    if (targetMarker && typeof openEditPanel === 'function') {
+                        openEditPanel(rowData, type, targetMarker, rowData._row_num || rowData.id);
+                    }
+                    // เปิดรูปภาพ
+                    const img = rowData.picture || rowData.image || '';
+                    if (img && typeof showImagePreview === 'function') {
+                        showImagePreview(img, rowData.building_c || rowData.s_code || 'รูปภาพ');
+                    }
+                }, 1600); // รอให้ซูมเสร็จ (flyTo ใช้ ~1.5 วินาที)
+            }
         }
 
         // ✅ แก้ไขฟังก์ชัน renderBuildingTable()
@@ -5842,7 +5866,7 @@
                     <td>${displayValue(building.land_use)}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>
-                        <button class="zoom-btn" onclick="zoomToLocation(L.latLng(${lat}, ${lng}))">
+                        <button class="zoom-btn" onclick="zoomToLocation(L.latLng(${lat}, ${lng}), 21, ${JSON.stringify(building).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}, 'building')">
                             <i data-lucide="locate" class="w-3 h-3 inline"></i>
                         </button>
                     </td>
@@ -5911,7 +5935,7 @@
                     <td>${sign.s_text || '-'}</td>
                     <td class="text-center"><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>
-                        <button class="zoom-btn" onclick="zoomToLocation(L.latLng(${lat}, ${lng}))">
+                        <button class="zoom-btn" onclick="zoomToLocation(L.latLng(${lat}, ${lng}), 21, ${JSON.stringify(sign).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}, 'sign')">
                             <i data-lucide="locate" class="w-3 h-3 inline"></i>
                         </button>
                     </td>
@@ -6962,11 +6986,11 @@
                 const zoom = map.getZoom();
                 
                 // ✅ ✅ ✅ เพิ่มเช็คนี้ "บรรทัดแรก" ใน requestAnimationFrame ✅ ✅ ✅
-                const zoomChanged = Math.abs(zoom - (lastRenderZoom || -999)) > 0.5;
-                if (!zoomChanged && lastRenderedKeys.size > 0) {
-                    return;  // ✅ ข้ามเรนเดอร์ถ้าซูมไม่เปลี่ยน + มีจุดอยู่แล้ว
-                }
-                lastRenderZoom = zoom;  // ✅ อัปเดตซูมล่าสุด
+                //const zoomChanged = Math.abs(zoom - (lastRenderZoom || -999)) > 0.5;
+                //if (!zoomChanged && lastRenderedKeys.size > 0) {
+                    //return;  // ✅ ข้ามเรนเดอร์ถ้าซูมไม่เปลี่ยน + มีจุดอยู่แล้ว
+                //}
+                //lastRenderZoom = zoom;  // ✅ อัปเดตซูมล่าสุด
                 // ✅ ✅ ✅ จบส่วนเช็ค ✅ ✅ ✅
                 
                 // ... โค้ดเดิมทั้งหมดด้านล่าง ...
