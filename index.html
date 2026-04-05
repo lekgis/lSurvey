@@ -12194,12 +12194,11 @@
 
         // ✅ ✅ ✅ ฟังก์ชันลดจุดซ้อนทับแบบกริด (สำหรับเมื่อซูมเข้าแล้ว) ✅ ✅ ✅
         function thinOverlappingPoints(items, zoom, isMobileDevice) {
-            // ✅ ถ้ายังไม่ถึงระดับที่แยกจุด → ไม่ต้องลด
-            const minZoomForThinning = isMobileDevice ? 17 : 16;
-            if (zoom < minZoomForThinning) return items;
+            // ✅ ✅ ✅ แก้บรรทัดนี้: กรองเฉพาะซูม 1-17 ✅ ✅ ✅
+            if (zoom > 17) return items;  // ✅ ซูมใกล้กว่า 17 → ไม่กรอง แสดงทั้งหมด
             
             // ✅ สร้างกริดสำหรับกรองจุด (ขนาดกริดตามระดับซูม)
-            const gridSize = isMobileDevice ? 0.00000001 : 0.00000001;  // ≈ 15-20 เมตร
+            const gridSize = isMobileDevice ? 0.00028 : 0.00018;  // ≈ 15-20 เมตร
             const grid = new Map();
             const result = [];
             
@@ -12224,7 +12223,7 @@
                 }
             }
             
-            console.log(`🔍 ลดจุดซ้อนทับ: ${items.length} → ${result.length} จุด (ซูม ${zoom})`);
+            console.log(`🔍 ลดจุดซ้อนทับ (ซูม 1-17): ${items.length} → ${result.length} จุด`);
             return result;
         }
 
