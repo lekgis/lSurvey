@@ -12199,7 +12199,7 @@
             if (zoom < minZoomForThinning) return items;
             
             // ✅ สร้างกริดสำหรับกรองจุด (ขนาดกริดตามระดับซูม)
-            const gridSize = isMobileDevice ? 0.00008 : 0.00008;  // ≈ 15-20 เมตร
+            const gridSize = isMobileDevice ? 0.00000001 : 0.00000001;  // ≈ 15-20 เมตร
             const grid = new Map();
             const result = [];
             
