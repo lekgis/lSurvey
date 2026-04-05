@@ -1001,6 +1001,7 @@
         /* สไตล์สำหรับตาราง */
         .data-table-panel {
             position: fixed;
+            padding: 0 !important;
             bottom: 5px;
             left: 5px;
             width: 90%;
@@ -1021,16 +1022,14 @@
             display: flex;
             transform: translateY(0);
         }
-        .data-table-panel.open {
-            display: flex;
-            transform: translateY(0);
-        }
+
         .table-header {
             background: linear-gradient(135deg, #667eea 0%, #db2777 100%);
             color: white;
-            padding: 0.1rem 0.5rem;
+            padding: 0 0.5rem !important;
+            margin: 0 !important;
             min-height: 20px;       /* กำหนดความสูงต่ำสุดให้เล็กลง */
-            height: 44px;  
+            height: 40px;  
             gap: 0.25rem;    
             display: flex;
             justify-content: space-between;
@@ -1060,7 +1059,8 @@
         .table-content {
             flex: 1;
             overflow-y: auto;
-            padding: 8px;
+            padding: 8px 8px 8px 8px !important;
+            padding-top: 0 !important;
         }
         .data-table {
             width: 100%;
@@ -1397,11 +1397,11 @@
                         <span>รหัสซ้ำ</span>
                         <span id="duplicate-count-badge" class="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full font-medium">0</span>
                     </div>
-                    <button type="button" 
-                            class="table-tab bg-transparent border-none p-0 cursor-pointer font-inherit"
-                            onclick="openImportModal()" 
-                            id="import-tab"
-                            style="background: none; border: none; padding: 6px 6px; cursor: pointer; font: inherit;">
+                    <!-- ✅ แก้เป็น (ลบ inline style ออก → ใช้คลาสล้วน) -->
+                    <button type="button"
+                        class="table-tab"
+                        onclick="openImportModal()" 
+                        id="import-tab">
                         <span>นำเข้า</span>
                     </button>
                 </div>
@@ -5722,7 +5722,7 @@
             
             lucide.createIcons();
             // ✅ กดรีโหลดอัตโนมัติ
-            triggerAutoRefresh();
+            //triggerAutoRefresh();
         }
 
         // ✅ ฟังก์ชันสลับแท็บตาราง (แก้ไขแล้ว)
@@ -7256,6 +7256,8 @@
             document.querySelectorAll('#building-table .sortable-header').forEach(header => {
                 header.style.cursor = 'pointer';
                 header.style.userSelect = 'none';
+                // ✅ ใน header.addEventListener('click', ...):
+                // ✅ ✅ ✅ แก้: อัปเดต filteredBuildings ก่อนเรนเดอร์ ✅ ✅ ✅
                 header.addEventListener('click', () => {
                     const column = header.dataset.sort;
                     if (buildingSortColumn === column) {
@@ -7265,7 +7267,12 @@
                         buildingSortDirection = 'asc';
                     }
                     updateSortIndicators('building-table', buildingSortColumn, buildingSortDirection);
-                    renderBuildingTable(); // เรนเดอร์ใหม่ด้วยการเรียงลำดับใหม่
+                    
+                    // ✅ ✅ ✅ เพิ่ม 2 บรรทัดนี้ ✅ ✅ ✅
+                    tablePage = 1;  // รีเซ็ตหน้าเป็น 1
+                    filteredBuildings = sortBuildings(allBuildings, buildingSortColumn, buildingSortDirection);  // เรียงข้อมูลใหม่
+                    
+                    renderBuildingTable();  // แล้วค่อยเรนเดอร์
                 });
             });
             
@@ -7273,6 +7280,7 @@
             document.querySelectorAll('#sign-table .sortable-header').forEach(header => {
                 header.style.cursor = 'pointer';
                 header.style.userSelect = 'none';
+                // ✅ ใน #sign-table .sortable-header:
                 header.addEventListener('click', () => {
                     const column = header.dataset.sort;
                     if (signSortColumn === column) {
@@ -7282,7 +7290,12 @@
                         signSortDirection = 'asc';
                     }
                     updateSortIndicators('sign-table', signSortColumn, signSortDirection);
-                    renderSignTable(); // เรนเดอร์ใหม่ด้วยการเรียงลำดับใหม่
+                    
+                    // ✅ ✅ ✅ เพิ่ม 2 บรรทัดนี้ ✅ ✅ ✅
+                    tablePage = 1;
+                    filteredSigns = sortSigns(allSigns, signSortColumn, signSortDirection);
+                    
+                    renderSignTable();
                 });
             });
             
@@ -9033,7 +9046,7 @@
             if (!bypassCooldown) {
                 const now = Date.now();
                 if (now - lastAutoRefreshTime < AUTO_REFRESH_COOLDOWN) {
-                    const remaining = Math.ceil((AUTO_REFRESH_COOLDOWN - (now - lastAutoRefreshTime)) / 1000);
+                    const remaining = Math.ceil((AUTO_REFRESH_COOLDOWN - (now - lastAutoRefreshTime)) / 60000);
                     console.log(`⏳ Cooldown: รออีก ${remaining} วินาที`);
                     return;
                 }
@@ -9207,9 +9220,9 @@
                 if (!isUpdating && navigator.onLine) {
                     realtimeUpdate();
                 }
-            }, 900000); // 15 นาที
+            }, 1800000); // 30 นาที
             
-            console.log('✅ เริ่มระบบอัปเดตเรียลไทม์ทุก 15 นาที');
+            console.log('✅ เริ่มระบบอัปเดตเรียลไทม์ทุก 30 นาที');
         }
 
         // ============================================
@@ -11486,7 +11499,7 @@
             const options = {
                 enableHighAccuracy: true,
                 timeout: 15000,
-                maximumAge: 30000
+                maximumAge: 60000
             };
             
             watchId = navigator.geolocation.watchPosition(
