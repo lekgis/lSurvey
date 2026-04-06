@@ -5850,7 +5850,11 @@
                     // เปิดรูปภาพ
                     // ✅ ✅ ✅ เปิดรูปภาพ - ใช้โค้ดเดียวกับใน openEditPanel() ✅ ✅ ✅
                     if (rowData.image && rowData.image.trim() !== '') {
-                        showImagePreview(rowData.image, rowData.picture || 'รูปภาพ');
+                        // เป็นแบบนี้ (เติม ?t= เป็นเลขเวลาปัจจุบัน)
+                        const imageUrlWithCacheBuster = rowData.image.includes('?') 
+                            ? `${rowData.image}&t=${Date.now()}` 
+                            : `${rowData.image}?t=${Date.now()}`;
+                        showImagePreview(imageUrlWithCacheBuster, rowData.picture || 'รูปภาพ');
                     } else {
                         // ถ้าไม่มีรูปภาพ → แสดงข้อความในหน้าต่างรูปภาพ
                         const placeholder = document.getElementById('image-preview-placeholder');
@@ -10555,22 +10559,40 @@
             }
             
             container.style.display = 'flex';
-            // ✅ ✅ ✅ แก้ตรงนี้: เพิ่ม timestamp เพื่อบังคับโหลดรูปใหม่ ✅ ✅ ✅
+
+            // ✅ ✅ ✅ 1. รีเซ็ตรูปเก่าก่อน ✅ ✅ ✅
+            img.classList.add('hidden');
+            img.src = '';  // ← ล้าง src เก่า
+            
+            // ✅ ✅ ✅ 2. แปลง URL + เพิ่มแคชบัสเตอร์ 2 ชั้น ✅ ✅ ✅
             const directUrl = convertDriveUrlToDirect(imageUrl);
-            const cacheBuster = directUrl.includes('?') ? '&' : '?';
-            img.src = `${directUrl}${cacheBuster}_t=${Date.now()}`;  // ✅ บังคับโหลดใหม่
             
+            // ชั้นที่ 1: Google Drive thumbnail parameter
+            const withSz = directUrl.includes('sz=') ? directUrl : `${directUrl}${directUrl.includes('?') ? '&' : '?'}sz=w2000`;
+            
+            // ชั้นที่ 2: Timestamp บังคับโหลดใหม่
+            const cacheBuster = withSz.includes('?') ? '&' : '?';
+            const finalUrl = `${withSz}${cacheBuster}_t=${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // ✅ ✅ ✅ 3. ตั้งค่ารูปใหม่ ✅ ✅ ✅
+            img.src = finalUrl;
             img.alt = fileName || 'รูปภาพ';
-            img.classList.remove('hidden');
-            placeholder.classList.add('hidden');
             
-            img.onload = () => console.log('✅ โหลดรูปสำเร็จ:', fileName);
+            // ✅ ✅ ✅ 4. แสดงรูปเมื่อโหลดเสร็จ ✅ ✅ ✅
+            img.onload = () => {
+                console.log('✅ โหลดรูปสำเร็จ:', fileName, finalUrl);
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            };
+            
             img.onerror = () => {
+                console.error('❌ โหลดรูปไม่สำเร็จ:', finalUrl);
                 img.classList.add('hidden');
                 placeholder.textContent = '❌ ไม่สามารถโหลดรูปภาพได้';
                 placeholder.classList.remove('hidden');
                 placeholder.classList.add('text-red-400');
             };
+
             
             // ✅ === เพิ่มปุ่มคัดลอกและแปลงข้อความใน header ===
             const header = container.querySelector('.table-header .flex.items-center.justify-between');
