@@ -3653,21 +3653,56 @@
             console.log(`✅ สร้างคิวสำเร็จ: ${queueId} (${action})`);
             
             // ✅ อัปเดตมาร์กเกอร์ทันที
+            // ✅ ✅ ✅ ในบล็อกอัปเดตมาร์กเกอร์หลังบันทึก ✅ ✅ ✅
             if (editingMarker) {
+                // ✅ อัปเดต _popupData ให้ครบทุกฟิลด์ รวมถึง image
                 editingMarker._popupData = {
                     ...editingMarker._popupData,
-                    ...data,
+                    ...data,  // ✅ data มี image จากฟอร์มที่บันทึก
                     queued: true,
                     queueId: queueId
                 };
+                
+                // ✅ ถ้ามีรูปใหม่ใน data → อัปเดต image ใน _popupData ทันที
+                if (data.image && data.image.trim() !== '') {
+                    editingMarker._popupData.image = data.image;
+                    editingMarker._popupData.picture = data.picture || editingMarker._popupData.picture;
+                }
+                
                 setupMarkerPopup(editingMarker, editingMarker._popupData, markerType);
-            }
-            
+            }            
+
+
             // ✅ ปิดแผงและแจ้งเตือน
             closePanel();
             const msg = action === 'update' ? 'อัปเดตข้อมูลเรียบร้อยแล้ว!' : 'บันทึกข้อมูลเรียบร้อยแล้ว!';
             showNotificationLeft(`${msg} (รออัปโหลด)`, 'success');
             
+            // ✅ ✅ ✅ เพิ่มบล็อกนี้: ถ้าหน้าต่างรูปภาพเปิดอยู่ → อัปเดตรูปทันที ✅ ✅ ✅
+            const imagePreviewContainer = document.getElementById('image-preview-container');
+            if (imagePreviewContainer && imagePreviewContainer.style.display === 'flex') {
+                console.log('🖼️ หน้าต่างรูปภาพเปิดอยู่ → อัปเดตรูปภาพใหม่');
+                
+                // ✅ ดึงข้อมูลล่าสุดจาก editingMarker
+                if (editingMarker && editingMarker._popupData) {
+                    const data = editingMarker._popupData;
+                    if (data.image && data.image.trim() !== '') {
+                        // ✅ เรียก showImagePreview อีกครั้งด้วยข้อมูลใหม่
+                        showImagePreview(data.image, data.picture || 'รูปภาพ');
+                    } else {
+                        // ✅ ถ้าไม่มีรูป → แสดงข้อความ
+                        const placeholder = document.getElementById('image-preview-placeholder');
+                        const img = document.getElementById('image-preview');
+                        if (placeholder && img) {
+                            img.classList.add('hidden');
+                            placeholder.textContent = '⚠️ รายการนี้ยังไม่มีรูปภาพ';
+                            placeholder.classList.remove('text-gray-300');
+                            placeholder.classList.add('text-yellow-500', 'font-medium');
+                        }
+                    }
+                }
+            }
+
             // ✅ เริ่มซิงค์ทันทีหากออนไลน์
             if (isOnline && navigator.onLine) {
                 setTimeout(() => {
@@ -10520,13 +10555,16 @@
             }
             
             container.style.display = 'flex';
+            // ✅ ✅ ✅ แก้ตรงนี้: เพิ่ม timestamp เพื่อบังคับโหลดรูปใหม่ ✅ ✅ ✅
             const directUrl = convertDriveUrlToDirect(imageUrl);
+            const cacheBuster = directUrl.includes('?') ? '&' : '?';
+            img.src = `${directUrl}${cacheBuster}_t=${Date.now()}`;  // ✅ บังคับโหลดใหม่
             
-            img.src = directUrl;
             img.alt = fileName || 'รูปภาพ';
             img.classList.remove('hidden');
             placeholder.classList.add('hidden');
             
+            img.onload = () => console.log('✅ โหลดรูปสำเร็จ:', fileName);
             img.onerror = () => {
                 img.classList.add('hidden');
                 placeholder.textContent = '❌ ไม่สามารถโหลดรูปภาพได้';
