@@ -3653,56 +3653,21 @@
             console.log(`✅ สร้างคิวสำเร็จ: ${queueId} (${action})`);
             
             // ✅ อัปเดตมาร์กเกอร์ทันที
-            // ✅ ✅ ✅ ในบล็อกอัปเดตมาร์กเกอร์หลังบันทึก ✅ ✅ ✅
             if (editingMarker) {
-                // ✅ อัปเดต _popupData ให้ครบทุกฟิลด์ รวมถึง image
                 editingMarker._popupData = {
                     ...editingMarker._popupData,
-                    ...data,  // ✅ data มี image จากฟอร์มที่บันทึก
+                    ...data,
                     queued: true,
                     queueId: queueId
                 };
-                
-                // ✅ ถ้ามีรูปใหม่ใน data → อัปเดต image ใน _popupData ทันที
-                if (data.image && data.image.trim() !== '') {
-                    editingMarker._popupData.image = data.image;
-                    editingMarker._popupData.picture = data.picture || editingMarker._popupData.picture;
-                }
-                
                 setupMarkerPopup(editingMarker, editingMarker._popupData, markerType);
-            }            
-
-
+            }
+            
             // ✅ ปิดแผงและแจ้งเตือน
             closePanel();
             const msg = action === 'update' ? 'อัปเดตข้อมูลเรียบร้อยแล้ว!' : 'บันทึกข้อมูลเรียบร้อยแล้ว!';
             showNotificationLeft(`${msg} (รออัปโหลด)`, 'success');
             
-            // ✅ ✅ ✅ เพิ่มบล็อกนี้: ถ้าหน้าต่างรูปภาพเปิดอยู่ → อัปเดตรูปทันที ✅ ✅ ✅
-            const imagePreviewContainer = document.getElementById('image-preview-container');
-            if (imagePreviewContainer && imagePreviewContainer.style.display === 'flex') {
-                console.log('🖼️ หน้าต่างรูปภาพเปิดอยู่ → อัปเดตรูปภาพใหม่');
-                
-                // ✅ ดึงข้อมูลล่าสุดจาก editingMarker
-                if (editingMarker && editingMarker._popupData) {
-                    const data = editingMarker._popupData;
-                    if (data.image && data.image.trim() !== '') {
-                        // ✅ เรียก showImagePreview อีกครั้งด้วยข้อมูลใหม่
-                        showImagePreview(data.image, data.picture || 'รูปภาพ');
-                    } else {
-                        // ✅ ถ้าไม่มีรูป → แสดงข้อความ
-                        const placeholder = document.getElementById('image-preview-placeholder');
-                        const img = document.getElementById('image-preview');
-                        if (placeholder && img) {
-                            img.classList.add('hidden');
-                            placeholder.textContent = '⚠️ รายการนี้ยังไม่มีรูปภาพ';
-                            placeholder.classList.remove('text-gray-300');
-                            placeholder.classList.add('text-yellow-500', 'font-medium');
-                        }
-                    }
-                }
-            }
-
             // ✅ เริ่มซิงค์ทันทีหากออนไลน์
             if (isOnline && navigator.onLine) {
                 setTimeout(() => {
@@ -5850,11 +5815,7 @@
                     // เปิดรูปภาพ
                     // ✅ ✅ ✅ เปิดรูปภาพ - ใช้โค้ดเดียวกับใน openEditPanel() ✅ ✅ ✅
                     if (rowData.image && rowData.image.trim() !== '') {
-                        // เป็นแบบนี้ (เติม ?t= เป็นเลขเวลาปัจจุบัน)
-                        const imageUrlWithCacheBuster = rowData.image.includes('?') 
-                            ? `${rowData.image}&t=${Date.now()}` 
-                            : `${rowData.image}?t=${Date.now()}`;
-                        showImagePreview(imageUrlWithCacheBuster, rowData.picture || 'รูปภาพ');
+                        showImagePreview(rowData.image, rowData.picture || 'รูปภาพ');
                     } else {
                         // ถ้าไม่มีรูปภาพ → แสดงข้อความในหน้าต่างรูปภาพ
                         const placeholder = document.getElementById('image-preview-placeholder');
@@ -8966,6 +8927,53 @@
                 
                 if (successCount > 0) {
                     console.log(`✅ อัปโหลดรูปภาพสำเร็จทั้งหมด ${successCount}/${unsyncedImages.length} รูป`);
+                    
+                    // ✅ ✅ ✅ เพิ่มบล็อกนี้: รีเฟรชข้อมูลจาก Sheets ก่อนอัปเดต marker ✅ ✅ ✅
+                    console.log('🔄 รีเฟรชข้อมูลจาก Google Sheets...');
+                    
+                    // 1. โหลดข้อมูลใหม่จาก Sheets เพื่ออัปเดต allBuildings/allSigns
+                    await loadExistingData();
+                    
+                    console.log('✅ โหลดข้อมูลใหม่จาก Sheets เสร็จ');
+                    
+                    // 2. อัปเดต editingMarker._popupData จากข้อมูลที่โหลดใหม่
+                    if (editingMarker && editingMarker._popupData) {
+                        const rowKey = editingMarker._popupData._row_num || editingMarker._popupData.id;
+                        const type = editingMarker._popupData.type;
+                        
+                        const latestData = (type === 'building' ? allBuildings : allSigns)
+                            .find(r => String(r._row_num || r.id) === String(rowKey));
+                        
+                        if (latestData && latestData.image) {
+                            console.log('🔄 อัปเดตรูปใน marker จากข้อมูลใหม่:', latestData.picture);
+                            
+                            // อัปเดตสำเนาใน marker
+                            editingMarker._popupData.image = latestData.image;
+                            editingMarker._popupData.picture = latestData.picture || editingMarker._popupData.picture;
+                            
+                            // 3. ถ้าหน้าต่างรูปภาพเปิดอยู่ → รีเฟรชทันที
+                            const imagePreviewContainer = document.getElementById('image-preview-container');
+                            const img = document.getElementById('image-preview');
+                            
+                            if (imagePreviewContainer?.style.display === 'flex' && img) {
+                                console.log('🖼️ รีเฟรชรูปในหน้าต่างที่เปิดอยู่...');
+                                
+                                // ล้างรูปเก่า + บังคับโหลดใหม่ด้วย cache-buster
+                                img.src = '';
+                                img.classList.add('hidden');
+                                
+                                const directUrl = convertDriveUrlToDirect(latestData.image);
+                                const separator = directUrl.includes('?') ? '&' : '?';
+                                img.src = `${directUrl}${separator}t=${Date.now()}`;
+                                
+                                img.onload = () => {
+                                    console.log('✅ โหลดรูปใหม่สำเร็จ:', latestData.picture);
+                                    img.classList.remove('hidden');
+                                    document.getElementById('image-preview-placeholder')?.classList.add('hidden');
+                                };
+                            }
+                        }
+                    }
                 }
             } catch (err) {
                 console.error('❌ ข้อผิดพลาดในการซิงค์รูปภาพ:', err);
@@ -10559,40 +10567,19 @@
             }
             
             container.style.display = 'flex';
-
-            // ✅ ✅ ✅ 1. รีเซ็ตรูปเก่าก่อน ✅ ✅ ✅
-            img.classList.add('hidden');
-            img.src = '';  // ← ล้าง src เก่า
-            
-            // ✅ ✅ ✅ 2. แปลง URL + เพิ่มแคชบัสเตอร์ 2 ชั้น ✅ ✅ ✅
             const directUrl = convertDriveUrlToDirect(imageUrl);
             
-            // ชั้นที่ 1: Google Drive thumbnail parameter
-            const withSz = directUrl.includes('sz=') ? directUrl : `${directUrl}${directUrl.includes('?') ? '&' : '?'}sz=w2000`;
-            
-            // ชั้นที่ 2: Timestamp บังคับโหลดใหม่
-            const cacheBuster = withSz.includes('?') ? '&' : '?';
-            const finalUrl = `${withSz}${cacheBuster}_t=${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            
-            // ✅ ✅ ✅ 3. ตั้งค่ารูปใหม่ ✅ ✅ ✅
-            img.src = finalUrl;
+            img.src = directUrl;
             img.alt = fileName || 'รูปภาพ';
-            
-            // ✅ ✅ ✅ 4. แสดงรูปเมื่อโหลดเสร็จ ✅ ✅ ✅
-            img.onload = () => {
-                console.log('✅ โหลดรูปสำเร็จ:', fileName, finalUrl);
-                img.classList.remove('hidden');
-                placeholder.classList.add('hidden');
-            };
+            img.classList.remove('hidden');
+            placeholder.classList.add('hidden');
             
             img.onerror = () => {
-                console.error('❌ โหลดรูปไม่สำเร็จ:', finalUrl);
                 img.classList.add('hidden');
                 placeholder.textContent = '❌ ไม่สามารถโหลดรูปภาพได้';
                 placeholder.classList.remove('hidden');
                 placeholder.classList.add('text-red-400');
             };
-
             
             // ✅ === เพิ่มปุ่มคัดลอกและแปลงข้อความใน header ===
             const header = container.querySelector('.table-header .flex.items-center.justify-between');
