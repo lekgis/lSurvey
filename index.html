@@ -5793,11 +5793,21 @@
                         openEditPanel(rowData, type, targetMarker, rowData._row_num || rowData.id);
                     }
                     // เปิดรูปภาพ
-                    const img = rowData.picture || rowData.image || '';
-                    if (img && typeof showImagePreview === 'function') {
-                        showImagePreview(img, rowData.building_c || rowData.s_code || 'รูปภาพ');
+                    // ✅ ✅ ✅ เปิดรูปภาพ - ใช้โค้ดเดียวกับใน openEditPanel() ✅ ✅ ✅
+                    if (rowData.image && rowData.image.trim() !== '') {
+                        showImagePreview(rowData.image, rowData.picture || 'รูปภาพ');
+                    } else {
+                        // ถ้าไม่มีรูปภาพ → แสดงข้อความในหน้าต่างรูปภาพ
+                        const placeholder = document.getElementById('image-preview-placeholder');
+                        const img = document.getElementById('image-preview');
+                        if (placeholder && img) {
+                            img.classList.add('hidden');
+                            placeholder.textContent = '⚠️ รายการนี้ยังไม่มีรูปภาพ';
+                            placeholder.classList.remove('text-gray-300');
+                            placeholder.classList.add('text-yellow-500', 'font-medium');
+                        }
                     }
-                }, 1600); // รอให้ซูมเสร็จ (flyTo ใช้ ~1.5 วินาที)
+                }, 1600);
             }
         }
 
