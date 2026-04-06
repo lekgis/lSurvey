@@ -3557,25 +3557,14 @@
             }
             
             // ============================================
-            // ✅ ✅ ✅ จัดการรูปภาพ (แก้ไขข้อ 1) ✅ ✅ ✅
+            // ✅ ✅ ✅ จัดการรูปภาพ (แก้ลำดับถูกต้อง) ✅ ✅ ✅
             // ============================================
             let imageBase64 = null;
             let fileNameParam = null;
             const fileInput = form.querySelector('input[type="file"]');
             
-            // ✅ ตรวจสอบว่ามีการเลือกไฟล์ใหม่หรือไม่
+            // ✅ 1. อ่านไฟล์ใหม่ก่อน (ถ้ามี)
             if (fileInput && fileInput.files[0]) {
-                // เปลี่ยนชื่อไฟล์รูปเดิมก่อนอัปโหลดรูปใหม่
-                if (editingMarker && editingMarker._popupData) {
-                    const oldPicture = editingMarker._popupData.picture;
-                    if (oldPicture && oldPicture.trim() !== '' && oldPicture !== 'image.jpg') {
-                        const folderType = markerType === 'building' ? 'buildings' : 'signs';
-                        renameOldImageInDrive(oldPicture, folderType).catch(err => {
-                            console.warn('เปลี่ยนชื่อไฟล์เก่าล้มเหลว แต่ดำเนินการต่อ:', err);
-                        });
-                    }
-                }
-                
                 const file = fileInput.files[0];
                 const maxSize = markerType === 'building' ? 1500 : 2000;
                 
@@ -3617,7 +3606,38 @@
                 }
             }
             
-            // ✅ ตรวจสอบค่า picture ที่ไม่ถูกต้อง
+            // ✅ 2. ✅ ✅ ✅ ลบรูปเก่าก่อน (หลังอ่านไฟล์ใหม่แล้ว) ✅ ✅ ✅
+            if (editingMarker && editingMarker._popupData) {
+                const oldImageUrl = editingMarker._popupData.image || '';
+                const oldFileName = editingMarker._popupData.picture || '';
+                
+                // ✅ เงื่อนไขถูกต้อง: มีรูปเก่า + มีรูปใหม่ + ออนไลน์
+                if (oldImageUrl && oldImageUrl.trim() !== '' && imageBase64 && isOnline) {
+                    console.log('🗑️ ลบรูปเก่าก่อนอัปโหลดรูปใหม่:', oldFileName);
+                    
+                    try {
+                        if (oldImageUrl.includes('drive.google.com')) {
+                            const fileId = extractGoogleDriveFileId(oldImageUrl);
+                            if (fileId) {
+                                const body = new URLSearchParams();
+                                body.append('action', 'deleteFile');
+                                body.append('fileId', fileId);
+                                body.append('type', markerType);
+                                
+                                // ส่งคำขอลบ (ไม่ต้องรอผล - ทำงานแบบไม่บล็อก)
+                                fetch(CONFIG.SCRIPT_URL.trim(), {
+                                    method: 'POST',
+                                    body: body
+                                }).catch(err => console.error('❌ ลบรูปเก่าไม่สำเร็จ:', err));
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ ไม่สามารถลบรูปเก่าได้ (แต่ยังบันทึกรูปใหม่ได้):', e);
+                    }
+                }
+            }
+            
+            // ✅ 3. ตรวจสอบค่า picture ที่ไม่ถูกต้อง (โค้ดเดิมของคุณ)
             if (data.picture === 'image.jpg' || data.picture === '') {
                 delete data.picture;
             }
