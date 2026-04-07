@@ -1137,6 +1137,51 @@
         #btn-add-area-crosshair:hover {
             background-color: rgba(22, 163, 74, 0.95) !important;  /* ✅ เขียวเข้มขึ้นเมื่อโฮเวอร์ */
         }
+
+        /* ✅ Cursor สำหรับซูมภาพ */
+        .cursor-zoom-out { cursor: zoom-out; }
+        .cursor-grab { cursor: grab; }
+        .cursor-grabbing { cursor: grabbing; }
+        
+        /* ✅ สไตล์สำหรับแถบเลื่อนซูม */
+        #zoom-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.2);
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        #zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        #zoom-slider::-webkit-slider-thumb:hover {
+            background: #60a5fa;
+        }
+        
+        #zoom-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+        }
+        
+        #zoom-slider::-moz-range-thumb:hover {
+            background: #60a5fa;
+        }
+
     </style>
 </head>
 <!-- Custom Modal Dialogs -->
@@ -1523,19 +1568,39 @@
       </button>
     </div>
 
-    <!-- ปุ่มปิดสำหรับกรณีที่ต้องการซ่อน (ซ่อนโดย default) -->
-    <button id="pwa-install-close" class="fixed bottom-20 right-4 z-[9998] bg-gray-200 text-gray-600 p-2 rounded-full shadow hidden" title="ปิดคำแนะนำการติดตั้ง">
-      <i data-lucide="x" class="w-4 h-4"></i>
-    </button>
-
-    <!-- ✅ ✅ ✅ โมดอลแสดงภาพเต็มจอ ✅ ✅ ✅ -->
+    <!-- ✅ ✅ ✅ โมดอลแสดงภาพเต็มจอ (ต้องมี ID ครบ) ✅ ✅ ✅ -->
     <div id="fullscreen-image-modal" class="fixed inset-0 z-[9999] bg-black/95 hidden flex items-center justify-center" onclick="closeFullscreenImage(event)">
         <!-- ปุ่มปิด -->
         <button onclick="closeFullscreenImage(event)" class="absolute top-4 right-4 text-white hover:text-gray-300 transition z-[10000] p-2">
             <i data-lucide="x" class="w-8 h-8"></i>
         </button>
-        <!-- ภาพเต็มจอ -->
-        <img id="fullscreen-image" src="" alt="" class="max-w-[95vw] max-h-[95vh] object-contain cursor-zoom-out">
+        
+        <!-- คอนเทนเนอร์ภาพ (สำหรับซูม) -->
+        <div id="fullscreen-image-container" class="relative max-w-[95vw] max-h-[95vh] flex items-center justify-center overflow-hidden">
+            <img id="fullscreen-image" src="" alt="" class="max-w-full max-h-full object-contain cursor-zoom-out transition-transform duration-200" style="transform-origin: center center;">
+        </div>
+        
+        <!-- แถบควบคุมซูม -->
+        <div class="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/60 px-4 py-2 rounded-full backdrop-blur-sm">
+            <button onclick="zoomImage(-0.2)" class="text-white hover:text-blue-400 transition p-2" title="ซูมออก">
+                <i data-lucide="minus" class="w-5 h-5"></i>
+            </button>
+            
+            <input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1" 
+                   class="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                   oninput="setZoom(this.value)">
+            
+            <button onclick="zoomImage(0.2)" class="text-white hover:text-blue-400 transition p-2" title="ซูมเข้า">
+                <i data-lucide="plus" class="w-5 h-5"></i>
+            </button>
+            
+            <button onclick="resetZoom()" class="text-white hover:text-blue-400 transition p-2 ml-2" title="รีเซ็ตซูม">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+            
+            <span id="zoom-level" class="text-white text-xs font-mono w-12 text-center">100%</span>
+        </div>
+        
         <!-- ชื่อไฟล์ -->
         <div id="fullscreen-filename" class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-4 py-2 rounded-full"></div>
     </div>
@@ -12331,18 +12396,84 @@
         }
 
         // ============================================
-        // ✅ ✅ ✅ ฟังก์ชันแสดงภาพเต็มจอ ✅ ✅ ✅
+        // ✅ ✅ ✅ ติดเหตุการณ์ซูม/ลาก (เรียกเมื่อเปิดรูป) ✅ ✅ ✅
+        // ============================================
+        function attachFullscreenEvents() {
+            const img = document.getElementById('fullscreen-image');
+            const container = document.getElementById('fullscreen-image-container');
+            
+            if (!img || !container) return;
+            
+            // ✅ ล้าง listener เก่าก่อน (ป้องกันสะสม)
+            img.onmousedown = null;
+            img.onwheel = null;
+            container.onwheel = null;
+            document.onmousemove = null;
+            document.onmouseup = null;
+            
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            
+            // ✅ Mouse drag
+            img.onmousedown = (e) => {
+                if (currentZoom <= 1) return;
+                isDragging = true;
+                startX = e.clientX - translateX;
+                startY = e.clientY - translateY;
+                img.style.cursor = 'grabbing';
+                e.preventDefault();
+            };
+            
+            document.onmousemove = (e) => {
+                if (!isDragging || currentZoom <= 1) return;
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                applyZoom();
+            };
+            
+            document.onmouseup = () => {
+                isDragging = false;
+                if (img) img.style.cursor = currentZoom > 1 ? 'grab' : 'zoom-out';
+            };
+            
+            // ✅ Mouse wheel zoom (ติดที่ container)
+            container.onwheel = (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                zoomImage(delta);
+            };
+            
+            console.log('✅ ติดเหตุการณ์ซูม/ลากแล้ว');
+        }
+
+        // ============================================
+        // ✅ ✅ ✅ ฟังก์ชันแสดงภาพเต็มจอ (แก้แล้ว) ✅ ✅ ✅
         // ============================================
         function openFullscreenImage(url, filename) {
             const modal = document.getElementById('fullscreen-image-modal');
             const img = document.getElementById('fullscreen-image');
             const nameEl = document.getElementById('fullscreen-filename');
+            const slider = document.getElementById('zoom-slider');
+            const zoomLevel = document.getElementById('zoom-level');
             
             if (modal && img) {
+                // ✅ รีเซ็ตค่าซูม
+                currentZoom = 1;
+                translateX = 0;
+                translateY = 0;
+                img.style.transform = 'scale(1) translate(0px, 0px)';
+                if (slider) slider.value = 1;
+                if (zoomLevel) zoomLevel.textContent = '100%';
+                
                 img.src = url;
                 nameEl.textContent = filename || '';
                 modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';  // ปิดสก롤หน้าเว็บ
+                document.body.style.overflow = 'hidden';
+                
+                // ✅ ✅ ✅ ติดเหตุการณ์ซูม/ลาก "ตอนนี้" (เมื่อรูปเปิดแล้ว) ✅ ✅ ✅
+                attachFullscreenEvents();
+                
                 console.log('🖼️ เปิดภาพเต็มจอ:', filename);
             }
         }
@@ -12361,6 +12492,134 @@
             if (event) event.stopPropagation();
         }
         
+        // ============================================
+        // ✅ ✅ ✅ ฟังก์ชันซูมภาพ ✅ ✅ ✅
+        // ============================================
+        function zoomImage(delta) {
+            const img = document.getElementById('fullscreen-image');
+            const slider = document.getElementById('zoom-slider');
+            const zoomLevel = document.getElementById('zoom-level');
+            
+            if (!img) return;
+            
+            currentZoom = Math.max(0.5, Math.min(3, currentZoom + delta));
+            applyZoom();
+            if (slider) slider.value = currentZoom;
+            if (zoomLevel) zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+        
+        function setZoom(value) {
+            const img = document.getElementById('fullscreen-image');
+            const zoomLevel = document.getElementById('zoom-level');
+            
+            if (!img) return;
+            
+            currentZoom = parseFloat(value);
+            applyZoom();
+            if (zoomLevel) zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+        
+        function resetZoom() {
+            const img = document.getElementById('fullscreen-image');
+            const slider = document.getElementById('zoom-slider');
+            const zoomLevel = document.getElementById('zoom-level');
+            
+            if (!img) return;
+            
+            currentZoom = 1;
+            translateX = 0;
+            translateY = 0;
+            img.style.transform = 'scale(1) translate(0px, 0px)';
+            if (slider) slider.value = 1;
+            if (zoomLevel) zoomLevel.textContent = '100%';
+        }
+        
+        function applyZoom() {
+            const img = document.getElementById('fullscreen-image');
+            if (img) {
+                img.style.transform = `scale(${currentZoom}) translate(${translateX}px, ${translateY}px)`;
+                
+                if (currentZoom > 1) {
+                    img.classList.remove('cursor-zoom-out');
+                    img.classList.add('cursor-grab');
+                } else {
+                    img.classList.remove('cursor-grab');
+                    img.classList.add('cursor-zoom-out');
+                }
+            }
+        }
+        
+        // ============================================
+        // ✅ ✅ ✅ ลากภาพเมื่อซูมเข้า ✅ ✅ ✅
+        // ============================================
+        function initImageDrag() {
+            const img = document.getElementById('fullscreen-image');
+            const container = document.getElementById('fullscreen-image-container');
+            
+            if (!img || !container) return;
+            
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            
+            // Mouse events
+            img.addEventListener('mousedown', (e) => {
+                if (currentZoom <= 1) return;
+                isDragging = true;
+                startX = e.clientX - translateX;
+                startY = e.clientY - translateY;
+                img.classList.remove('cursor-grab');
+                img.classList.add('cursor-grabbing');
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging || currentZoom <= 1) return;
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                applyZoom();
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                if (img) {
+                    img.classList.remove('cursor-grabbing');
+                    img.classList.add('cursor-grab');
+                }
+            });
+            
+            // Mouse wheel zoom
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                zoomImage(delta);
+            }, { passive: false });
+            
+            console.log('✅ initImageDrag() ทำงานแล้ว');
+        }
+
+        // ============================================
+        // ✅ ✅ ✅ ผูกคลิกภาพพรีวิว → เปิดเต็มจอ ✅ ✅ ✅
+        // ============================================
+        function initImagePreviewClick() {
+            const previewImg = document.getElementById('image-preview');
+            if (previewImg) {
+                previewImg.style.cursor = 'zoom-in';
+                
+                previewImg.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const url = this.src;
+                    const filename = this.alt || 'รูปภาพ';
+                    
+                    if (url && url.trim() !== '') {
+                        openFullscreenImage(url, filename);
+                    }
+                });
+                
+                console.log('✅ initImagePreviewClick() ทำงานแล้ว');
+            }
+        }
+
         // ✅ ผูกเหตุการณ์คลิกที่ภาพพรีวิว → เปิดเต็มจอ
         document.addEventListener('DOMContentLoaded', function() {
             const previewImg = document.getElementById('image-preview');
@@ -12379,6 +12638,8 @@
                 });
             }
         });
+
+
 
     </script>
 </body>
