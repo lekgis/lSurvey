@@ -1527,6 +1527,19 @@
     <button id="pwa-install-close" class="fixed bottom-20 right-4 z-[9998] bg-gray-200 text-gray-600 p-2 rounded-full shadow hidden" title="ปิดคำแนะนำการติดตั้ง">
       <i data-lucide="x" class="w-4 h-4"></i>
     </button>
+
+    <!-- ✅ ✅ ✅ โมดอลแสดงภาพเต็มจอ ✅ ✅ ✅ -->
+    <div id="fullscreen-image-modal" class="fixed inset-0 z-[9999] bg-black/95 hidden flex items-center justify-center" onclick="closeFullscreenImage(event)">
+        <!-- ปุ่มปิด -->
+        <button onclick="closeFullscreenImage(event)" class="absolute top-4 right-4 text-white hover:text-gray-300 transition z-[10000] p-2">
+            <i data-lucide="x" class="w-8 h-8"></i>
+        </button>
+        <!-- ภาพเต็มจอ -->
+        <img id="fullscreen-image" src="" alt="" class="max-w-[95vw] max-h-[95vh] object-contain cursor-zoom-out">
+        <!-- ชื่อไฟล์ -->
+        <div id="fullscreen-filename" class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-4 py-2 rounded-full"></div>
+    </div>
+
     <script>
         const CONFIG = {
             SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyFWpmT-X62o3H_leBlJ35qLJv3I57We_DzlvcmQLwm-NcIwLM3k-GFq_namGrG8zylMw/exec'
@@ -10574,6 +10587,19 @@
             img.classList.remove('hidden');
             placeholder.classList.add('hidden');
             
+            img.onload = () => {
+                console.log('✅ โหลดรูปสำเร็จ:', fileName);
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                
+                // ✅ ✅ ✅ ติดคลิกที่ภาพเพื่อเปิดเต็มจอ (ทำทุกครั้งเมื่อโหลดรูปสำเร็จ) ✅ ✅ ✅
+                img.style.cursor = 'zoom-in';
+                img.onclick = (e) => {
+                    e.stopPropagation();  // ป้องกันปิดหน้าต่างพรีวิว
+                    openFullscreenImage(img.src, img.alt || fileName);
+                };
+            };
+
             img.onerror = () => {
                 img.classList.add('hidden');
                 placeholder.textContent = '❌ ไม่สามารถโหลดรูปภาพได้';
@@ -12303,6 +12329,56 @@
             console.log(`🔍 ลดจุดซ้อนทับ (ซูม 1-17): ${items.length} → ${result.length} จุด`);
             return result;
         }
+
+        // ============================================
+        // ✅ ✅ ✅ ฟังก์ชันแสดงภาพเต็มจอ ✅ ✅ ✅
+        // ============================================
+        function openFullscreenImage(url, filename) {
+            const modal = document.getElementById('fullscreen-image-modal');
+            const img = document.getElementById('fullscreen-image');
+            const nameEl = document.getElementById('fullscreen-filename');
+            
+            if (modal && img) {
+                img.src = url;
+                nameEl.textContent = filename || '';
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';  // ปิดสก롤หน้าเว็บ
+                console.log('🖼️ เปิดภาพเต็มจอ:', filename);
+            }
+        }
+        
+        function closeFullscreenImage(event) {
+            if (event && event.target.id !== 'fullscreen-image') {
+                const modal = document.getElementById('fullscreen-image-modal');
+                const img = document.getElementById('fullscreen-image');
+                if (modal && img) {
+                    modal.classList.add('hidden');
+                    img.src = '';
+                    document.body.style.overflow = '';
+                    console.log('🖼️ ปิดภาพเต็มจอ');
+                }
+            }
+            if (event) event.stopPropagation();
+        }
+        
+        // ✅ ผูกเหตุการณ์คลิกที่ภาพพรีวิว → เปิดเต็มจอ
+        document.addEventListener('DOMContentLoaded', function() {
+            const previewImg = document.getElementById('image-preview');
+            if (previewImg) {
+                previewImg.style.cursor = 'zoom-in';  // ✅ แสดงไอคอนขยาย
+                
+                previewImg.addEventListener('click', function(e) {
+                    e.stopPropagation();  // ✅ ป้องกันปิดหน้าต่างพรีวิว
+                    
+                    const url = this.src;
+                    const filename = this.alt || 'รูปภาพ';
+                    
+                    if (url && url.trim() !== '') {
+                        openFullscreenImage(url, filename);
+                    }
+                });
+            }
+        });
 
     </script>
 </body>
