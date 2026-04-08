@@ -1186,16 +1186,20 @@
             background: #60a5fa;
         }
 
-        /* ✅ ✅ ✅ Animation สำหรับช่องค้นหา ✅ ✅ ✅ */
-        @keyframes slideInRight {
+        /* ✅ เพิ่มอันใหม่แทน: */
+        @keyframes slideInUp {
             from { 
                 opacity: 0; 
-                transform: translateX(-10px) scale(0.95); 
+                transform: translateY(10px) scale(0.95);  /* ✅ เริ่มจากล่าง 10px */
             }
             to { 
                 opacity: 1; 
-                transform: translateX(0) scale(1); 
+                transform: translateY(0) scale(1);         /* ✅ มาอยู่ที่เดิม */
             }
+        }
+        
+        .animate-slide-in-up {  /* ✅ ชื่อคลาสใหม่ */
+            animation: slideInUp 0.15s ease-out;
         }
         
         .animate-slide-in-right {
@@ -1335,13 +1339,15 @@
             <i data-lucide="refresh-cw" id="refresh-icon" class="w-6 h-6"></i>
           </button>
           
-        <!-- ✅ ✅ ✅ เพิ่มปุ่มค้นหา AI (วางหลังปุ่มรีโหลด) ✅ ✅ ✅ -->
+        <!-- ✅ ✅ ✅ ปุ่มค้นหา AI (แว่นขยาย + ประกาย) ✅ ✅ ✅ -->
         <button id="btn-ai-search" onclick="openAISearch()" 
                 class="map-btn p-3 text-purple-600 hover:text-purple-700 transition-all relative group"
-                title="ค้นหาข้อมูลอัจฉริยะ (AI Search)">
-            <i data-lucide="sparkles" class="w-6 h-6"></i>
+                title="ค้นหาข้อมูลอัจฉริยะ">
+            <div class="relative">
+                <i data-lucide="search" class="w-6 h-6"></i>
+            </div>
             <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-                ค้นหา AI
+                ค้นหา
             </span>
         </button>
 
@@ -1510,9 +1516,9 @@
                 </div>
                 <!-- ✅ ✅ ✅ ช่องค้นหารหัส (ต้องมี ID ครบ) ✅ ✅ ✅ -->
                 <div id="code-search-container" 
-                     class="hidden absolute top-0 left-[140px] z-[2000] items-center gap-1.5 
-                            bg-white/95 backdrop-blur-sm border border-gray-300 rounded-lg shadow-lg 
-                            px-3 py-2 animate-slide-in-right">
+                     class="absolute z-[2000] items-center gap-1.5 
+                            bg-white/95 backdrop-blur-sm border border-gray-300 rounded-lg shadow-lg  
+                            px-3 py-2 animate-slide-in-up">
                     
                     <input type="text" id="code-search-input" 
                            class="w-36 px-2.5 py-1 text-xs text-gray-900 border border-gray-300 rounded 
