@@ -1083,8 +1083,12 @@
             border-bottom: 1px solid #e5e7eb;
             vertical-align: middle;
         }
+
+
+        /* ✅ โฮเวอร์: เหลืองอ่อน (เด่นชัด + ไม่กลบเนื้อหา) */
         .data-table tr:hover {
-            background: #f9fafb;
+            background-color: #dcfce7 !important;  /* ✅ yellow-100 */
+            cursor: pointer;
         }
         .data-table tr:nth-child(even) {
             background: #f9fafb;
@@ -1180,6 +1184,50 @@
         
         #zoom-slider::-moz-range-thumb:hover {
             background: #60a5fa;
+        }
+
+        /* ✅ ✅ ✅ Animation สำหรับช่องค้นหา ✅ ✅ ✅ */
+        @keyframes slideInRight {
+            from { 
+                opacity: 0; 
+                transform: translateX(-10px) scale(0.95); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(0) scale(1); 
+            }
+        }
+        
+        .animate-slide-in-right {
+            animation: slideInRight 0.15s ease-out;
+        }
+        
+        /* ✅ สไตล์สำหรับช่องค้นหาในโหมดมืด */
+        .dark #code-search-container {
+            background-color: rgba(31, 41, 55, 0.95);
+            border-color: #4b5563;
+        }
+        
+        .dark #code-search-input {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #f3f4f6;
+        }
+        
+        .dark #code-search-input::placeholder {
+            color: #9ca3af;
+        }
+        
+        /* ✅ ไฮไลท์แถวที่ค้นหาพบ */
+        .code-search-found-row {
+            background-color: #fef08a !important;
+            animation: highlightPulse 1s ease;
+            transition: background-color 0.2s;
+        }
+        
+        @keyframes highlightPulse {
+            0%, 100% { background-color: #fef08a; }
+            50% { background-color: #fde047; }
         }
 
     </style>
@@ -1423,7 +1471,7 @@
 
     <!-- หน้าต่างตารางข้อมูล -->
     <div id="data-table-panel" class="data-table-panel">
-        <div class="table-header">
+        <div class="table-header relative bg-gradient-to-r from-blue-600 via-purple-700 to-red-500 px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <div class="table-tabs">
                     <div class="table-tab active" onclick="switchTableTab('building')">
@@ -1450,6 +1498,30 @@
                         <span>นำเข้า</span>
                     </button>
                 </div>
+                <!-- ✅ ✅ ✅ ช่องค้นหารหัส (ต้องมี ID ครบ) ✅ ✅ ✅ -->
+                <div id="code-search-container" 
+                     class="hidden absolute top-0 left-[140px] z-[2000] items-center gap-1.5 
+                            bg-white/95 backdrop-blur-sm border border-gray-300 rounded-lg shadow-lg 
+                            px-3 py-2 animate-slide-in-right">
+                    
+                    <input type="text" id="code-search-input" 
+                           class="w-36 px-2.5 py-1 text-xs text-gray-900 border border-gray-300 rounded 
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="ค้นหารหัส... (เช่น 01A)"
+                           onkeydown="if(event.key==='Enter') searchCodeByPin()">
+                    
+                    <button onclick="searchCodeByPin()" 
+                            class="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                        <i data-lucide="search" class="w-3 h-3"></i>
+                    </button>
+                    
+                    <button onclick="closeCodeSearch()" 
+                            class="p-1 text-gray-400 hover:text-red-500 transition">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                    
+                    <span id="code-search-result" class="text-xs text-green-600 font-medium hidden"></span>
+                </div>
             </div>
             <button onclick="toggleTable()" class="p-1.5 hover:bg-white/20 rounded-full">
                 <i data-lucide="x" class="w-4 h-4"></i>
@@ -1460,7 +1532,12 @@
                 <table class="data-table" id="building-table">
                     <thead>
                         <tr>
-                            <th style="width: 30px"><i data-lucide="map-pin" class="w-4 h-4"></i></th>
+                            <!-- ✅ ✅ ✅ แก้ <th> นี้ให้คลิกได้ ✅ ✅ ✅ -->
+                            <th style="width: 30px; cursor: pointer;" 
+                                onclick="toggleCodeSearch(event)" 
+                                title="ค้นหารหัสสิ่งปลูกสร้าง/ป้าย">
+                                <i data-lucide="map-pin" class="w-4 h-4 hover:text-blue-600 transition"></i>
+                            </th>
                             <th class="sortable-header" data-sort="building_c">รหัส</th>
                             <th class="sortable-header" data-sort="full_name">เจ้าของ</th>
                             <th class="text-center sortable-header" data-sort="hs_no">เลขที่</th>
@@ -1493,7 +1570,12 @@
                 <table class="data-table" id="sign-table">
                     <thead>
                         <tr>
-                            <th style="width: 30px"><i data-lucide="map-pin" class="w-4 h-4"></i></th>
+                            <!-- ✅ ✅ ✅ แก้ <th> นี้ให้คลิกได้ ✅ ✅ ✅ -->
+                            <th style="width: 30px; cursor: pointer;" 
+                                onclick="toggleCodeSearch(event)" 
+                                title="ค้นหารหัสสิ่งปลูกสร้าง/ป้าย">
+                                <i data-lucide="map-pin" class="w-4 h-4 hover:text-blue-600 transition"></i>
+                            </th>
                             <th class="sortable-header" data-sort="s_code">รหัส</th>
                             <th class="sortable-header" data-sort="full_name">เจ้าของ</th>
                             <th class="sortable-header" data-sort="s_characte">ลักษณะ</th>
@@ -1659,6 +1741,7 @@
         let isUploadingImage = false; // [cite: 71]
 
         let canvasRenderer; // ✅ ประกาศตัวแปรระดับโกลบอล
+        let codeSearchOpen = false;
 
         // ✅ ตัวแปรเก็บเลเยอร์ดรนและ tile mapping
         let droneLayer = null;
@@ -5917,6 +6000,9 @@
                 return;
             }
             
+            // เพิ่มบรรทัดนี้ตอนต้นฟังก์ชัน:
+            clearCodeSearchHighlight();  // ✅ ล้างไฮไลท์เก่าก่อนเรนเดอร์ใหม่
+
             // ✅ ตรวจสอบรหัสซ้ำก่อนเรนเดอร์
             findDuplicateCodes();
             
@@ -5955,7 +6041,9 @@
                 const displayValue = (val) => val && val.toString().trim() !== '' ? val : '-';
                 
                 return `
-                <tr class="${duplicateClass}">
+                <tr data-row-key="${building._row_num || building.id}" 
+                            data-code="${building.building_c || ''}"
+                            class="${duplicateClass}">
                     <td><span class="marker-icon marker-building"></span></td>
                     <td class="font-medium">${displayValue(building.building_c)}${duplicateBadge}</td>
                     <td>${displayValue(building.full_name)}</td>
@@ -5994,6 +6082,9 @@
                 return;
             }
             
+            // เพิ่มบรรทัดนี้ตอนต้นฟังก์ชัน:
+            clearCodeSearchHighlight();  // ✅ ล้างไฮไลท์เก่าก่อนเรนเดอร์ใหม่
+
             // ✅ ตรวจสอบรหัสซ้ำก่อนเรนเดอร์
             findDuplicateCodes();
             
@@ -6032,7 +6123,9 @@
                 const statusText = sign.check || 'ยังไม่สำรวจ';
                 
                 return `
-                <tr class="${duplicateClass}">
+                <tr data-row-key="${sign._row_num || sign.id}" 
+                            data-code="${sign.s_code || ''}"
+                            class="${duplicateClass}">
                     <td><span class="marker-icon marker-sign"></span></td>
                     <td class="font-medium">${sign.s_code || '-'}${duplicateBadge}</td>
                     <td>${ownerDisplay || '-'}</td>
@@ -12639,7 +12732,251 @@
             }
         });
 
+        
+        function closeCodeSearch() {
+            const container = document.getElementById('code-search-container');
+            const result = document.getElementById('code-search-result');
+            
+            container.classList.add('hidden');
+            container.classList.remove('flex');
+            if (result) {
+                result.textContent = '';
+                result.classList.add('hidden');
+            }
+            codeSearchOpen = false;
+            console.log('🔍 ปิดช่องค้นหารหัส');
+        }
+        
+        // ============================================
+        // ✅ ✅ ✅ ฟังก์ชันค้นหาโค้ด (แก้แล้ว - ใช้ตารางที่แสดงเป็นเกณฑ์) ✅ ✅ ✅
+        // ============================================
+        function searchCodeByPin() {
+            const input = document.getElementById('code-search-input');
+            const result = document.getElementById('code-search-result');
+            const searchTerm = input.value.trim();
+            
+            if (!searchTerm) { input.focus(); return; }
+            
+            console.log('🔍 ค้นหารหัสด้วยเงื่อนไข:', `${searchTerm}%`);
+            
+            // ✅ ✅ ✅ แก้ตรงนี้: ใช้ตารางที่ "ไม่ถูกซ่อน" เป็นเกณฑ์ (เสถียรกว่าเช็คแท็บ) ✅ ✅ ✅
+            const buildingContainer = document.getElementById('building-table-container');
+            const signContainer = document.getElementById('sign-table-container');
+            
+            // ✅ ถ้า container ป้ายถูกซ่อน → แสดงตารางสิ่งปลูกสร้างอยู่
+            const isBuilding = !signContainer || signContainer.classList.contains('hidden');
+            
+            // ✅ ดึงข้อมูลจากอาร์เรย์หลัก
+            const dataList = isBuilding ? allBuildings : allSigns;
+            const codeField = isBuilding ? 'building_c' : 's_code';  // ✅ ใช้ s_code เมื่อเป็นป้าย
+            
+            console.log(`📋 ค้นหาใน: ${isBuilding ? 'สิ่งปลูกสร้าง' : 'ป้าย'} → คอลัมน์: ${codeField}`);
+            
+            // ✅ ค้นหาด้วยเงื่อนไข LIKE 'ค่า%' (เริ่มด้วย)
+            const found = dataList.find(item => {
+                const code = item[codeField] || '';
+                return code.startsWith(searchTerm);  // ✅ LIKE 'searchTerm%'
+            });
+            
+            if (found) {
+                console.log('✅ พบ:', found[codeField]);
+                
+                // ✅ ใช้ setTimeout รอตารางเรนเดอร์เสร็จ
+                setTimeout(() => {
+                    highlightTableRow(found[codeField], isBuilding);
+                    scrollToTableRow(found[codeField], isBuilding);
+                    
+                    if (result) {
+                        result.textContent = `✅ พบ: ${found[codeField]}`;
+                        result.classList.remove('hidden', 'text-gray-500');
+                        result.classList.add('text-green-600');
+                    }
+                }, 100);
+                
+            } else {
+                console.log('❌ ไม่พบรหัสที่ขึ้นต้นด้วย:', searchTerm);
+                if (result) {
+                    result.textContent = `❌ ไม่พบ: ${searchTerm}%`;
+                    result.classList.remove('hidden', 'text-green-600');
+                    result.classList.add('text-red-500');
+                }
+                input.classList.add('animate-pulse');
+                setTimeout(() => input.classList.remove('animate-pulse'), 500);
+            }
+        }
+        
+        // ============================================
+        // ✅ ✅ ✅ ไฮไลท์แถวที่ค้นหาพบ (แก้แล้ว) ✅ ✅ ✅
+        // ============================================
+        function highlightTableRow(code, isBuilding) {
+            // ✅ ลบไฮไลท์เก่าทั้งหมด
+            document.querySelectorAll('.code-search-found-row').forEach(el => {
+                el.classList.remove('code-search-found-row');
+            });
+            
+            // ✅ หาตารางที่กำลังแสดง
+            const tableBodyId = isBuilding ? 'building-table-body' : 'sign-table-body';
+            const tableBody = document.getElementById(tableBodyId);
+            if (!tableBody) return;
+            
+            const rows = tableBody.querySelectorAll('tr[data-row-key]');
+            let foundRow = null;
+            
+            for (const row of rows) {
+                // ✅ วิธีที่ 1: เช็คจาก data-code (ถ้ามี)
+                if (row.dataset.code === code) {
+                    foundRow = row;
+                    break;
+                }
+                // ✅ วิธีที่ 2: เช็คจากคอลัมน์รหัส (ช่องที่ 2 = รหัส)
+                const codeCell = row.querySelector('td:nth-child(2)');
+                if (codeCell && codeCell.textContent.trim() === code) {
+                    foundRow = row;
+                    break;
+                }
+            }
+            
+            if (foundRow) {
+                foundRow.classList.add('code-search-found-row');
+                console.log('🎯 ไฮไลท์แถว:', code);
+            } else {
+                console.warn('⚠️ ไม่พบแถวสำหรับรหัส:', code);
+            }
+        }
+        
+        // ============================================
+        // ✅ ✅ ✅ เลื่อนตารางไปหาแถวที่ค้นหาพบ (แก้แล้ว) ✅ ✅ ✅
+        // ============================================
+        function scrollToTableRow(code, isBuilding) {
+            const tableContent = document.querySelector('.table-content');
+            const tableBodyId = isBuilding ? 'building-table-body' : 'sign-table-body';
+            const tableBody = document.getElementById(tableBodyId);
+            
+            if (!tableContent || !tableBody) return;
+            
+            const rows = tableBody.querySelectorAll('tr[data-row-key]');
+            
+            for (const row of rows) {
+                if (row.dataset.code === code) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    console.log('📜 เลื่อนไปหาแถว:', code);
+                    return;
+                }
+                const codeCell = row.querySelector('td:nth-child(2)');
+                if (codeCell && codeCell.textContent.trim() === code) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    console.log('📜 เลื่อนไปหาแถว:', code);
+                    return;
+                }
+            }
+            
+            console.warn('⚠️ ไม่พบแถวสำหรับเลื่อน:', code);
+        }
+        
+        // ✅ ปิดช่องค้นหาเมื่อคลิกนอกพื้นที่
+        document.addEventListener('click', function(e) {
+            if (codeSearchOpen) {
+                const container = document.getElementById('code-search-container');
+                const pinBtn = e.target.closest('[onclick*="toggleCodeSearch"]');
+                
+                if (container && !container.contains(e.target) && !pinBtn) {
+                    // ✅ ไม่คลิกที่ช่องค้นหาหรือปุ่มหมุด → ปิด
+                    // (เลือกได้: จะปิดอัตโนมัติหรือให้กดปุ่มปิดเอง)
+                }
+            }
+        });
+        
+        // ✅ ล้างไฮไลท์เมื่อเปลี่ยนแท็บหรือรีเฟรชตาราง
+        function clearCodeSearchHighlight() {
+            document.querySelectorAll('.code-search-found-row').forEach(el => {
+                el.classList.remove('code-search-found-row');
+            });
+            const result = document.getElementById('code-search-result');
+            if (result) {
+                result.textContent = '';
+                result.classList.add('hidden');
+            }
+        }
 
+        // ============================================
+        // ✅ ✅ ✅ ฟังก์ชันจัดตำแหน่งช่องค้นหา (แก้แล้ว) ✅ ✅ ✅
+        // ============================================
+        function positionCodeSearch() {
+            const pinBtn = document.querySelector('th[onclick*="toggleCodeSearch"]');
+            const searchContainer = document.getElementById('code-search-container');
+            const tableHeader = document.querySelector('.table-header');
+            
+            if (!pinBtn || !searchContainer) {
+                console.error('❌ ไม่พบปุ่มหมุดหรือช่องค้นหา');
+                return;
+            }
+            
+            if (tableHeader) {
+                // ✅ วิธีที่ 1: ใช้ตำแหน่งสัมพัทธ์กับ .table-header
+                const pinRect = pinBtn.getBoundingClientRect();
+                const headerRect = tableHeader.getBoundingClientRect();
+                
+                const leftPos = pinRect.right - headerRect.left + 8;
+                searchContainer.style.left = `${leftPos}px`;
+                searchContainer.style.top = '50%';
+                searchContainer.style.transform = 'translateY(-50%)';
+                
+                console.log('✅ จัดตำแหน่งช่องค้นหา:', leftPos, 'px');
+            } else {
+                // ✅ วิธีที่ 2: Fallback ใช้ตำแหน่งคงที่
+                searchContainer.style.left = '140px';
+                searchContainer.style.top = '0';
+                searchContainer.style.transform = 'none';
+                
+                console.log('⚠️ ใช้ตำแหน่ง fallback: left 140px');
+            }
+        }
+        
+        // ============================================
+        // ✅ ✅ ✅ ฟังก์ชันค้นหาโค้ดด้วยปุ่มหมุด ✅ ✅ ✅
+        // ============================================
+        function toggleCodeSearch(event) {
+            if (event) event.stopPropagation();
+            
+            const container = document.getElementById('code-search-container');
+            const input = document.getElementById('code-search-input');
+            
+            if (!container || !input) {
+                console.error('❌ ไม่พบ channel search container หรือ input');
+                return;
+            }
+            
+            if (codeSearchOpen) {
+                closeCodeSearch();
+            } else {
+                setTimeout(() => {
+                    container.classList.remove('hidden');
+                    container.classList.add('flex');
+                    positionCodeSearch();
+                    input.value = '';
+                    input.focus();
+                    codeSearchOpen = true;
+                    console.log('🔍 เปิดช่องค้นหารหัส');
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }, 50);
+            }
+        }
+        
+        function closeCodeSearch() {
+            const container = document.getElementById('code-search-container');
+            const result = document.getElementById('code-search-result');
+            const input = document.getElementById('code-search-input');
+            
+            container.classList.add('hidden');
+            container.classList.remove('flex');
+            if (input) input.value = '';
+            if (result) {
+                result.textContent = '';
+                result.classList.add('hidden');
+            }
+            codeSearchOpen = false;
+            console.log('🔍 ปิดช่องค้นหารหัส');
+        }
 
     </script>
 </body>
