@@ -1516,19 +1516,17 @@
                 </div>
                 <!-- ✅ ✅ ✅ ช่องค้นหารหัส (ต้องมี ID ครบ) ✅ ✅ ✅ -->
                 <div id="code-search-container" 
-                     class="absolute z-[2000] items-center gap-1.5 
-                            bg-white/95 backdrop-blur-sm border border-gray-300 rounded-lg shadow-lg  
-                            px-3 py-2 animate-slide-in-up">
+                     class="flex items-center gap-1.5 bg-white/95 backdrop-blur-sm border border-gray-300 rounded-lg shadow-sm px-3 py-1.5 dark:bg-gray-800 dark:border-gray-600">
                     
                     <input type="text" id="code-search-input" 
-                           class="w-36 px-2.5 py-1 text-xs text-gray-900 border border-gray-300 rounded 
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           class="w-40 px-2.5 py-1 text-xs text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
                            placeholder="ค้นหารหัส... (เช่น 01A)"
                            onkeydown="if(event.key==='Enter') searchCodeByPin()">
                     
                     <button onclick="searchCodeByPin()" 
-                            class="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                            class="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center gap-1">
                         <i data-lucide="search" class="w-3 h-3"></i>
+                        <span>ค้น</span>
                     </button>
                     
                     <button onclick="closeCodeSearch()" 
@@ -12934,8 +12932,8 @@
                 
                 const leftPos = pinRect.right - headerRect.left + 8;
                 searchContainer.style.left = `${leftPos}px`;
-                searchContainer.style.top = '50%';
-                searchContainer.style.transform = 'translateY(-50%)';
+                //searchContainer.style.top = '50%';
+                //searchContainer.style.transform = 'translateY(-50%)';
                 
                 console.log('✅ จัดตำแหน่งช่องค้นหา:', leftPos, 'px');
             } else {
