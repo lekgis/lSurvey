@@ -477,7 +477,7 @@
                   // ถ้าผู้ใช้ยกเลิก → แสดงปุ่มกลับคืน
                   installContainer.style.opacity = '1';
                   installBtn.disabled = false;
-                  installBtn.innerHTML = '<span class="text-2xl">📲</span> <span>ติดตั้งแอป "โนนไทย" เพื่อใช้งานแบบออฟไลน์</span>';
+                  installBtn.innerHTML = '<span class="text-2xl">📲</span> <span>ติดตั้งแอป "ปะเคียบ" เพื่อใช้งานแบบออฟไลน์</span>';
                 }
                 deferredPrompt = null;
               } catch (err) {
@@ -493,7 +493,7 @@
             console.log('🚀 PWA installed!');
             if (installContainer) installContainer.style.display = 'none';
             if (installCloseBtn) installCloseBtn.classList.add('hidden');
-            showNotificationLeft('🎉 แอป "โนนไทย" ติดตั้งเรียบร้อยแล้ว!', 'success');
+            showNotificationLeft('🎉 แอป "ปะเคียบ" ติดตั้งเรียบร้อยแล้ว!', 'success');
           });
         }
 
