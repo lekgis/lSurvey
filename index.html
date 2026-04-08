@@ -1335,6 +1335,16 @@
             <i data-lucide="refresh-cw" id="refresh-icon" class="w-6 h-6"></i>
           </button>
           
+        <!-- ✅ ✅ ✅ เพิ่มปุ่มค้นหา AI (วางหลังปุ่มรีโหลด) ✅ ✅ ✅ -->
+        <button id="btn-ai-search" onclick="openAISearch()" 
+                class="map-btn p-3 text-purple-600 hover:text-purple-700 transition-all relative group"
+                title="ค้นหาข้อมูลอัจฉริยะ (AI Search)">
+            <i data-lucide="sparkles" class="w-6 h-6"></i>
+            <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
+                ค้นหา AI
+            </span>
+        </button>
+
           <!-- ปุ่มย่อยที่เลื่อนลงมา -->
           <div id="settings-menu" class="mt-2 space-y-2 hidden">
             <!-- ปุ่ม 1: ดาวน์โหลดสิ่งปลูกสร้าง -->
@@ -12976,6 +12986,60 @@
             }
             codeSearchOpen = false;
             console.log('🔍 ปิดช่องค้นหารหัส');
+        }
+
+        // ============================================
+        // ✅ ✅ ✅ ฟังก์ชันเปิดค้นหา AI ✅ ✅ ✅
+        // ============================================
+        function openAISearch() {
+            console.log('🤖 เปิดค้นหา AI...');
+            
+            // ✅ 1. เปิดตาราง (ถ้ายังไม่เปิด)
+            const tablePanel = document.getElementById('data-table-panel');
+            if (tablePanel && !tablePanel.classList.contains('open')) {
+                toggleTable();  // เปิดตาราง
+                setTimeout(() => {
+                    focusOnSearchInput();
+                }, 300);  // รอให้ตารางเปิดเสร็จ
+            } else {
+                focusOnSearchInput();
+            }
+            
+            // ✅ 2. แสดงเอฟเฟกต์พิเศษ (optional)
+            showAISearchEffect();
+        }
+        
+        function focusOnSearchInput() {
+            // ✅ หาช่องค้นหา
+            const searchInput = document.getElementById('code-search-input');
+            const searchContainer = document.getElementById('code-search-container');
+            
+            if (searchContainer && searchContainer.classList.contains('hidden')) {
+                // ✅ เปิดช่องค้นหาถ้ายังปิดอยู่
+                toggleCodeSearch();
+                setTimeout(() => {
+                    if (searchInput) {
+                        searchInput.focus();
+                        searchInput.select();  // เลือกข้อความทั้งหมด (ถ้ามี)
+                    }
+                }, 100);
+            } else if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+            }
+            
+            console.log('✅ โฟกัสช่องค้นหาแล้ว');
+        }
+        
+        function showAISearchEffect() {
+            // ✅ แสดงเอฟเฟกต์ประกาย AI (optional)
+            const btn = document.getElementById('btn-ai-search');
+            if (btn) {
+                btn.classList.add('animate-pulse');
+                setTimeout(() => {
+                    btn.classList.remove('animate-pulse');
+                }, 500);
+            }
         }
 
     </script>
