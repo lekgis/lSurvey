@@ -1,14 +1,12 @@
 {
-  "name": "แอปสำรวจแผนที่ภาษี",
+  "name": "ปะเคียบ",
   "short_name": "ปะเคียบ",
-  "description": "แอปสำรวจสิ่งปลูกสร้างและป้าย เพื่อการจัดเก็บภาษี",
-  "start_url": "./index.html",
+  "description": "แอปสำรวจแผนที่ภาษี",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "orientation": "portrait",
-  "lang": "th",
-  "dir": "ltr",
   "icons": [
     {
       "src": "static/icons/lb-192.png",
@@ -23,6 +21,6 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "utilities"],
-  "screenshots": []
+  "lang": "th",
+  "dir": "ltr"
 }
