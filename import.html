@@ -380,20 +380,21 @@
             });
         }
 
-        // ✅ ดึงรายชื่อเจ้าของที่มีแล้วในระบบ
+        // ✅ ดึงรายชื่อเจ้าของที่มีแล้วในระบบ (สร้างคีย์จาก fname+lname)
         async function fetchExistingOwners() {
             try {
                 const response = await fetch(`${SCRIPT_URL}?action=getData&type=owner`);
                 const data = await response.json();
                 const owners = data.owners || [];
-                existingOwners = new Set(
-                    owners.map(o => `${(o.fname||'').toLowerCase()}|${(o.lname||'').toLowerCase()}`)
+                // ✅ สร้าง Set ของคีย์ "fname|lname" (case-insensitive)
+                const existingKeys = new Set(
+                    owners.map(o => `${(o.fname||'').toLowerCase().trim()}|${(o.lname||'').toLowerCase().trim()}`)
                 );
-                addLog(`✅ โหลดรายชื่อเจ้าของที่มีแล้ว: ${existingOwners.size} รายชื่อ`, 'info');
-                return true;
+                addLog(`✅ โหลดรายชื่อเจ้าของที่มีแล้ว: ${existingKeys.size} รายชื่อ`, 'info');
+                return existingKeys;
             } catch (err) {
                 addLog(`❌ โหลดรายชื่อเจ้าของล้มเหลว: ${err.message}`, 'error');
-                return false;
+                return new Set();
             }
         }
 
@@ -412,27 +413,27 @@
                 addLog('📖 กำลังอ่านไฟล์...', 'info');
                 ownerImportData = await readOwnerImportFile(file);
                 if (ownerImportData.length === 0) throw new Error('ไม่พบข้อมูลในไฟล์');
-                
-                // ✅ ✅ ✅ กรองข้อมูลซ้ำภายในไฟล์ ✅ ✅ ✅
-                addLog('🔍 กำลังคัดกรองข้อมูลซ้ำในไฟล์...', 'info');
+
+                // ✅ 2. ดึงรายชื่อเจ้าของที่มีแล้วในระบบ
+                addLog('🔍 ตรวจสอบรายชื่อเจ้าของที่มีในระบบ...', 'info');
+                const existingOwnerKeys = await fetchExistingOwners();
+
+                // ✅ 3. กรองแถวที่ชื่อเจ้าของซ้ำออก
                 const originalCount = ownerImportData.length;
-                ownerImportData = deduplicateOwnerData(ownerImportData);
-                const afterDedupCount = ownerImportData.length;
-                const removedCount = originalCount - afterDedupCount;
-                
-                if (removedCount > 0) {
-                    addLog(`✅ คัดกรองซ้ำในไฟล์: ลดจาก ${originalCount} → ${afterDedupCount} รายการ (ลบ ${removedCount} รายการที่ซ้ำ)`, 'info');
-                } else {
-                    addLog(`✅ ไม่พบข้อมูลซ้ำในไฟล์: ${afterDedupCount} รายการ`, 'info');
+                ownerImportData = ownerImportData.filter(item => {
+                    const key = `${(item.fname||'').toLowerCase().trim()}|${(item.lname||'').toLowerCase().trim()}`;
+                    // ✅ เก็บเฉพาะแถวที่ชื่อเจ้าของยังไม่มีในระบบ
+                    return !existingOwnerKeys.has(key);
+                });
+
+                const skippedCount = originalCount - ownerImportData.length;
+                if (skippedCount > 0) {
+                    addLog(`⏭️ ข้าม ${skippedCount} รายการที่มีชื่อเจ้าของซ้ำในระบบ`, 'skip');
                 }
-                
-                ownerImportStats = { success: 0, skipped: 0, failed: 0, total: ownerImportData.length };
-                
-                // ✅ 2. ดึงรายชื่อที่มีแล้วในระบบ
-                addLog('🔍 ตรวจสอบรายชื่อที่มีในระบบ...', 'info');
-                await fetchExistingOwners();
-                
-                // ✅ 3. ประมวลผลทีละรายการ (ใช้คิว)
+
+                ownerImportStats = { success: 0, skipped: skippedCount, failed: 0, total: ownerImportData.length };
+
+                // ✅ 4. ประมวลผลทีละรายการ (โค้ดเดิม)
                 for (let i = 0; i < ownerImportData.length; i++) {
                     const item = ownerImportData[i];
                     const key = `${item.fname.toLowerCase()}|${item.lname.toLowerCase()}`;
@@ -578,8 +579,45 @@
             }
         }
         
-        // ✅ จัดการเมื่อเลือกโฟลเดอร์
-        // ✅ ✅ ✅ แก้: ล้างล็อก + รีเซ็ตเมื่อเลือกโฟลเดอร์ ✅ ✅ ✅
+        // ✅ ✅ ✅ ฟังก์ชันดึงรหัสที่มีรูปภาพแล้วในฐานข้อมูล ✅ ✅ ✅
+        async function getExistingCodesWithPictures(type) {
+            try {
+                addLog(`🔄 โหลดข้อมูล${type === 'building' ? 'สิ่งปลูกสร้าง' : 'ป้าย'}เพื่อตรวจสอบรูป...`, 'info');
+                const response = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await response.json();
+                const records = type === 'building' ? data.buildings : data.signs;
+                const codeField = type === 'building' ? 'building_c' : 's_code';
+                
+                const codesWithPictures = new Set();
+                
+                records.forEach(r => {
+                    const code = r[codeField];
+                    if (code && code.trim() !== '') {
+                        const pictureVal = r.picture || '';
+                        // ✅ เงื่อนไขเดียวกับ checkImageExists: มีรูปถ้า...
+                        // 1. มีค่า (ไม่ใช่ null/undefined)
+                        // 2. ไม่ใช่ช่องว่างล้วน
+                        // 3. ไม่ใช่ค่าขยะเช่น 'image.jpg'
+                        const hasValidPicture = pictureVal &&
+                            String(pictureVal).trim() !== '' &&
+                            pictureVal.toLowerCase() !== 'image.jpg';
+                        
+                        if (hasValidPicture) {
+                            codesWithPictures.add(code.trim().toUpperCase());
+                        }
+                    }
+                });
+                
+                addLog(`✅ พบ${codesWithPictures.size} รหัสที่มีรูปแล้วในคอลัมน์ picture`, 'success');
+                return codesWithPictures;
+                
+            } catch (err) {
+                addLog(`❌ โหลดข้อมูลตรวจสอบรูปล้มเหลว: ${err.message}`, 'error');
+                return new Set(); // คืนค่า Set ว่างหากเกิดข้อผิดพลาด
+            }
+        }
+
+        // ✅ จัดการเมื่อเลือกโฟลเดอร์ (แก้ใหม่: คัดกรองรูปที่มีในฐานข้อมูลแล้วออกก่อนนำเข้า)
         async function handleFolderSelect(input, type) {
             // ✅ ข้อ 1: ล้างล็อกอัตโนมัติ
             clearLog();
@@ -590,17 +628,15 @@
             document.getElementById('count-success').textContent = '0';
             document.getElementById('count-skip').textContent = '0';
             document.getElementById('count-error').textContent = '0';
-
-            // ✅ ✅ ✅ เพิ่มบรรทัดนี้ตรงนี้ (ไม่จำเป็นแต่ดี) ✅ ✅ ✅
             document.getElementById('progress-title').textContent = 'กำลังประมวลผล...';
-
+            
             if (isProcessing) {
                 alert('กำลังประมวลผลอยู่ กรุณารอจนเสร็จสิ้น');
                 input.value = '';
                 return;
             }
             
-            const files = Array.from(input.files).filter(f => 
+            const files = Array.from(input.files).filter(f =>
                 /\.(jpg|jpeg|png|gif)$/i.test(f.name)
             );
             
@@ -610,7 +646,39 @@
                 return;
             }
             
-            // โหลดข้อมูลรหัสที่มีอยู่ก่อนเริ่ม
+            addLog(`📁 พบไฟล์รูปภาพ ${files.length} ไฟล์`, 'info');
+            
+            // ✅ ✅ ✅ ขั้นตอนที่ 1: ดึงข้อมูลรูปที่มีอยู่แล้วจากฐานข้อมูล ✅ ✅ ✅
+            addLog('🔍 ตรวจสอบรูปที่มีอยู่ในฐานข้อมูล...', 'info');
+            const codesWithPictures = await getExistingCodesWithPictures(type);
+            addLog(`✅ พบรหัสที่มีรูปแล้ว: ${codesWithPictures.size} รหัส`, 'info');
+            
+            // ✅ ✅ ✅ ขั้นตอนที่ 2: คัดกรองรูปที่ซ้ำออก ✅ ✅ ✅
+            const originalCount = files.length;
+            const filteredFiles = files.filter(file => {
+                const codePart = file.name.length >= 11 ? file.name.substring(0, 11) : file.name;
+                const cleanCode = codePart.replace(/\.[^/.]+$/, "").trim().toUpperCase();
+                return !codesWithPictures.has(cleanCode);
+            });
+            
+            const filteredCount = originalCount - filteredFiles.length;
+            if (filteredCount > 0) {
+                addLog(`⏭️ คัดกรองออก ${filteredCount} รูปที่มีในฐานข้อมูลแล้ว`, 'skip');
+            } else {
+                addLog(`✅ ไม่พบรูปซ้ำ: จะนำเข้าทั้งหมด ${filteredFiles.length} รูป`, 'info');
+            }
+            
+            if (filteredFiles.length === 0) {
+                addLog('🎉 ไม่มีรูปใหม่ให้นำเข้า (ทุกรูปมีในฐานข้อมูลแล้ว)', 'success');
+                document.getElementById('progress-title').textContent = '✅ เสร็จสิ้น';
+                input.value = '';
+                return;
+            }
+            
+            // ✅ ✅ ✅ ขั้นตอนที่ 3: เริ่มนำเข้ารูปที่กรองแล้ว ✅ ✅ ✅
+            addLog(`🚀 เริ่มนำเข้า ${filteredFiles.length} รูปใหม่...`, 'info');
+            
+            // โหลดข้อมูลรหัสที่มีอยู่ก่อนเริ่ม (สำหรับเช็คพื้นฐาน)
             if (!await loadExistingCodes(type)) {
                 if (!confirm('ไม่สามารถโหลดข้อมูลรหัสได้ ต้องการดำเนินการต่อหรือไม่? (อาจจับคู่ไม่ถูกต้อง)')) {
                     input.value = '';
@@ -619,18 +687,16 @@
             }
             
             isProcessing = true;
-            stats = { success: 0, skip: 0, error: 0, total: files.length };
+            stats = { success: 0, skip: 0, error: 0, total: filteredFiles.length };
             
             // แสดงส่วนความคืบหน้า
             document.getElementById('progress-section').classList.remove('hidden');
-            document.getElementById('progress-title').textContent = 
+            document.getElementById('progress-title').textContent =
                 `กำลังประมวลผล ${type === 'building' ? 'สิ่งปลูกสร้าง' : 'ป้าย'}...`;
             
-            addLog(`📁 พบไฟล์รูปภาพ ${files.length} ไฟล์ เริ่มประมวลผล...`, 'info');
-            
-            // ประมวลผลไฟล์ทีละไฟล์
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
+            // ประมวลผลไฟล์ทีละไฟล์ (จากลิสต์ที่กรองแล้ว)
+            for (let i = 0; i < filteredFiles.length; i++) {
+                const file = filteredFiles[i];
                 
                 // ✅ เช็คออฟไลน์ → เพิ่มเข้าคิว
                 if (!navigator.onLine) {
@@ -645,19 +711,18 @@
                     addToImportQueue(type, rowData, base64, file.name);
                     stats.success++;
                     addLog(`📥 ออฟไลน์: บันทึกคิว "${file.name}"`, 'info');
-                    updateProgress(i + 1, files.length);
+                    updateProgress(i + 1, filteredFiles.length);
                     continue;
                 }
                 
-                await processImageFile(file, type, i + 1, files.length);
-                updateProgress(i + 1, files.length);
+                await processImageFile(file, type, i + 1, filteredFiles.length);
+                updateProgress(i + 1, filteredFiles.length);
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             
             // เสร็จสิ้น
             addLog(`🎉 เสร็จสิ้น! สำเร็จ: ${stats.success}, ข้าม: ${stats.skip}, ล้มเหลว: ${stats.error}`, 'success');
             document.getElementById('progress-title').textContent = '✅ เสร็จสิ้น';
-            
             isProcessing = false;
             input.value = ''; // รีเซ็ต input
             
@@ -1673,12 +1738,44 @@
                 stats.total = rows.length;
                 progressTitle.textContent = `กำลังประมวลผล ${stats.total} รายการ...`;
                 
+
                 // ✅ 2. ดึงรหัสที่มีอยู่แล้ว (เพื่อเช็คซ้ำ)
                 const existingCodes = await getExistingBuildingCodes();
-                
-                // ✅ 3. ประมวลผลทีละแถว
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
+
+                // ✅ 3. กรองแถวที่ซ้ำออกก่อนประมวลผล
+                const originalCount = rows.length;
+                const filteredRows = rows.filter(row => {
+                    const rowData = {};
+                    headers.forEach((header, idx) => {
+                        const value = row[idx];
+                        if (value !== undefined && value !== null && value.toString().trim() !== '') {
+                            const fieldMap = { 
+                                'building_c': 'building_c', 
+                                'รหัสสิ่งปลูกสร้าง': 'building_c' 
+                            };
+                            const fieldId = fieldMap[header];
+                            if (fieldId === 'building_c') {
+                                rowData.building_c = String(value).trim().toUpperCase();
+                            }
+                        }
+                    });
+                    // ✅ เก็บเฉพาะแถวที่รหัสยังไม่มีในระบบ
+                    return !rowData.building_c || !existingCodes.has(rowData.building_c);
+                });
+
+                const skippedCount = originalCount - filteredRows.length;
+                if (skippedCount > 0) {
+                    addLog(`⏭️ ข้าม ${skippedCount} รายการที่มีรหัสซ้ำในระบบ`, 'skip');
+                }
+
+                // ✅ ใช้ filteredRows แทน rows ในการประมวลผลต่อ
+                stats.total = filteredRows.length;
+                progressTitle.textContent = `กำลังประมวลผล ${stats.total} รายการ (ข้าม ${skippedCount} รายการที่ซ้ำ)...`;
+
+                // ✅ เปลี่ยนจาก: for (let i = 0; i < rows.length; i++) {
+                // ✅ เป็น:
+                for (let i = 0; i < filteredRows.length; i++) {
+                    const row = filteredRows[i];  // ✅ ใช้ filteredRows
                     const rowData = {};
                     
                     // ✅ ✅ ✅ แก้: บังคับ parcel_cod เป็นข้อความ ป้องกันวิทยาศาสตร์ ✅ ✅ ✅
@@ -2074,7 +2171,7 @@
             document.getElementById('bd-error').textContent = stats.error;
         }
         
-        // ✅ ในฟังก์ชัน `getExistingBuildingCodes()` → แปลงเป็นใหญ่ทั้งหมด:
+        // ✅ ดึงรหัสสิ่งปลูกสร้างที่มีอยู่แล้วจากเซิร์ฟเวอร์
         async function getExistingBuildingCodes() {
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getData`);
@@ -2083,7 +2180,6 @@
                 if (data.buildings) {
                     data.buildings.forEach(b => {
                         if (b.building_c) {
-                            // ✅ แปลงเป็นใหญ่ทั้งหมดเพื่อเปรียบเทียบ
                             codes.add(b.building_c.trim().toUpperCase());
                         }
                     });
@@ -2106,7 +2202,7 @@
 
 
 
-        // ✅ ✅ ✅ ดึงรหัสป้ายที่มีอยู่แล้วจากเซิร์ฟเวอร์ ✅ ✅ ✅
+        // ✅ ดึงรหัสป้ายที่มีอยู่แล้วจากเซิร์ฟเวอร์
         async function getExistingSignCodes() {
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getData`);
@@ -2259,10 +2355,41 @@
                 
                 // ✅ ดึงรหัสป้ายที่มีอยู่แล้ว
                 const existingCodes = await getExistingSignCodes();
-                
-                // ✅ ประมวลผลทีละแถว
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
+
+                // ✅ กรองแถวที่ซ้ำออกก่อนประมวลผล
+                const originalCount = rows.length;
+                const filteredRows = rows.filter(row => {
+                    const rowData = {};
+                    headers.forEach((header, idx) => {
+                        const value = row[idx];
+                        if (value !== undefined && value !== null && value.toString().trim() !== '') {
+                            const fieldMap = { 
+                                's_code': 's_code', 
+                                'รหัสป้าย': 's_code' 
+                            };
+                            const fieldId = fieldMap[header];
+                            if (fieldId === 's_code') {
+                                rowData.s_code = String(value).trim().toUpperCase();
+                            }
+                        }
+                    });
+                    // ✅ เก็บเฉพาะแถวที่รหัสยังไม่มีในระบบ
+                    return !rowData.s_code || !existingCodes.has(rowData.s_code);
+                });
+
+                const skippedCount = originalCount - filteredRows.length;
+                if (skippedCount > 0) {
+                    addLog(`⏭️ ข้าม ${skippedCount} รายการที่มีรหัสซ้ำในระบบ`, 'skip');
+                }
+
+                // ✅ ใช้ filteredRows แทน rows ในการประมวลผลต่อ
+                stats.total = filteredRows.length;
+                progressTitle.textContent = `กำลังประมวลผล ${stats.total} รายการ (ข้าม ${skippedCount} รายการที่ซ้ำ)...`;
+
+                // ✅ เปลี่ยนจาก: for (let i = 0; i < rows.length; i++) {
+                // ✅ เป็น:
+                for (let i = 0; i < filteredRows.length; i++) {
+                    const row = filteredRows[i];  // ✅ ใช้ filteredRows
                     const rowData = {};
                     
                     // ✅ แมปคอลัมน์จากไฟล์ → ข้อมูลภายใน
@@ -2479,12 +2606,42 @@
                 stats.total = rows.length;
                 progressTitle.textContent = `กำลังอัปเดต ${stats.total} รายการ...`;
                 
-                // ✅ ดึงข้อมูลทั้งหมดเพื่อหา _row_num
+                // ✅ ดึงข้อมูลทั้งหมดเพื่อหา _row_num และเช็ครหัสที่มีอยู่
                 const allBuildings = await fetchAllBuildingRecords();
-                
-                // ✅ ประมวลผลทีละแถว
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
+                const existingBuildingCodes = new Set(
+                    allBuildings.map(b => b.building_c?.trim().toUpperCase()).filter(c => c)
+                );
+
+                // ✅ กรองแถว: เก็บเฉพาะที่มีรหัสในระบบ (เพื่ออัปเดต)
+                const originalCount = rows.length;
+                const filteredRows = rows.filter(row => {
+                    let buildingC = null;
+                    headers.forEach((header, idx) => {
+                        const fieldMap = { 
+                            'building_c': 'building_c', 
+                            'รหัสสิ่งปลูกสร้าง': 'building_c' 
+                        };
+                        if (fieldMap[header] === 'building_c' && row[idx]) {
+                            buildingC = String(row[idx]).trim().toUpperCase();
+                        }
+                    });
+                    // ✅ เก็บเฉพาะแถวที่มีรหัสในระบบ
+                    return buildingC && existingBuildingCodes.has(buildingC);
+                });
+
+                const notFoundCount = originalCount - filteredRows.length;
+                if (notFoundCount > 0) {
+                    addLog(`⏭️ ข้าม ${notFoundCount} รายการที่ไม่พบรหัสในระบบ (ไม่สามารถอัปเดต)`, 'skip');
+                }
+
+                // ✅ ใช้ filteredRows แทน rows ในการประมวลผลต่อ
+                stats.total = filteredRows.length;
+                progressTitle.textContent = `กำลังอัปเดต ${stats.total} รายการ (ข้าม ${notFoundCount} รายการที่ไม่พบในระบบ)...`;
+
+                // ✅ เปลี่ยนจาก: for (let i = 0; i < rows.length; i++) {
+                // ✅ เป็น:
+                for (let i = 0; i < filteredRows.length; i++) {
+                    const row = filteredRows[i];  // ✅ ใช้ filteredRows
                     const rowData = {};
                     const updateFields = {};  // ✅ เก็บเฉพาะฟิลด์ที่มีค่าจะอัปเดต
                     
@@ -2695,11 +2852,42 @@
                 stats.total = rows.length;
                 progressTitle.textContent = `กำลังอัปเดต ${stats.total} รายการ...`;
                 
-                // ✅ ดึงข้อมูลป้ายทั้งหมด
+                // ✅ ดึงข้อมูลป้ายทั้งหมดเพื่อเช็ครหัสที่มีอยู่
                 const allSigns = await fetchAllSignRecords();
-                
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
+                const existingSignCodes = new Set(
+                    allSigns.map(s => s.s_code?.trim().toUpperCase()).filter(c => c)
+                );
+
+                // ✅ กรองแถว: เก็บเฉพาะที่มีรหัสในระบบ (เพื่ออัปเดต)
+                const originalCount = rows.length;
+                const filteredRows = rows.filter(row => {
+                    let sCode = null;
+                    headers.forEach((header, idx) => {
+                        const fieldMap = { 
+                            's_code': 's_code', 
+                            'รหัสป้าย': 's_code' 
+                        };
+                        if (fieldMap[header] === 's_code' && row[idx]) {
+                            sCode = String(row[idx]).trim().toUpperCase();
+                        }
+                    });
+                    // ✅ เก็บเฉพาะแถวที่มีรหัสในระบบ
+                    return sCode && existingSignCodes.has(sCode);
+                });
+
+                const notFoundCount = originalCount - filteredRows.length;
+                if (notFoundCount > 0) {
+                    addLog(`⏭️ ข้าม ${notFoundCount} รายการที่ไม่พบรหัสในระบบ (ไม่สามารถอัปเดต)`, 'skip');
+                }
+
+                // ✅ ใช้ filteredRows แทน rows ในการประมวลผลต่อ
+                stats.total = filteredRows.length;
+                progressTitle.textContent = `กำลังอัปเดต ${stats.total} รายการ (ข้าม ${notFoundCount} รายการที่ไม่พบในระบบ)...`;
+
+                // ✅ เปลี่ยนจาก: for (let i = 0; i < rows.length; i++) {
+                // ✅ เป็น:
+                for (let i = 0; i < filteredRows.length; i++) {
+                    const row = filteredRows[i];  // ✅ ใช้ filteredRows
                     const rowData = {};
                     const updateFields = {};  // ✅ เก็บเฉพาะฟิลด์ที่มีค่า
                     
