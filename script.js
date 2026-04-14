@@ -4245,7 +4245,7 @@
             // triggerAutoRefresh(); 
         }
 
-        // ฟังก์ชันซูมไปที่ตำแหน่ง
+        // ✅ ฟังก์ชันซูมไปที่ตำแหน่ง (แยกการทำงานตามคอมพิวเตอร์/มือถือ)
         function zoomToLocation(latlng, zoomLevel = 21, rowData = null, type = 'building') {
             map.setView(latlng, zoomLevel);
             
@@ -4273,9 +4273,8 @@
                 }
             }, 300);
 
-            // ✅ ✅ ✅ เพิ่ม 15 บรรทัดนี้ ท้ายฟังก์ชัน ✅ ✅ ✅
-            // เฉพาะคอมพิวเตอร์: เปิด panel + รูปภาพ
-            if (!isMobile() && rowData) {
+            // ✅ ✅ ✅ แยกการทำงานตามอุปกรณ์ ✅ ✅ ✅
+            if (rowData) {
                 setTimeout(() => {
                     // หา marker ที่ตรงกัน
                     let targetMarker = null;
@@ -4285,23 +4284,26 @@
                             targetMarker = layer;
                         }
                     });
-                    // เปิด panel
+                    
+                    // ✅ เปิด panel (ทั้งคอมพิวเตอร์และมือถือ)
                     if (targetMarker && typeof openEditPanel === 'function') {
                         openEditPanel(rowData, type, targetMarker, rowData._row_num || rowData.id);
                     }
-                    // เปิดรูปภาพ
-                    // ✅ ✅ ✅ เปิดรูปภาพ - ใช้โค้ดเดียวกับใน openEditPanel() ✅ ✅ ✅
-                    if (rowData.image && rowData.image.trim() !== '') {
-                        showImagePreview(rowData.image, rowData.picture || 'รูปภาพ');
-                    } else {
-                        // ถ้าไม่มีรูปภาพ → แสดงข้อความในหน้าต่างรูปภาพ
-                        const placeholder = document.getElementById('image-preview-placeholder');
-                        const img = document.getElementById('image-preview');
-                        if (placeholder && img) {
-                            img.classList.add('hidden');
-                            placeholder.textContent = '⚠️ รายการนี้ยังไม่มีรูปภาพ';
-                            placeholder.classList.remove('text-gray-300');
-                            placeholder.classList.add('text-yellow-500', 'font-medium');
+                    
+                    // ✅ เฉพาะคอมพิวเตอร์: เปิดรูปภาพด้วย
+                    if (!isMobile() && rowData) {
+                        if (rowData.image && rowData.image.trim() !== '') {
+                            showImagePreview(rowData.image, rowData.picture || 'รูปภาพ');
+                        } else {
+                            // ถ้าไม่มีรูปภาพ → แสดงข้อความในหน้าต่างรูปภาพ
+                            const placeholder = document.getElementById('image-preview-placeholder');
+                            const img = document.getElementById('image-preview');
+                            if (placeholder && img) {
+                                img.classList.add('hidden');
+                                placeholder.textContent = '⚠️ รายการนี้ยังไม่มีรูปภาพ';
+                                placeholder.classList.remove('text-gray-300');
+                                placeholder.classList.add('text-yellow-500', 'font-medium');
+                            }
                         }
                     }
                 }, 1600);
