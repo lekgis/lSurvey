@@ -1718,16 +1718,12 @@
                         
                         const fieldId = fieldMap[header];
                         if (fieldId) {
-                            let rawValue = String(value).trim();
+                            let rawValue = String(value).trim();  // ← ประกาศครั้งเดียวพอ
                             
-                            // ✅ ✅ ✅ แก้เฉพาะ parcel_cod: ถ้าเป็นรหัสพิเศษ → ใช้ค่าเดิม ✅ ✅ ✅
+                            // ✅ จัดการเฉพาะกรณี parcel_cod
                             if (fieldId === 'parcel_cod') {
-                                let rawValue = String(value).trim();
-                                
                                 // ✅ เช็คก่อนว่าเป็นรหัสพิเศษแบบ "06E001", "14E074" ฯลฯ หรือไม่
-                                // ✅ รูปแบบ: ตัวอักษร+เลข + 'E' + เลข 3 หลัก (เช่น 06E001, 14E074)
                                 if (/^[A-Za-z0-9]+E\d{3}$/.test(rawValue.toUpperCase())) {
-                                    // ✅ เป็นรหัสพิเศษ → ใช้ค่าเดิม ไม่ต้องแปลง!
                                     console.log(`✅ รหัสพิเศษ: ${rawValue} → ใช้ค่าเดิม`);
                                 }
                                 // ✅ ถ้าเป็นวิทยาศาสตร์จริง (เช่น "6e+71") → แปลงกลับ
@@ -1740,10 +1736,10 @@
                                 else if (/^\d+$/.test(rawValue)) {
                                     rawValue = rawValue.padStart(6, '0');
                                 }
-                                
-                                rowData[fieldId] = rawValue;
+                                // ✅ ไม่ต้องมี rowData[fieldId] = rawValue; ที่นี่
                             }
                             
+                            // ✅ ✅ ✅ กำหนดค่าให้ทุกฟิลด์ (ย้ายออกมาอยู่นอก if) ✅ ✅ ✅
                             rowData[fieldId] = rawValue;
                         }
                     });
