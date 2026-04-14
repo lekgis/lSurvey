@@ -161,7 +161,14 @@
                     <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                     นำเข้าข้อมูลสิ่งปลูกสร้าง
                 </button>
-                
+                <!-- ✅ ปุ่มปรับปรุงข้อมูลสิ่งปลูกสร้าง -->
+                <input type="file" id="building-update-file" accept=".xlsx,.xls,.csv" class="hidden">
+                <button type="button" onclick="document.getElementById('building-update-file').click()"
+                        class="w-full mt-2 py-2 bg-rose-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
+                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                    ปรับปรุงข้อมูลสิ่งปลูกสร้าง
+                </button>
+
                 <!-- ✅ แถบความคืบหน้าสำหรับนำเข้าข้อมูล -->
                 <div id="building-data-progress" class="hidden mt-3 p-3 bg-gray-50 rounded border">
                     <div class="flex justify-between text-xs text-gray-600 mb-1">
@@ -204,6 +211,13 @@
                         class="w-full mt-2 py-2 bg-blue-600 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
                     <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                     นำเข้าข้อมูลป้าย
+                </button>
+                <!-- ✅ ปุ่มปรับปรุงข้อมูลป้าย -->
+                <input type="file" id="sign-update-file" accept=".xlsx,.xls,.csv" class="hidden">
+                <button type="button" onclick="document.getElementById('sign-update-file').click()"
+                        class="w-full mt-2 py-2 bg-rose-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
+                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                    ปรับปรุงข้อมูลป้าย
                 </button>
                 <!-- ✅ แถบความคืบหน้าสำหรับนำเข้าข้อมูลป้าย -->
                 <div id="sign-data-progress" class="hidden mt-3 p-3 bg-gray-50 rounded border">
@@ -1334,6 +1348,26 @@
                 }
             });
             
+            // ✅ ผูกเหตุการณ์ปุ่มปรับปรุงข้อมูลสิ่งปลูกสร้าง
+            document.getElementById('building-update-file')?.addEventListener('change', function(e) {
+                if (e.target.files[0]) {
+                    if (confirm(`อัปเดตข้อมูลสิ่งปลูกสร้างจากไฟล์ "${e.target.files[0].name}"?\n\n⚠️ คอลัมน์ว่างในไฟล์จะไม่ถูกอัปเดต`)) {
+                        processBuildingUpdate(e.target.files[0]);
+                    }
+                    e.target.value = '';
+                }
+            });
+
+            // ✅ ผูกเหตุการณ์ปุ่มปรับปรุงข้อมูลป้าย
+            document.getElementById('sign-update-file')?.addEventListener('change', function(e) {
+                if (e.target.files[0]) {
+                    if (confirm(`อัปเดตข้อมูลป้ายจากไฟล์ "${e.target.files[0].name}"?\n\n⚠️ คอลัมน์ว่างในไฟล์จะไม่ถูกอัปเดต`)) {
+                        processSignUpdate(e.target.files[0]);
+                    }
+                    e.target.value = '';
+                }
+            });
+
             // 5. ตั้งเวลาเช็คคิวทุก 30 วินาที
             setInterval(() => {
                 if (navigator.onLine) {
@@ -2361,7 +2395,387 @@
                 e.target.value = ''; // รีเซ็ต
             }
         });
+          
+        // ============================================
+        // ✅ ฟังก์ชันประมวลผลอัปเดตข้อมูลสิ่งปลูกสร้าง
+        // ============================================
+        async function processBuildingUpdate(file) {
+            const stats = { success: 0, skip: 0, error: 0, total: 0 };
+            const errorDetails = [];
+            const progressDiv = document.getElementById('building-data-progress');
+            const progressTitle = document.getElementById('building-data-title');
             
+            progressDiv.classList.remove('hidden');
+            progressTitle.textContent = 'กำลังอ่านไฟล์...';
+            
+            try {
+                // ✅ อ่านไฟล์ด้วย SheetJS
+                const data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const workbook = XLSX.read(e.target.result, { 
+                                type: 'array', cellDates: false, cellNF: false, cellText: true, raw: true 
+                            });
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: true, defval: '' });
+                            resolve(rows);
+                        } catch (err) { reject(err); }
+                    };
+                    reader.onerror = () => reject(new Error('อ่านไฟล์ล้มเหลว'));
+                    reader.readAsArrayBuffer(file);
+                });
+                
+                if (data.length < 2) throw new Error('ไฟล์ไม่มีข้อมูล');
+                
+                const headers = data[0].map(h => String(h).trim().toLowerCase());
+                const rows = data.slice(1).filter(row => row.some(cell => cell));
+                
+                stats.total = rows.length;
+                progressTitle.textContent = `กำลังอัปเดต ${stats.total} รายการ...`;
+                
+                // ✅ ดึงข้อมูลทั้งหมดเพื่อหา _row_num
+                const allBuildings = await fetchAllBuildingRecords();
+                
+                // ✅ ประมวลผลทีละแถว
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    const rowData = {};
+                    const updateFields = {};  // ✅ เก็บเฉพาะฟิลด์ที่มีค่าจะอัปเดต
+                    
+                    // ✅ แมปคอลัมน์
+                    headers.forEach((header, idx) => {
+                        const value = row[idx];
+                        if (value === undefined || value === null || value.toString().trim() === '') return;
+                        
+                        const fieldMap = {
+                            'building_c': 'building_c', 'รหัสสิ่งปลูกสร้าง': 'building_c',
+                            'parcel_cod': 'parcel_cod', 'รหัสแปลง': 'parcel_cod',
+                            'b_type': 'b_type', 'ประเภท': 'b_type',
+                            'b_mat': 'b_mat', 'วัสดุ': 'b_mat',
+                            'b_year': 'b_year', 'อายุ': 'b_year',
+                            'hs_no': 'hs_no', 'บ้านเลขที่': 'hs_no',
+                            'hs_moo': 'hs_moo', 'หมู่': 'hs_moo',
+                            'no_floor': 'no_floor', 'จำนวนชั้น': 'no_floor',
+                            'b_area': 'b_area', 'พื้นที่': 'b_area',
+                            'b_note': 'b_note', 'รายละเอียด': 'b_note',
+                            'b_use': 'b_use', 'ใช้ประโยชน์': 'b_use',
+                            'per_use': 'per_use', 'การเช่า': 'per_use',
+                            'full_area': 'full_area', 'ใช้ทั้งหลัง': 'full_area',
+                            'buse_floor': 'buse_floor', 'ชั้นที่ใช้': 'buse_floor',
+                            'buse_area': 'buse_area',
+                            'ment_use': 'ment_use',
+                            'b_use2': 'b_use2', 'per_use2': 'per_use2',
+                            'buse_floor2': 'buse_floor2', 'buse_area2': 'buse_area2',
+                            'ment_use2': 'ment_use2', 'full_area2': 'full_area2',
+                            'fname': 'fname', 'lname': 'lname', 'title': 'title',
+                            'full_name': 'full_name', 'เจ้าของ': 'full_name',
+                            'land_type': 'land_type', 'ประเภทที่ดิน': 'land_type',
+                            'land_use': 'land_use', 'ใช้ประโยชน์ที่ดิน': 'land_use',
+                            'check': 'check', 'สถานะ': 'check',
+                            'lat_long': 'lat_long', 'พิกัด': 'lat_long'
+                        };
+                        
+                        const fieldId = fieldMap[header];
+                        if (fieldId) {
+                            let rawValue = String(value).trim();
+                            
+                            // ✅ จัดการ parcel_cod แบบวิทยาศาสตร์
+                            if (fieldId === 'parcel_cod') {
+                                if (/^[0-9.]+[eE][+-]?[0-9]+$/.test(rawValue)) {
+                                    rawValue = String(Math.floor(parseFloat(rawValue))).padStart(6, '0');
+                                } else if (/^\d+$/.test(rawValue)) {
+                                    rawValue = rawValue.padStart(6, '0');
+                                }
+                            }
+                            
+                            // ✅ แมปค่าตาม BUILDING_FIELD_MAPPINGS (ถ้ามี)
+                            if (typeof BUILDING_FIELD_MAPPINGS !== 'undefined' && BUILDING_FIELD_MAPPINGS[fieldId]) {
+                                rawValue = mapFieldValue(fieldId, rawValue);
+                            }
+                            
+                            rowData[fieldId] = rawValue;
+                            
+                            // ✅ ✅ ✅ เพิ่มเฉพาะฟิลด์ที่มีค่า (ไม่ใช่ค่าว่าง) ✅ ✅ ✅
+                            if (rawValue && rawValue.trim() !== '') {
+                                updateFields[fieldId] = rawValue;
+                            }
+                        }
+                    });
+                    
+                    // ✅ ตรวจสอบ building_c
+                    if (!rowData.building_c || rowData.building_c.trim() === '') {
+                        stats.error++;
+                        errorDetails.push({ row: i+1, code: 'NO_BUILDING_C', message: 'ไม่มี building_c' });
+                        updateBuildingDataProgress(i + 1, stats);
+                        continue;
+                    }
+                    
+                    // ✅ ✅ ✅ หาเรคคอร์ดที่มีอยู่โดยรหัส (ไม่ข้าม!) ✅ ✅ ✅
+                    const existingRecord = allBuildings.find(r => 
+                        String(r.building_c || '').trim().toUpperCase() === String(rowData.building_c).trim().toUpperCase()
+                    );
+                    
+                    if (!existingRecord) {
+                        // ✅ ไม่พบรหัส → ข้าม (หรือจะเพิ่มเป็นใหม่ก็ได้ ตามต้องการ)
+                        stats.skip++;
+                        addLog(`⏭️ ข้าม: ไม่พบรหัส ${rowData.building_c} ในฐานข้อมูล`, 'skip');
+                        updateBuildingDataProgress(i + 1, stats);
+                        continue;
+                    }
+                    
+                    // ✅ ✅ ✅ ถ้าไม่มีฟิลด์ใดจะอัปเดตเลย → ข้าม ✅ ✅ ✅
+                    if (Object.keys(updateFields).length === 0) {
+                        stats.skip++;
+                        addLog(`⏭️ ข้าม: ${rowData.building_c} (ไม่มีค่าที่จะอัปเดต)`, 'skip');
+                        updateBuildingDataProgress(i + 1, stats);
+                        continue;
+                    }
+                    
+                    // ✅ ✅ ✅ เพิ่ม timestamp update (แต่ไม่แตะ date_added) ✅ ✅ ✅
+                    updateFields.update = formatThaiDateTimeBE(new Date());
+                    
+                    // ✅ ส่งอัปเดตผ่านเซิร์ฟเวอร์
+                    try {
+                        const formData = new FormData();
+                        formData.append('action', 'update');
+                        formData.append('type', 'building');
+                        formData.append('rowKey', existingRecord._row_num || existingRecord.id);
+                        formData.append('payload', JSON.stringify(updateFields));
+                        
+                        const res = await fetch(SCRIPT_URL.trim(), { method: 'POST', body: formData });
+                        const result = await res.json();
+                        
+                        if (result.status === 200) {
+                            stats.success++;
+                            if (i < 3) addLog(`✅ อัปเดตสำเร็จ: ${rowData.building_c}`, 'success');
+                        } else {
+                            stats.error++;
+                            errorDetails.push({ row: i+1, code: rowData.building_c, message: result.message || 'Unknown error' });
+                        }
+                    } catch (err) {
+                        stats.error++;
+                        errorDetails.push({ row: i+1, code: rowData.building_c, message: err.message, type: 'network_error' });
+                    }
+                    
+                    updateBuildingDataProgress(i + 1, stats);
+                    if (i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                // ✅ สรุปผล
+                progressTitle.textContent = `✅ เสร็จสิ้น!`;
+                const msg = `อัปเดตสำเร็จ: ${stats.success}/${stats.total} รายการ`;
+                if (stats.error > 0) {
+                    addLog(`⚠️ ${msg} (ข้าม: ${stats.skip}, ผิดพลาด: ${stats.error})`, 'warning');
+                } else {
+                    addLog(`✅ ${msg} (ข้าม: ${stats.skip})`, 'success');
+                }
+                
+                // ✅ รีเฟรชแผนที่หลังอัปเดต
+                setTimeout(() => {
+                    if (typeof refreshData === 'function') refreshData(true);
+                    showNotificationLeft('✅ อัปเดตข้อมูลเสร็จสิ้น!', 'success');
+                }, 3000);
+                
+            } catch (err) {
+                progressTitle.textContent = `❌ ล้มเหลว`;
+                addLog(`❌ ข้อผิดพลาด: ${err.message}`, 'error');
+                console.error('Building update error:', err);
+            }
+        }
+
+        // ✅ ฟังก์ชันดึงข้อมูลสิ่งปลูกสร้างทั้งหมด (สำหรับหา _row_num)
+        async function fetchAllBuildingRecords() {
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await res.json();
+                return data.buildings || [];
+            } catch {
+                return [];
+            }
+        }
+  
+        // ============================================
+        // ✅ ฟังก์ชันประมวลผลอัปเดตข้อมูลป้าย
+        // ============================================
+        async function processSignUpdate(file) {
+            const stats = { success: 0, skip: 0, error: 0, total: 0 };
+            const errorDetails = [];
+            const progressDiv = document.getElementById('sign-data-progress');
+            const progressTitle = document.getElementById('sign-data-title');
+            
+            progressDiv.classList.remove('hidden');
+            progressTitle.textContent = 'กำลังอ่านไฟล์...';
+            
+            try {
+                // ✅ อ่านไฟล์ (เหมือนเดิม)
+                const data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const workbook = XLSX.read(e.target.result, { type: 'array', raw: true });
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: true, defval: '' });
+                            resolve(rows);
+                        } catch (err) { reject(err); }
+                    };
+                    reader.onerror = () => reject(new Error('อ่านไฟล์ล้มเหลว'));
+                    reader.readAsArrayBuffer(file);
+                });
+                
+                if (data.length < 2) throw new Error('ไฟล์ไม่มีข้อมูล');
+                
+                const headers = data[0].map(h => String(h).trim().toLowerCase());
+                const rows = data.slice(1).filter(row => row.some(cell => cell));
+                
+                stats.total = rows.length;
+                progressTitle.textContent = `กำลังอัปเดต ${stats.total} รายการ...`;
+                
+                // ✅ ดึงข้อมูลป้ายทั้งหมด
+                const allSigns = await fetchAllSignRecords();
+                
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    const rowData = {};
+                    const updateFields = {};  // ✅ เก็บเฉพาะฟิลด์ที่มีค่า
+                    
+                    headers.forEach((header, idx) => {
+                        const value = row[idx];
+                        if (value === undefined || value === null || value.toString().trim() === '') return;
+                        
+                        const fieldMap = {
+                            's_code': 's_code', 'รหัสป้าย': 's_code',
+                            'parcel_cod': 'parcel_cod', 'รหัสแปลง': 'parcel_cod',
+                            's_name': 's_name', 'ชื่อป้าย': 's_name',
+                            's_type': 's_type', 'ประเภท': 's_type',
+                            's_characte': 's_characte', 'ลักษณะ': 's_characte',
+                            's_wide': 's_wide', 'กว้าง': 's_wide',
+                            's_length': 's_length', 'ยาว': 's_length',
+                            'no_side': 'no_side', 'จำนวนด้าน': 'no_side',
+                            's_text': 's_text', 'ข้อความ': 's_text',
+                            'comment': 'comment', 'หมายเหตุ': 'comment',
+                            'title': 'title', 'fname': 'fname', 'lname': 'lname',
+                            'full_name': 'full_name', 'เจ้าของ': 'full_name',
+                            'address': 'address', 'check': 'check', 'สถานะ': 'check',
+                            'lat_long': 'lat_long', 'พิกัด': 'lat_long'
+                        };
+                        
+                        const fieldId = fieldMap[header];
+                        if (fieldId) {
+                            let rawValue = String(value).trim();
+                            
+                            // ✅ จัดการ s_characte
+                            if (fieldId === 's_characte') {
+                                rawValue = mapSCharacte(rawValue);
+                            }
+                            
+                            // ✅ จัดการ s_code แบบวิทยาศาสตร์
+                            if (fieldId === 's_code') {
+                                if (/^[0-9.]+[eE][+-]?[0-9]+$/.test(rawValue)) {
+                                    rawValue = String(Math.floor(parseFloat(rawValue)));
+                                }
+                                rawValue = rawValue.toUpperCase();
+                            }
+                            
+                            rowData[fieldId] = rawValue;
+                            
+                            // ✅ ✅ ✅ เพิ่มเฉพาะฟิลด์ที่มีค่า ✅ ✅ ✅
+                            if (rawValue && rawValue.trim() !== '') {
+                                updateFields[fieldId] = rawValue;
+                            }
+                        }
+                    });
+                    
+                    // ✅ ตรวจสอบ s_code
+                    if (!rowData.s_code || rowData.s_code.trim() === '') {
+                        stats.error++;
+                        errorDetails.push({ row: i+1, code: 'NO_S_CODE', message: 'ไม่มี s_code' });
+                        updateSignDataProgress(i + 1, stats);
+                        continue;
+                    }
+                    
+                    // ✅ ✅ ✅ หาเรคคอร์ดที่มีอยู่ ✅ ✅ ✅
+                    const existingRecord = allSigns.find(r => 
+                        String(r.s_code || '').trim().toUpperCase() === String(rowData.s_code).trim().toUpperCase()
+                    );
+                    
+                    if (!existingRecord) {
+                        stats.skip++;
+                        addLog(`⏭️ ข้าม: ไม่พบรหัส ${rowData.s_code} ในฐานข้อมูล`, 'skip');
+                        updateSignDataProgress(i + 1, stats);
+                        continue;
+                    }
+                    
+                    // ✅ ✅ ✅ ถ้าไม่มีฟิลด์ใดจะอัปเดต → ข้าม ✅ ✅ ✅
+                    if (Object.keys(updateFields).length === 0) {
+                        stats.skip++;
+                        addLog(`⏭️ ข้าม: ${rowData.s_code} (ไม่มีค่าที่จะอัปเดต)`, 'skip');
+                        updateSignDataProgress(i + 1, stats);
+                        continue;
+                    }
+                    
+                    // ✅ ✅ ✅ เพิ่ม timestamp update ✅ ✅ ✅
+                    updateFields.update = formatThaiDateTimeBE(new Date());
+                    
+                    // ✅ ส่งอัปเดต
+                    try {
+                        const formData = new FormData();
+                        formData.append('action', 'update');
+                        formData.append('type', 'sign');
+                        formData.append('rowKey', existingRecord._row_num || existingRecord.id);
+                        formData.append('payload', JSON.stringify(updateFields));
+                        
+                        const res = await fetch(SCRIPT_URL.trim(), { method: 'POST', body: formData });
+                        const result = await res.json();
+                        
+                        if (result.status === 200) {
+                            stats.success++;
+                            if (i < 3) addLog(`✅ อัปเดตป้ายสำเร็จ: ${rowData.s_code}`, 'success');
+                        } else {
+                            stats.error++;
+                            errorDetails.push({ row: i+1, code: rowData.s_code, message: result.message || 'Unknown error' });
+                        }
+                    } catch (err) {
+                        stats.error++;
+                        errorDetails.push({ row: i+1, code: rowData.s_code, message: err.message, type: 'network_error' });
+                    }
+                    
+                    updateSignDataProgress(i + 1, stats);
+                    if (i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                // ✅ สรุปผล
+                progressTitle.textContent = `✅ เสร็จสิ้น!`;
+                const msg = `อัปเดตป้ายสำเร็จ: ${stats.success}/${stats.total} รายการ`;
+                if (stats.error > 0) {
+                    addLog(`⚠️ ${msg} (ข้าม: ${stats.skip}, ผิดพลาด: ${stats.error})`, 'warning');
+                } else {
+                    addLog(`✅ ${msg} (ข้าม: ${stats.skip})`, 'success');
+                }
+                
+                setTimeout(() => {
+                    if (typeof refreshData === 'function') refreshData(true);
+                    showNotificationLeft('✅ อัปเดตข้อมูลป้ายเสร็จสิ้น!', 'success');
+                }, 3000);
+                
+            } catch (err) {
+                progressTitle.textContent = `❌ ล้มเหลว`;
+                addLog(`❌ ข้อผิดพลาด: ${err.message}`, 'error');
+                console.error('Sign update error:', err);
+            }
+        }
+
+        // ✅ ฟังก์ชันดึงข้อมูลป้ายทั้งหมด
+        async function fetchAllSignRecords() {
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await res.json();
+                return data.signs || [];
+            } catch {
+                return [];
+            }
+        }
+
     </script>
 </body>
 </html>
