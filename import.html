@@ -1567,6 +1567,62 @@
             }
         }
 
+        // ✅ ✅ ✅ ฟังก์ชันแปลงค่า s_characte ให้เป็นมาตรฐาน ✅ ✅ ✅
+        function normalizeSCharacte(rawValue) {
+            if (!rawValue || rawValue.toString().trim() === '') return '';
+            
+            const raw = rawValue.toString().trim();
+            
+            // ✅ แยกเลขและตัวอักษรไทย (ก, ข, ค, ง, จ, ฉ, ช, ซ, ฌ, ญ, ฎ, ฏ, ฐ, ฑ, ฒ, ณ, ด, ต, ถ, ท, ธ, น, บ, ป, ผ, ฝ, พ, ฟ, ภ, ม, ย, ร, ล, ว, ศ, ษ, ส, ห, ฬ, อ, ฮ)
+            const thaiChars = 'กขคงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ';
+            
+            // ✅ ค้นหารูปแบบ: เลข + (ตัวอักษร) หรือ เลข + ตัวอักษร
+            const match = raw.match(/^([1-3])\s*[\(\)]?\s*([ก-ฮ])[\)\)]?\s*(.*)$/);
+            
+            if (match) {
+                const num = match[1];  // เลข 1, 2, หรือ 3
+                const thaiChar = match[2];  // ตัวอักษรไทย
+                // ✅ แปลงเป็นรูปแบบมาตรฐาน "1(ข)"
+                return `${num}(${thaiChar})`;
+            }
+            
+            // ✅ ถ้าไม่ตรงกับรูปแบบ → คืนค่าเดิม
+            return raw;
+        }
+
+        // ============================================
+        // ✅ ฟังก์ชันแปลงค่า b_use, b_use2, land_use ✅
+        // ============================================
+        function normalizeLandUseCode(rawValue) {
+            if (!rawValue || rawValue.toString().trim() === '') return '';
+            
+            const raw = rawValue.toString().trim();
+            
+            // ✅ แยกตัวเลขนำหน้า (1-5)
+            const numMatch = raw.match(/^([1-5])/);
+            if (!numMatch) return raw; // ไม่พบตัวเลข 1-5 → คืนค่าเดิม
+            
+            const num = numMatch[1];
+            
+            // ✅ กรณีที่ 1: แค่ตัวเลขเดียว (1, 2, 3, 4, 5)
+            if (/^[1-5]$/.test(raw)) {
+                return num;
+            }
+            
+            // ✅ กรณีที่ 2: มีรูปแบบ 2(1), 2(2), 2(3)
+            if (num === '2') {
+                // ค้นหา (1), (2), หรือ (3) ในข้อความ
+                const subMatch = raw.match(/\(([1-3])\)/);
+                if (subMatch) {
+                    return `2(${subMatch[1]})`;
+                }
+                // ถ้าไม่มี (1), (2), (3) → ใช้แค่ 2
+                return '2';
+            }
+            
+            // ✅ กรณีอื่นๆ (1, 3, 4, 5) → ใช้แค่ตัวเลข
+            return num;
+        }
         
         // ============================================
         // ✅ ฟังก์ชันประมวลผลไฟล์นำเข้าสิ่งปลูกสร้าง (แก้รายงานข้อผิดพลาด)
@@ -1740,6 +1796,25 @@
                         continue;
                     }
                     
+                    // ✅ ในฟังก์ชัน processBuildingImport() → ส่วนประมวลผลแต่ละแถว
+                    // ✅ เพิ่มบรรทัดนี้หลังจากดึงค่าจากไฟล์แล้ว
+
+                    // ✅ แปลงค่า b_use, b_use2, land_use
+                    if (rowData.b_use) {
+                        rowData.b_use = normalizeLandUseCode(rowData.b_use);
+                        console.log(`🔄 b_use: "${rowData.b_use}"`);
+                    }
+
+                    if (rowData.b_use2) {
+                        rowData.b_use2 = normalizeLandUseCode(rowData.b_use2);
+                        console.log(`🔄 b_use2: "${rowData.b_use2}"`);
+                    }
+
+                    if (rowData.land_use) {
+                        rowData.land_use = normalizeLandUseCode(rowData.land_use);
+                        console.log(`🔄 land_use: "${rowData.land_use}"`);
+                    }
+
                     // ✅ สร้างค่าอัตโนมัติ
                     const now = formatThaiDateTimeBE(new Date());
                     rowData.date_added = now;
@@ -2069,28 +2144,6 @@
             document.getElementById('sd-error').textContent = stats.error;
         }
 
-        // ✅ ✅ ✅ ฟังก์ชันแปลงค่า s_characte ให้เป็นมาตรฐาน ✅ ✅ ✅
-        function normalizeSCharacte(rawValue) {
-            if (!rawValue || rawValue.toString().trim() === '') return '';
-            
-            const raw = rawValue.toString().trim();
-            
-            // ✅ แยกเลขและตัวอักษรไทย (ก, ข, ค, ง, จ, ฉ, ช, ซ, ฌ, ญ, ฎ, ฏ, ฐ, ฑ, ฒ, ณ, ด, ต, ถ, ท, ธ, น, บ, ป, ผ, ฝ, พ, ฟ, ภ, ม, ย, ร, ล, ว, ศ, ษ, ส, ห, ฬ, อ, ฮ)
-            const thaiChars = 'กขคงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ';
-            
-            // ✅ ค้นหารูปแบบ: เลข + (ตัวอักษร) หรือ เลข + ตัวอักษร
-            const match = raw.match(/^([1-3])\s*[\(\)]?\s*([ก-ฮ])[\)\)]?\s*(.*)$/);
-            
-            if (match) {
-                const num = match[1];  // เลข 1, 2, หรือ 3
-                const thaiChar = match[2];  // ตัวอักษรไทย
-                // ✅ แปลงเป็นรูปแบบมาตรฐาน "1(ข)"
-                return `${num}(${thaiChar})`;
-            }
-            
-            // ✅ ถ้าไม่ตรงกับรูปแบบ → คืนค่าเดิม
-            return raw;
-        }
 
         // ✅ ✅ ✅ ฟังก์ชันแมปค่าลักษณะเนื้อหาป้าย (ปรับปรุงใหม่) ✅ ✅ ✅
         function mapSCharacte(rawValue) {
@@ -2528,6 +2581,25 @@
                         continue;
                     }
                     
+                    // ✅ ในฟังก์ชัน processBuildingUpdate() → ส่วนประมวลผลแต่ละแถว
+                    // ✅ เพิ่มบรรทัดนี้หลังจากดึงค่าจากไฟล์แล้ว
+
+                    // ✅ แปลงค่า b_use, b_use2, land_use (เฉพาะคอลัมน์ที่มีค่า)
+                    if (rowData.b_use && rowData.b_use.trim() !== '') {
+                        updateFields.b_use = normalizeLandUseCode(rowData.b_use);
+                        console.log(`🔄 อัปเดต b_use: "${updateFields.b_use}"`);
+                    }
+
+                    if (rowData.b_use2 && rowData.b_use2.trim() !== '') {
+                        updateFields.b_use2 = normalizeLandUseCode(rowData.b_use2);
+                        console.log(`🔄 อัปเดต b_use2: "${updateFields.b_use2}"`);
+                    }
+
+                    if (rowData.land_use && rowData.land_use.trim() !== '') {
+                        updateFields.land_use = normalizeLandUseCode(rowData.land_use);
+                        console.log(`🔄 อัปเดต land_use: "${updateFields.land_use}"`);
+                    }
+
                     // ✅ ✅ ✅ เพิ่ม timestamp update (แต่ไม่แตะ date_added) ✅ ✅ ✅
                     updateFields.update = formatThaiDateTimeBE(new Date());
                     
@@ -2710,6 +2782,13 @@
                         continue;
                     }
                     
+                    // ✅ ในฟังก์ชัน processSignImport() → ส่วนประมวลผลแต่ละแถว
+                    // ✅ เพิ่มบรรทัดนี้หลังจากดึงค่า s_characte จากไฟล์
+                    if (rowData.s_characte) {
+                        rowData.s_characte = mapSCharacte(rowData.s_characte);
+                        console.log(`🔄 s_characte: "${rowData.s_characte}"`);
+                    }
+
                     // ✅ ✅ ✅ เพิ่ม timestamp update ✅ ✅ ✅
                     updateFields.update = formatThaiDateTimeBE(new Date());
                     
@@ -2771,7 +2850,6 @@
                 return [];
             }
         }
-
 
 
     </script>
