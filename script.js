@@ -5713,10 +5713,10 @@
         // ============================================
         // สถานะการเรียงลำดับ (เริ่มต้นเรียงตามรหัส)
         // ============================================
-        let buildingSortColumn = 'building_c';
-        let buildingSortDirection = 'asc'; // 'asc' หรือ 'desc'
-        let signSortColumn = 's_code';
-        let signSortDirection = 'asc';
+        let buildingSortColumn = 'update';
+        let buildingSortDirection = 'desc'; // 'asc' หรือ 'desc'
+        let signSortColumn = 'update';
+        let signSortDirection = 'desc';
 
         // คอลั่มน์ที่เป็นตัวเลข (สำหรับการเรียงแบบตัวเลข)
         const buildingNumericColumns = ['b_area', 'b_year', 'hs_no', 'hs_moo', 'no_floor', 'buse_area', 'buse_area2'];
@@ -5747,6 +5747,13 @@
                 let valA = a[column] || '';
                 let valB = b[column] || '';
                 
+                // ✅ ✅ ✅ เพิ่ม: จัดการคอลัมน์ 'update' (เรียงวันที่) ✅ ✅ ✅
+                if (column === 'update') {
+                    const dateA = valA ? new Date(valA).getTime() : 0;
+                    const dateB = valB ? new Date(valB).getTime() : 0;
+                    return direction === 'asc' ? dateA - dateB : dateB - dateA;
+                }
+
                 // จัดการค่าตัวเลข
                 if (buildingNumericColumns.includes(column)) {
                     valA = parseFloat(valA) || 0;
@@ -5773,6 +5780,13 @@
                 let valA = a[column] || '';
                 let valB = b[column] || '';
                 
+                // ✅ ✅ ✅ เพิ่ม: จัดการคอลัมน์ 'update' (เรียงวันที่) ✅ ✅ ✅
+                if (column === 'update') {
+                    const dateA = valA ? new Date(valA).getTime() : 0;
+                    const dateB = valB ? new Date(valB).getTime() : 0;
+                    return direction === 'asc' ? dateA - dateB : dateB - dateA;
+                }
+
                 // จัดการค่าตัวเลข
                 if (signNumericColumns.includes(column)) {
                     valA = parseFloat(valA) || 0;
