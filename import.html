@@ -2034,39 +2034,6 @@
         });
 
 
-        // ✅ ✅ ✅ ฟังก์ชันแมปค่าสักษณะเนื้อหาป้าย (พิเศษ) ✅ ✅ ✅
-        function mapSCharacte(rawValue) {
-            if (!rawValue || rawValue.toString().trim() === '') return '';
-            
-            const raw = rawValue.toString().trim().toLowerCase();
-            
-            // ✅ 1. ลองแมปผ่าน SIGN_FIELD_MAPPINGS ก่อน
-            if (typeof SIGN_FIELD_MAPPINGS !== 'undefined' && SIGN_FIELD_MAPPINGS['s_characte']) {
-                const mappings = SIGN_FIELD_MAPPINGS['s_characte'];
-                
-                // ค้นหาแบบตรงกันเป๊ะ
-                if (mappings[raw]) return mappings[raw];
-                
-                // ค้นหาแบบมีส่วนของคำ
-                for (const [key, value] of Object.entries(mappings)) {
-                    if (raw.includes(key.toLowerCase())) {
-                        return value;
-                    }
-                }
-            }
-            
-            // ✅ 2. ถ้าไม่เจอ → ลองแยกเลข+ตัวอักษรอัตโนมัติ
-            // รูปแบบ: "1 ก", "1(ก)", "1ก", "2 ข", ฯลฯ
-            const match = raw.match(/([1-3])\s*[\(\)]?\s*([กข])[\)\)]?/);
-            if (match) {
-                const num = match[1];  // 1, 2, หรือ 3
-                const letter = match[2];  // ก หรือ ข
-                return `${num}(${letter})`;  // แปลงเป็นรูปแบบมาตรฐาน
-            }
-            
-            // ✅ 3. ไม่เจอรูปแบบใด → คืนค่าเดิม
-            return rawValue;
-        }
 
         // ✅ ✅ ✅ ดึงรหัสป้ายที่มีอยู่แล้วจากเซิร์ฟเวอร์ ✅ ✅ ✅
         async function getExistingSignCodes() {
@@ -2102,37 +2069,59 @@
             document.getElementById('sd-error').textContent = stats.error;
         }
 
-        // ✅ ✅ ✅ ฟังก์ชันแมปค่าสักษณะเนื้อหาป้าย (พิเศษ) ✅ ✅ ✅
+        // ✅ ✅ ✅ ฟังก์ชันแปลงค่า s_characte ให้เป็นมาตรฐาน ✅ ✅ ✅
+        function normalizeSCharacte(rawValue) {
+            if (!rawValue || rawValue.toString().trim() === '') return '';
+            
+            const raw = rawValue.toString().trim();
+            
+            // ✅ แยกเลขและตัวอักษรไทย (ก, ข, ค, ง, จ, ฉ, ช, ซ, ฌ, ญ, ฎ, ฏ, ฐ, ฑ, ฒ, ณ, ด, ต, ถ, ท, ธ, น, บ, ป, ผ, ฝ, พ, ฟ, ภ, ม, ย, ร, ล, ว, ศ, ษ, ส, ห, ฬ, อ, ฮ)
+            const thaiChars = 'กขคงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ';
+            
+            // ✅ ค้นหารูปแบบ: เลข + (ตัวอักษร) หรือ เลข + ตัวอักษร
+            const match = raw.match(/^([1-3])\s*[\(\)]?\s*([ก-ฮ])[\)\)]?\s*(.*)$/);
+            
+            if (match) {
+                const num = match[1];  // เลข 1, 2, หรือ 3
+                const thaiChar = match[2];  // ตัวอักษรไทย
+                // ✅ แปลงเป็นรูปแบบมาตรฐาน "1(ข)"
+                return `${num}(${thaiChar})`;
+            }
+            
+            // ✅ ถ้าไม่ตรงกับรูปแบบ → คืนค่าเดิม
+            return raw;
+        }
+
+        // ✅ ✅ ✅ ฟังก์ชันแมปค่าลักษณะเนื้อหาป้าย (ปรับปรุงใหม่) ✅ ✅ ✅
         function mapSCharacte(rawValue) {
             if (!rawValue || rawValue.toString().trim() === '') return '';
             
-            const raw = rawValue.toString().trim().toLowerCase();
+            const raw = rawValue.toString().trim();
             
-            // ✅ 1. ลองแมปผ่าน SIGN_FIELD_MAPPINGS ก่อน
-            if (typeof SIGN_FIELD_MAPPINGS !== 'undefined' && SIGN_FIELD_MAPPINGS['s_characte']) {
-                const mappings = SIGN_FIELD_MAPPINGS['s_characte'];
-                
-                // ค้นหาแบบตรงกันเป๊ะ
-                if (mappings[raw]) return mappings[raw];
-                
-                // ค้นหาแบบมีส่วนของคำ
-                for (const [key, value] of Object.entries(mappings)) {
-                    if (raw.includes(key.toLowerCase())) {
-                        return value;
-                    }
-                }
+            // ✅ รูปแบบที่รองรับ: 1(ก), 1(ข), 2(ก), 2(ข), 3(ก), 3(ข)
+            // ✅ รองรับรูปแบบหลากหลาย: "1 ก", "1ก", "1(ก)", "1 (ก)", ฯลฯ
+            
+            // ✅ ขั้นตอนที่ 1: แยกตัวเลข (1, 2, หรือ 3)
+            const numMatch = raw.match(/^([1-3])/);
+            if (!numMatch) {
+                console.log(`⚠️ s_characte: ไม่พบตัวเลข 1-3 ใน "${raw}"`);
+                return raw; // คืนค่าเดิมถ้าไม่ตรงรูปแบบ
             }
+            const num = numMatch[1];
             
-            // ✅ 2. ถ้าไม่เจอ → ลองแยกเลข+ตัวอักษรอัตโนมัติ
-            const match = raw.match(/([1-3])\s*[\(\)]?\s*([กข])[\)\)]?/);
-            if (match) {
-                const num = match[1];
-                const letter = match[2];
-                return `${num}(${letter})`;
+            // ✅ ขั้นตอนที่ 2: แยกตัวอักษร (ก หรือ ข)
+            const charMatch = raw.match(/[กข]/);
+            if (!charMatch) {
+                console.log(`⚠️ s_characte: ไม่พบ ก หรือ ข ใน "${raw}"`);
+                return raw; // คืนค่าเดิมถ้าไม่ตรงรูปแบบ
             }
+            const thaiChar = charMatch[0];
             
-            // ✅ 3. ไม่เจอรูปแบบใด → คืนค่าเดิม
-            return rawValue;
+            // ✅ ขั้นตอนที่ 3: สร้างรูปแบบมาตรฐาน "1(ก)", "2(ข)", ฯลฯ
+            const standardized = `${num}(${thaiChar})`;
+            
+            console.log(`✅ s_characte: "${raw}" → "${standardized}"`);
+            return standardized;
         }
 
         // ✅ ✅ ✅ เพิ่มบรรทัดนี้ ✅ ✅ ✅
@@ -2322,6 +2311,13 @@
                     rowData.update = now;
                     rowData.id = `sign_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
                     
+                    // ✅ ในฟังก์ชัน processSignImport() → ส่วนประมวลผลแต่ละแถว
+                    // ✅ เพิ่มบรรทัดนี้หลังจากดึงค่า s_characte จากไฟล์
+                    if (rowData.s_characte) {
+                        rowData.s_characte = mapSCharacte(rowData.s_characte);
+                        console.log(`🔄 s_characte: "${rowData.s_characte}"`);
+                    }
+
                     // ✅ ส่งข้อมูลไปบันทึก
                     try {
                         const formData = new FormData();
@@ -2775,6 +2771,8 @@
                 return [];
             }
         }
+
+
 
     </script>
 </body>
