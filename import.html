@@ -617,7 +617,48 @@
             }
         }
 
-        // ✅ จัดการเมื่อเลือกโฟลเดอร์ (แก้ใหม่: คัดกรองรูปที่มีในฐานข้อมูลแล้วออกก่อนนำเข้า)
+        // ✅ ✅ ✅ ฟังก์ชันดึงรหัสที่มีรูปภาพแล้ว + รหัสที่มีอยู่ในระบบ ✅ ✅ ✅
+        async function getExistingCodesWithPictureStatus(type) {
+            try {
+                addLog(`🔄 โหลดข้อมูล${type === 'building' ? 'สิ่งปลูกสร้าง' : 'ป้าย'}เพื่อตรวจสอบรูป...`, 'info');
+                const response = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await response.json();
+                const records = type === 'building' ? data.buildings : data.signs;
+                const codeField = type === 'building' ? 'building_c' : 's_code';
+                
+                const result = {
+                    codesWithPicture: new Set(),  // รหัสที่มีรูปแล้วในคอลัมน์ picture
+                    allCodes: new Set()           // รหัสทั้งหมดที่มีในระบบ
+                };
+                
+                records.forEach(r => {
+                    const code = r[codeField];
+                    if (code && code.trim() !== '') {
+                        const cleanCode = code.trim().toUpperCase();
+                        result.allCodes.add(cleanCode);
+                        
+                        // ✅ เช็คเงื่อนไขรูปมีอยู่แล้ว (เหมือน checkImageExists)
+                        const pictureVal = r.picture || '';
+                        const hasValidPicture = pictureVal &&
+                            String(pictureVal).trim() !== '' &&
+                            pictureVal.toLowerCase() !== 'image.jpg';
+                        
+                        if (hasValidPicture) {
+                            result.codesWithPicture.add(cleanCode);
+                        }
+                    }
+                });
+                
+                addLog(`✅ พบ ${result.allCodes.size} รหัสในระบบ, ${result.codesWithPicture.size} รหัสที่มีรูปแล้ว`, 'success');
+                return result;
+                
+            } catch (err) {
+                addLog(`❌ โหลดข้อมูลตรวจสอบรูปล้มเหลว: ${err.message}`, 'error');
+                return { codesWithPicture: new Set(), allCodes: new Set() };
+            }
+        }
+
+        // ✅ จัดการเมื่อเลือกโฟลเดอร์ (แก้ใหม่: กรอง 2 เงื่อนไขก่อนนำเข้า)
         async function handleFolderSelect(input, type) {
             // ✅ ข้อ 1: ล้างล็อกอัตโนมัติ
             clearLog();
@@ -648,28 +689,42 @@
             
             addLog(`📁 พบไฟล์รูปภาพ ${files.length} ไฟล์`, 'info');
             
-            // ✅ ✅ ✅ ขั้นตอนที่ 1: ดึงข้อมูลรูปที่มีอยู่แล้วจากฐานข้อมูล ✅ ✅ ✅
+            // ✅ ✅ ✅ ขั้นตอนที่ 1: ดึงข้อมูลรหัสและสถานะรูปจากฐานข้อมูล ✅ ✅ ✅
             addLog('🔍 ตรวจสอบรูปที่มีอยู่ในฐานข้อมูล...', 'info');
-            const codesWithPictures = await getExistingCodesWithPictures(type);
-            addLog(`✅ พบรหัสที่มีรูปแล้ว: ${codesWithPictures.size} รหัส`, 'info');
+            const { codesWithPicture, allCodes } = await getExistingCodesWithPictureStatus(type);
             
-            // ✅ ✅ ✅ ขั้นตอนที่ 2: คัดกรองรูปที่ซ้ำออก ✅ ✅ ✅
+            // ✅ ✅ ✅ ขั้นตอนที่ 2: คัดกรองรูปตาม 2 เงื่อนไข ✅ ✅ ✅
             const originalCount = files.length;
             const filteredFiles = files.filter(file => {
+                // ✅ ดึง 11 อักษรแรกของชื่อไฟล์ (ตัดนามสกุลออกถ้ามี)
                 const codePart = file.name.length >= 11 ? file.name.substring(0, 11) : file.name;
                 const cleanCode = codePart.replace(/\.[^/.]+$/, "").trim().toUpperCase();
-                return !codesWithPictures.has(cleanCode);
+                
+                // ✅ เงื่อนไขที่ 1: 11 อักษรแรกต้องตรงกับรหัสในระบบ
+                if (!allCodes.has(cleanCode)) {
+                    console.log(`⏭️ กรองออก (ไม่พบรหัส): ${file.name} → ${cleanCode}`);
+                    return false;
+                }
+                
+                // ✅ เงื่อนไขที่ 2: รหัสต้องยังไม่มีรูปในคอลัมน์ picture
+                if (codesWithPicture.has(cleanCode)) {
+                    console.log(`⏭️ กรองออก (มีรูปแล้ว): ${file.name} → ${cleanCode}`);
+                    return false;
+                }
+                
+                // ✅ ผ่านทั้ง 2 เงื่อนไข → นำเข้าได้
+                return true;
             });
             
             const filteredCount = originalCount - filteredFiles.length;
             if (filteredCount > 0) {
-                addLog(`⏭️ คัดกรองออก ${filteredCount} รูปที่มีในฐานข้อมูลแล้ว`, 'skip');
+                addLog(`⏭️ คัดกรองออก ${filteredCount} รูป (มีรูปแล้วหรือรหัสไม่ตรง)`, 'skip');
             } else {
-                addLog(`✅ ไม่พบรูปซ้ำ: จะนำเข้าทั้งหมด ${filteredFiles.length} รูป`, 'info');
+                addLog(`✅ ไม่พบรูปที่กรอง: จะนำเข้าทั้งหมด ${filteredFiles.length} รูป`, 'info');
             }
             
             if (filteredFiles.length === 0) {
-                addLog('🎉 ไม่มีรูปใหม่ให้นำเข้า (ทุกรูปมีในฐานข้อมูลแล้ว)', 'success');
+                addLog('🎉 ไม่มีรูปใหม่ให้นำเข้า (ทุกรูปมีในฐานข้อมูลแล้วหรือรหัสไม่ตรง)', 'success');
                 document.getElementById('progress-title').textContent = '✅ เสร็จสิ้น';
                 input.value = '';
                 return;
