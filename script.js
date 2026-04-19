@@ -7602,12 +7602,19 @@
             void notification.offsetWidth;
             notification.classList.remove('translate-x-[-150%]');
             
-            // ✅ ตรวจสอบว่าเป็นแจ้งเตือนเกี่ยวกับการอัปเดตหรือไม่
-            const isUpdateNotification = message.includes('อัปเดต') || 
-                                          message.includes('เพิ่ม') || 
-                                          message.includes('แก้ไข') || 
-                                          message.includes('ลบ') ||
-                                          message.includes('มีการเปลี่ยนแปลง');
+            // ✅ ✅ ✅ แก้: ตรวจสอบคำให้ครอบคลุมมากขึ้น ✅ ✅ ✅
+            const isUpdateNotification = 
+                message.includes('อัปเดต') ||
+                message.includes('เพิ่ม') ||
+                message.includes('แก้ไข') ||
+                message.includes('ลบ') ||
+                message.includes('นำเข้า') ||      // ✅ เพิ่ม: นำเข้าข้อมูล/รูป
+                message.includes('สำเร็จ') ||      // ✅ เพิ่ม: สำเร็จ
+                message.includes('รีเฟรช') ||      // ✅ เพิ่ม: รีเฟรช
+                message.includes('ซิงค์') ||       // ✅ เพิ่ม: ซิงค์ข้อมูล
+                message.includes('เปลี่ยนแปลง') ||
+                message.includes('บันทึก') ||      // ✅ เพิ่ม: บันทึก
+                message.includes('รูปภาพ');        // ✅ เพิ่ม: รูปภาพ
 
             
             // ✅ ถ้าเป็นแจ้งเตือนอัปเดต ให้กดปุ่มรีโหลดอัตโนมัติ (ข้าม cooldown)
@@ -10875,31 +10882,48 @@
             console.log('✅ ติดเหตุการณ์ซูม/ลากแล้ว');
         }
 
-        // ============================================
-        // ✅ ✅ ✅ ฟังก์ชันแสดงภาพเต็มจอ (แก้แล้ว) ✅ ✅ ✅
-        // ============================================
+        // ✅ ✅ ✅ ฟังก์ชันแสดงภาพเต็มจอ (แก้ไขแล้ว) ✅ ✅ ✅
         function openFullscreenImage(url, filename) {
             const modal = document.getElementById('fullscreen-image-modal');
             const img = document.getElementById('fullscreen-image');
-            const nameEl = document.getElementById('fullscreen-filename');
-            const slider = document.getElementById('zoom-slider');
-            const zoomLevel = document.getElementById('zoom-level');
+            const container = document.getElementById('fullscreen-image-container');
             
             if (modal && img) {
                 // ✅ รีเซ็ตค่าซูม
                 currentZoom = 1;
                 translateX = 0;
                 translateY = 0;
-                img.style.transform = 'scale(1) translate(0px, 0px)';
+                
+                // ✅ รีเซ็ต transform
+                img.style.transform = 'translate(0px, 0px) scale(1)';
+                img.classList.remove('zoomed');
+                
+                if (container) {
+                    container.classList.remove('grabbing');
+                    container.style.cursor = 'grab';
+                }
+                
+                // ✅ รีเซ็ต slider
+                const slider = document.getElementById('zoom-slider');
+                const zoomLevel = document.getElementById('zoom-level');
                 if (slider) slider.value = 1;
                 if (zoomLevel) zoomLevel.textContent = '100%';
                 
+                // ✅ โหลดรูปภาพ
                 img.src = url;
-                nameEl.textContent = filename || '';
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
+                img.alt = filename || '';
                 
-                // ✅ ✅ ✅ ติดเหตุการณ์ซูม/ลาก "ตอนนี้" (เมื่อรูปเปิดแล้ว) ✅ ✅ ✅
+                // ✅ ✅ ✅ แสดง modal แบบเต็มจอ ✅ ✅ ✅
+                modal.classList.remove('hidden');
+                modal.classList.add('active');  // ✅ เพิ่มคลาส active
+                modal.style.display = 'flex';
+                
+                // ✅ ป้องกัน scroll ของ body
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+                
+                // ✅ ติดตั้ง event listeners
                 attachFullscreenEvents();
                 
                 console.log('🖼️ เปิดภาพเต็มจอ:', filename);
@@ -10910,30 +10934,59 @@
             if (event && event.target.id !== 'fullscreen-image') {
                 const modal = document.getElementById('fullscreen-image-modal');
                 const img = document.getElementById('fullscreen-image');
+                
                 if (modal && img) {
                     modal.classList.add('hidden');
+                    modal.classList.remove('active');
+                    modal.style.display = 'none';
                     img.src = '';
+                    
+                    // ✅ คืนค่า scroll ให้ body
                     document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    document.body.style.width = '';
+                    
                     console.log('🖼️ ปิดภาพเต็มจอ');
                 }
             }
             if (event) event.stopPropagation();
         }
         
-        // ============================================
-        // ✅ ✅ ✅ ฟังก์ชันซูมภาพ ✅ ✅ ✅
-        // ============================================
+        // ✅ ✅ ✅ ฟังก์ชันซูมภาพ (แก้ไขให้ขยายเต็มจอ) ✅ ✅ ✅
         function zoomImage(delta) {
             const img = document.getElementById('fullscreen-image');
             const slider = document.getElementById('zoom-slider');
             const zoomLevel = document.getElementById('zoom-level');
+            const container = document.getElementById('fullscreen-image-container');
             
             if (!img) return;
             
-            currentZoom = Math.max(0.5, Math.min(3, currentZoom + delta));
+            // ✅ คำนวณซูมใหม่ (ขั้นต่ำ 0.5, ขั้นสูง 10.0 - เพิ่มจาก 3 เป็น 10)
+            const newZoom = Math.max(0.5, Math.min(10, currentZoom + delta));
+            currentZoom = newZoom;
+            
+            // ✅ อัปเดต UI
             applyZoom();
+            
             if (slider) slider.value = currentZoom;
             if (zoomLevel) zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
+            
+            // ✅ เพิ่มคลาส zoomed เมื่อซูมเกิน 1
+            if (currentZoom > 1) {
+                img.classList.add('zoomed');
+                if (container) {
+                    container.style.cursor = 'grab';
+                    container.classList.remove('grabbing');
+                }
+            } else {
+                img.classList.remove('zoomed');
+                translateX = 0;
+                translateY = 0;
+                applyZoom();
+                if (container) {
+                    container.style.cursor = 'grab';
+                }
+            }
         }
         
         function setZoom(value) {

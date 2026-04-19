@@ -1194,3 +1194,63 @@
             0%, 100% { background-color: #fef08a; }
             50% { background-color: #fde047; }
         }
+
+        /* ✅ ✅ ✅ แก้ไข fullscreen-image-modal ให้เต็มจอ ✅ ✅ ✅ */
+        #fullscreen-image-modal {
+            position: fixed;
+            inset: 0;  /* ✅ เต็มจอ: top:0, right:0, bottom:0, left:0 */
+            z-index: 99999;  /* ✅ สูงสุด */
+            background: rgba(0, 0, 0, 0.98);  /* ✅ ดำเกือบเต็ม */
+            display: none;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            width: 100vw;  /* ✅ ความกว้างเต็ม viewport */
+            height: 100vh;  /* ✅ ความสูงเต็ม viewport */
+            max-width: 100vw;  /* ✅ ไม่มีข้อจำกัด */
+            max-height: 100vh;  /* ✅ ไม่มีข้อจำกัด */
+        }
+
+        #fullscreen-image-modal.active {
+            display: flex;
+        }
+
+        /* ✅ ✅ ✅ Container ของภาพ - ลบข้อจำกัดทั้งหมด ✅ ✅ ✅ */
+        #fullscreen-image-container {
+            position: relative;
+            width: 100vw;  /* ✅ เต็มความกว้างจอ */
+            height: 100vh;  /* ✅ เต็มความสูงจอ */
+            max-width: 100vw !important;  /* ✅ บังคับเต็มจอ */
+            max-height: 100vh !important;  /* ✅ บังคับเต็มจอ */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;  /* ✅ อนุญาตให้ล้นได้เมื่อซูม */
+            cursor: grab;
+            padding: 0;  /* ✅ ไม่มี padding */
+            margin: 0;   /* ✅ ไม่มี margin */
+        }
+
+        #fullscreen-image-container.grabbing {
+            cursor: grabbing;
+        }
+
+        /* ✅ ✅ ✅ รูปภาพ - เต็มจอและขยายได้เต็มจอ ✅ ✅ ✅ */
+        #fullscreen-image {
+            max-width: 100vw !important;  /* ✅ เต็มความกว้างจอ */
+            max-height: 100vh !important;  /* ✅ เต็มความสูงจอ */
+            width: auto;
+            height: auto;
+            object-fit: contain;  /* ✅ แสดงครบทั้งรูปไม่ตัด */
+            transition: transform 0.1s ease-out;
+            transform-origin: center center;
+            user-select: none;
+            -webkit-user-drag: none;
+            display: block;
+        }
+
+        #fullscreen-image.zoomed {
+            max-width: none !important;  /* ✅ อนุญาตให้ใหญ่กว่าจอเมื่อซูม */
+            max-height: none !important; /* ✅ อนุญาตให้ใหญ่กว่าจอเมื่อซูม */
+            cursor: grab;
+        }
