@@ -41,7 +41,7 @@
             <div class="p-4 bg-white rounded-lg shadow border border-gray-200">
                 <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
                     <i data-lucide="upload" class="w-4 h-4"></i>
-                    📥 นำเข้าเจ้าของ
+                    📥 นำเข้า/ส่งออกเจ้าของ
                 </h3>
                 
                 <p class="text-xs text-gray-600 mb-3">
@@ -50,6 +50,12 @@
                 </p>
                 
                 <div class="space-y-2">
+                    <!-- ✅ ปุ่มส่งออกเจ้าของ (เพิ่มก่อนปุ่มเลือกไฟล์) -->
+                    <button type="button" onclick="exportOwnersToCSV()"
+                            class="w-full py-2 bg-black text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1 mb-2">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        ส่งออกเจ้าของ (CSV)
+                    </button>
                     <input type="file" id="owner-import-file" 
                            accept=".xlsx,.xls,.csv" 
                            class="hidden">
@@ -168,6 +174,12 @@
                     <i data-lucide="pencil" class="w-4 h-4"></i>
                     ปรับปรุงข้อมูลสิ่งปลูกสร้าง
                 </button>
+                <!-- ✅ ปุ่มส่งออกข้อมูลสิ่งปลูกสร้าง (เพิ่มใหม่) -->
+                <button type="button" onclick="exportBuildingsToCSV()"
+                        class="w-full mt-2 py-2 bg-black text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    ส่งออกข้อมูลสิ่งปลูกสร้าง (CSV)
+                </button>
 
                 <!-- ✅ แถบความคืบหน้าสำหรับนำเข้าข้อมูล -->
                 <div id="building-data-progress" class="hidden mt-3 p-3 bg-gray-50 rounded border">
@@ -218,6 +230,12 @@
                         class="w-full mt-2 py-2 bg-rose-500 text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
                     <i data-lucide="pencil" class="w-4 h-4"></i>
                     ปรับปรุงข้อมูลป้าย
+                </button>
+                <!-- ✅ ปุ่มส่งออกข้อมูลป้าย (เพิ่มใหม่) -->
+                <button type="button" onclick="exportSignsToCSV()"
+                        class="w-full mt-2 py-2 bg-black text-white rounded font-bold text-sm hover:bg-gray-600 transition flex items-center justify-center gap-1">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    ส่งออกข้อมูลป้าย (CSV)
                 </button>
                 <!-- ✅ แถบความคืบหน้าสำหรับนำเข้าข้อมูลป้าย -->
                 <div id="sign-data-progress" class="hidden mt-3 p-3 bg-gray-50 rounded border">
@@ -3090,6 +3108,323 @@
             }
         }
 
+        // ✅ ฟังก์ชันส่งออกเจ้าของเป็นไฟล์ CSV
+        async function exportOwnersToCSV() {
+            closeSettingsMenu();
+            showNotificationLeft('กำลังเตรียมข้อมูลเจ้าของ...', 'info');
+            
+            try {
+                // ดึงข้อมูลจากสเปรดชีต
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getData&type=owner`);
+                const data = await response.json();
+                const owners = data.owners || [];
+                
+                if (owners.length === 0) {
+                    showNotificationLeft('⚠️ ไม่พบข้อมูลเจ้าของในระบบ', 'warning');
+                    return;
+                }
+                
+                // ✅ สร้าง header CSV
+                const headers = ['pop', 'title', 'fname', 'lname', 'full_name', 'h_no', 'moo', 'village', 'soi', 'road', 'tambol', 'amphoe', 'changwat', 'tel', 'date_added', 'update'];
+                const csvRows = [headers.join(',')];
+                
+                // ✅ เพิ่มข้อมูลแต่ละแถว
+                owners.forEach(owner => {
+                    const row = headers.map(header => {
+                        let val = owner[header] || '';
+                        val = String(val).replace(/"/g, '""');
+                        return `"${val}"`;
+                    });
+                    csvRows.push(row.join(','));
+                });
+                
+                const csvContent = csvRows.join('\n');
+                
+                // ✅ ✅ ✅ ตั้งชื่อไฟล์: ข้อมูลสำรวจเจ้าของ_วันเวลา ✅ ✅ ✅
+                const now = new Date();
+                const timestamp = now.getFullYear() +
+                    String(now.getMonth() + 1).padStart(2, '0') +
+                    String(now.getDate()).padStart(2, '0') + '_' +
+                    String(now.getHours()).padStart(2, '0') +
+                    String(now.getMinutes()).padStart(2, '0') +
+                    String(now.getSeconds()).padStart(2, '0');
+                
+                const fileName = `ข้อมูลสำรวจเจ้าของ_${timestamp}.csv`;
+                
+                // ✅ สร้าง Blob และดาวน์โหลดไฟล์
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;  // ✅ ใช้ชื่อไฟล์ใหม่
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showNotificationLeft(`✅ ดาวน์โหลดไฟล์ ${fileName} สำเร็จ!`, 'success');
+                
+            } catch (err) {
+                console.error('Error exporting owners:', err);
+                showNotificationLeft('❌ ส่งออกข้อมูลล้มเหลว: ' + err.message, 'error');
+            }
+        }
+
+        // ✅ ✅ ✅ ฟังก์ชันส่งออกข้อมูลสิ่งปลูกสร้างเป็น 2 ไฟล์ CSV ✅ ✅ ✅
+        async function exportBuildingsToCSV() {
+            addLog('📤 กำลังเตรียมข้อมูลสิ่งปลูกสร้าง...', 'info');
+            
+            try {
+                // ✅ ดึงข้อมูลสิ่งปลูกสร้างทั้งหมดจากเซิร์ฟเวอร์
+                const response = await fetch(`${SCRIPT_URL}?action=getData`);
+                const data = await response.json();
+                const buildings = data.buildings || [];
+                
+                if (buildings.length === 0) {
+                    addLog('⚠️ ไม่มีข้อมูลสิ่งปลูกสร้างในระบบ', 'warning');
+                    alert('ไม่มีข้อมูลสิ่งปลูกสร้างในระบบที่จะส่งออก');
+                    return;
+                }
+                
+                // ✅ ตั้งชื่อไฟล์ด้วยวันเวลา (รูปแบบ: 20260419_143022)
+                const now = new Date();
+                const timestamp = now.getFullYear() +
+                    String(now.getMonth() + 1).padStart(2, '0') +
+                    String(now.getDate()).padStart(2, '0') + '_' +
+                    String(now.getHours()).padStart(2, '0') +
+                    String(now.getMinutes()).padStart(2, '0') +
+                    String(now.getSeconds()).padStart(2, '0');
+                
+                // ============================================
+                // 📄 ไฟล์ที่ 1: ข้อมูลสิ่งปลูกสร้าง (ทุกคอลัมน์)
+                // ============================================
+                const file1Headers = ['id', 'building_c', 'parcel_cod', 'b_type', 'b_mat', 'b_year', 'hs_no', 'hs_moo', 'no_floor', 'b_area', 'b_note', 'b_use', 'per_use', 'full_area', 'buse_floor', 'buse_area', 'ment_use', 'b_use2', 'per_use2', 'buse_floor2', 'buse_area2', 'ment_use2', 'full_area2', 'fname', 'lname', 'title', 'full_name', 'land_type', 'land_use', 'check', 'lat_long', 'image', 'picture', 'date_added', 'update'];
+                
+                const file1Rows = [file1Headers.join(',')]; // header
+                let exportedCount1 = 0;
+                let skippedCount1 = 0;
+                
+                buildings.forEach(b => {
+                    // ✅ ✅ ✅ เงื่อนไข: ข้ามถ้า building_c ว่าง ✅ ✅ ✅
+                    const buildingC = b.building_c;
+                    if (!buildingC || String(buildingC).trim() === '' || String(buildingC).trim().toUpperCase() === 'NULL') {
+                        skippedCount1++;
+                        return; // ข้ามแถวนี้
+                    }
+                    
+                    // ✅ สร้างแถวข้อมูล (จัดการค่าว่าง/NULL)
+                    const row = file1Headers.map(header => {
+                        let val = b[header];
+                        if (val === null || val === undefined || String(val).trim().toUpperCase() === 'NULL') {
+                            return '';
+                        }
+                        // ✅ Escape quotes สำหรับ CSV
+                        val = String(val).replace(/"/g, '""');
+                        return `"${val}"`;
+                    });
+                    file1Rows.push(row.join(','));
+                    exportedCount1++;
+                });
+                
+                const file1Content = '\uFEFF' + file1Rows.join('\n'); // ✅ เพิ่ม BOM สำหรับ Excel
+                const file1Blob = new Blob([file1Content], { type: 'text/csv;charset=utf-8-sig;' });
+                const file1Url = URL.createObjectURL(file1Blob);
+                const file1A = document.createElement('a');
+                file1A.href = file1Url;
+                file1A.download = `ข้อมูลสำรวจสิ่งปลูกสร้าง_${timestamp}.csv`;
+                document.body.appendChild(file1A);
+                file1A.click();
+                document.body.removeChild(file1A);
+                URL.revokeObjectURL(file1Url);
+                
+                addLog(`✅ ไฟล์ที่ 1: ข้อมูลสำรวจสิ่งปลูกสร้าง_${timestamp}.csv (${exportedCount1} รายการ)`, 'success');
+                
+                // ============================================
+                // 📄 ไฟล์ที่ 2: การใช้ประโยชน์สิ่งปลูกสร้าง
+                // ============================================
+                const file2Headers = ['building_c', 'b_area', 'land_type', 'land_use', 'b_use', 'per_use', 'buse_floor', 'buse_area', 'ment_use', 'full_area', 'part_type'];
+                
+                const file2Rows = [file2Headers.join(',')]; // header
+                let exportedCount2 = 0;
+                let skippedCount2 = 0;
+                
+                buildings.forEach(b => {
+                    // ✅ เงื่อนไขที่ 1: building_c ต้องมีค่า
+                    const buildingC = b.building_c;
+                    if (!buildingC || String(buildingC).trim() === '' || String(buildingC).trim().toUpperCase() === 'NULL') {
+                        skippedCount2++;
+                        return;
+                    }
+                    
+                    // ✅ เงื่อนไขที่ 2: b_use หรือ b_use2 ต้องมีค่าอย่างน้อย 1 คอลัมน์
+                    const bUse = b.b_use || '';
+                    const bUse2 = b.b_use2 || '';
+                    const bUseEmpty = !bUse || String(bUse).trim() === '' || String(bUse).trim().toUpperCase() === 'NULL';
+                    const bUse2Empty = !bUse2 || String(bUse2).trim() === '' || String(bUse2).trim().toUpperCase() === 'NULL';
+                    
+                    if (bUseEmpty && bUse2Empty) {
+                        skippedCount2++;
+                        return; // ข้ามถ้าทั้งสองคอลัมน์ว่าง
+                    }
+                    
+                    // ✅ ดึงค่าส่วนกลาง
+                    const bArea = b.b_area || '';
+                    const landType = b.land_type || '';
+                    const landUse = b.land_use || '';
+                    
+                    // ✅ ดึงค่าส่วนที่ 1
+                    const perUse = b.per_use || '';
+                    const buseFloor = b.buse_floor || '';
+                    const buseArea = b.buse_area || '';
+                    const mentUse = b.ment_use || '';
+                    const fullArea = b.full_area || '';
+                    
+                    // ✅ ดึงค่าส่วนที่ 2
+                    const perUse2 = b.per_use2 || '';
+                    const buseFlor2 = b.buse_flor2 || b.buse_floor2 || ''; // ✅ รองรับชื่อฟิลด์ที่อาจสะกดผิด
+                    const buseArea2 = b.buse_area2 || '';
+                    const mentUse2 = b.ment_use2 || '';
+                    const fullArea2 = b.full_area2 || '';
+                    
+                    // ✅ Helper: แปลงค่าเป็นสตริงที่ปลอดภัยสำหรับ CSV
+                    const csvVal = (val) => {
+                        if (val === null || val === undefined || String(val).trim().toUpperCase() === 'NULL') return '';
+                        const str = String(val).replace(/"/g, '""');
+                        return `"${str}"`;
+                    };
+                    
+                    // ✅ ถ้า b_use2 ว่าง → ส่งออกเฉพาะส่วนที่ 1
+                    if (bUse2Empty) {
+                        const row = [
+                            csvVal(buildingC), csvVal(bArea), csvVal(landType), csvVal(landUse),
+                            csvVal(bUse), csvVal(perUse), csvVal(buseFloor), csvVal(buseArea), csvVal(mentUse), csvVal(fullArea),
+                            '"ส่วนที่ 1"'
+                        ];
+                        file2Rows.push(row.join(','));
+                        exportedCount2++;
+                    }
+                    // ✅ ถ้า b_use ว่าง แต่ b_use2 มีค่า → ส่งออกเฉพาะส่วนที่ 2
+                    else if (bUseEmpty) {
+                        const row = [
+                            csvVal(buildingC), csvVal(bArea), csvVal(landType), csvVal(landUse),
+                            csvVal(bUse2), csvVal(perUse2), csvVal(buseFlor2), csvVal(buseArea2), csvVal(mentUse2), csvVal(fullArea2),
+                            '"ส่วนที่ 2"'
+                        ];
+                        file2Rows.push(row.join(','));
+                        exportedCount2++;
+                    }
+                    // ✅ ถ้ามีทั้งส่วนที่ 1 และ 2 → ส่งออก 2 แถวแยกกัน
+                    else {
+                        // ส่วนที่ 1
+                        const row1 = [
+                            csvVal(buildingC), csvVal(bArea), csvVal(landType), csvVal(landUse),
+                            csvVal(bUse), csvVal(perUse), csvVal(buseFloor), csvVal(buseArea), csvVal(mentUse), csvVal(fullArea),
+                            '"ส่วนที่ 1"'
+                        ];
+                        file2Rows.push(row1.join(','));
+                        
+                        // ส่วนที่ 2
+                        const row2 = [
+                            csvVal(buildingC), csvVal(bArea), csvVal(landType), csvVal(landUse),
+                            csvVal(bUse2), csvVal(perUse2), csvVal(buseFlor2), csvVal(buseArea2), csvVal(mentUse2), csvVal(fullArea2),
+                            '"ส่วนที่ 2"'
+                        ];
+                        file2Rows.push(row2.join(','));
+                        
+                        exportedCount2 += 2;
+                    }
+                });
+                
+                const file2Content = '\uFEFF' + file2Rows.join('\n'); // ✅ เพิ่ม BOM สำหรับ Excel
+                const file2Blob = new Blob([file2Content], { type: 'text/csv;charset=utf-8-sig;' });
+                const file2Url = URL.createObjectURL(file2Blob);
+                const file2A = document.createElement('a');
+                file2A.href = file2Url;
+                file2A.download = `สำรวจการใช้ประโยชน์สิ่งปลูกสร้าง_${timestamp}.csv`;
+                document.body.appendChild(file2A);
+                file2A.click();
+                document.body.removeChild(file2A);
+                URL.revokeObjectURL(file2Url);
+                
+                addLog(`✅ ไฟล์ที่ 2: สำรวจการใช้ประโยชน์สิ่งปลูกสร้าง_${timestamp}.csv (${exportedCount2} แถว)`, 'success');
+                
+                // ✅ แจ้งเตือนสรุปผล
+                alert(`✅ ส่งออกเรียบร้อยแล้ว!\n\n` +
+                    `📄 ไฟล์ที่ 1: ข้อมูลสิ่งปลูกสร้าง_${timestamp}.csv\n` +
+                    `   ✅ ส่งออก: ${exportedCount1} รายการ\n` +
+                    `   ⚠️ ข้าม (building_c ว่าง): ${skippedCount1} รายการ\n\n` +
+                    `📄 ไฟล์ที่ 2: การใช้ประโยชน์สิ่งปลูกสร้าง_${timestamp}.csv\n` +
+                    `   ✅ ส่งออก: ${exportedCount2} แถว (การใช้ประโยชน์)\n` +
+                    `   ⚠️ ข้าม (ไม่ผ่านเงื่อนไข): ${skippedCount2} หลัง`);
+                
+            } catch (err) {
+                addLog(`❌ ส่งออกสิ่งปลูกสร้างล้มเหลว: ${err.message}`, 'error');
+                alert('❌ เกิดข้อผิดพลาดในการส่งออกข้อมูลสิ่งปลูกสร้าง:\n' + err.message);
+                console.error('Export buildings error:', err);
+            }
+        }
+
+        // ✅ ฟังก์ชันส่งออกป้ายเป็นไฟล์ CSV
+        async function exportSignsToCSV() {
+            closeSettingsMenu();
+            showNotificationLeft('กำลังเตรียมข้อมูลป้าย...', 'info');
+            
+            try {
+                // ดึงข้อมูลจากสเปรดชีต
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getData`);
+                const data = await response.json();
+                const signs = data.signs || [];
+                
+                if (signs.length === 0) {
+                    showNotificationLeft('⚠️ ไม่พบข้อมูลป้ายในระบบ', 'warning');
+                    return;
+                }
+                
+                // ✅ สร้าง header CSV
+                const headers = ['s_code', 'parcel_cod', 's_name', 's_type', 's_characte', 's_wide', 's_length', 'no_side', 's_text', 'comment', 'full_name', 'address', 'check', 'lat_long', 'date_added', 'update'];
+                const csvRows = [headers.join(',')];
+                
+                // ✅ เพิ่มข้อมูลแต่ละแถว
+                signs.forEach(sign => {
+                    const row = headers.map(header => {
+                        let val = sign[header] || '';
+                        val = String(val).replace(/"/g, '""');
+                        return `"${val}"`;
+                    });
+                    csvRows.push(row.join(','));
+                });
+                
+                const csvContent = csvRows.join('\n');
+                
+                // ✅ ✅ ✅ ตั้งชื่อไฟล์: ข้อมูลสำรวจป้าย_วันเวลา ✅ ✅ ✅
+                const now = new Date();
+                const timestamp = now.getFullYear() +
+                    String(now.getMonth() + 1).padStart(2, '0') +
+                    String(now.getDate()).padStart(2, '0') + '_' +
+                    String(now.getHours()).padStart(2, '0') +
+                    String(now.getMinutes()).padStart(2, '0') +
+                    String(now.getSeconds()).padStart(2, '0');
+                
+                const fileName = `ข้อมูลสำรวจป้าย_${timestamp}.csv`;
+                
+                // ✅ สร้าง Blob และดาวน์โหลดไฟล์
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;  // ✅ ใช้ชื่อไฟล์ใหม่
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showNotificationLeft(`✅ ดาวน์โหลดไฟล์ ${fileName} สำเร็จ!`, 'success');
+                
+            } catch (err) {
+                console.error('Error exporting signs:', err);
+                showNotificationLeft('❌ ส่งออกข้อมูลล้มเหลว: ' + err.message, 'error');
+            }
+        }
 
     </script>
 </body>
